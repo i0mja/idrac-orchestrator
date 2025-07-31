@@ -62,6 +62,90 @@ export type Database = {
         }
         Relationships: []
       }
+      ldap_config: {
+        Row: {
+          bind_dn: string | null
+          bind_password: string | null
+          created_at: string | null
+          group_search_base: string | null
+          group_search_filter: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          server_url: string
+          updated_at: string | null
+          user_search_base: string
+          user_search_filter: string | null
+        }
+        Insert: {
+          bind_dn?: string | null
+          bind_password?: string | null
+          created_at?: string | null
+          group_search_base?: string | null
+          group_search_filter?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          server_url: string
+          updated_at?: string | null
+          user_search_base: string
+          user_search_filter?: string | null
+        }
+        Update: {
+          bind_dn?: string | null
+          bind_password?: string | null
+          created_at?: string | null
+          group_search_base?: string | null
+          group_search_filter?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          server_url?: string
+          updated_at?: string | null
+          user_search_base?: string
+          user_search_filter?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          last_login: string | null
+          role: string | null
+          updated_at: string | null
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_login?: string | null
+          role?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       server_credentials: {
         Row: {
           connection_method: Database["public"]["Enums"]["connection_method"]

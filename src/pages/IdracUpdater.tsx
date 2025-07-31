@@ -8,7 +8,7 @@ import { JobScheduler } from "@/components/scheduler/JobScheduler";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
-import { SetupWizard } from "@/components/setup/SetupWizard";
+import SetupWizard from "@/components/setup/SetupWizard";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 
 type UserRole = "admin" | "operator" | "viewer";
