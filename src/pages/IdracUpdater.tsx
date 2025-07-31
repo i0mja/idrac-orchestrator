@@ -4,6 +4,10 @@ import { Header } from "@/components/layout/Header";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { ServerInventory } from "@/components/inventory/ServerInventory";
 import { FirmwareManagement } from "@/components/firmware/FirmwareManagement";
+import { JobScheduler } from "@/components/scheduler/JobScheduler";
+import { HealthChecks } from "@/components/health/HealthChecks";
+import { UserManagement } from "@/components/users/UserManagement";
+import { SettingsPage } from "@/components/settings/SettingsPage";
 
 type UserRole = "admin" | "operator" | "viewer";
 type PageType = "dashboard" | "inventory" | "firmware" | "scheduler" | "health" | "users" | "settings";
@@ -22,33 +26,13 @@ export default function IdracUpdater() {
       case "firmware":
         return <FirmwareManagement />;
       case "scheduler":
-        return (
-          <div className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Job Scheduler</h2>
-            <p className="text-muted-foreground">Flexible scheduling engine using APScheduler (cron and interval support)</p>
-          </div>
-        );
+        return <JobScheduler />;
       case "health":
-        return (
-          <div className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Health Checks</h2>
-            <p className="text-muted-foreground">Built-in vCenter and iDRAC connectivity validation</p>
-          </div>
-        );
+        return <HealthChecks />;
       case "users":
-        return (
-          <div className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">User Management</h2>
-            <p className="text-muted-foreground">Role-based access control (Admin / Operator / Viewer) via AD groups</p>
-          </div>
-        );
+        return <UserManagement />;
       case "settings":
-        return (
-          <div className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Settings</h2>
-            <p className="text-muted-foreground">System configuration and preferences</p>
-          </div>
-        );
+        return <SettingsPage />;
       default:
         return <DashboardOverview />;
     }
