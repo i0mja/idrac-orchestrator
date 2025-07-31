@@ -14,7 +14,272 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      firmware_packages: {
+        Row: {
+          applicable_models: string[] | null
+          checksum: string | null
+          component_name: string | null
+          created_at: string
+          description: string | null
+          file_path: string | null
+          file_size: number | null
+          firmware_type: Database["public"]["Enums"]["firmware_type"]
+          id: string
+          name: string
+          release_date: string | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          applicable_models?: string[] | null
+          checksum?: string | null
+          component_name?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          firmware_type: Database["public"]["Enums"]["firmware_type"]
+          id?: string
+          name: string
+          release_date?: string | null
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          applicable_models?: string[] | null
+          checksum?: string | null
+          component_name?: string | null
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          firmware_type?: Database["public"]["Enums"]["firmware_type"]
+          id?: string
+          name?: string
+          release_date?: string | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      server_credentials: {
+        Row: {
+          connection_method: Database["public"]["Enums"]["connection_method"]
+          created_at: string
+          id: string
+          port: number | null
+          server_id: string
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          connection_method: Database["public"]["Enums"]["connection_method"]
+          created_at?: string
+          id?: string
+          port?: number | null
+          server_id: string
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          connection_method?: Database["public"]["Enums"]["connection_method"]
+          created_at?: string
+          id?: string
+          port?: number | null
+          server_id?: string
+          updated_at?: string
+          username?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_credentials_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      servers: {
+        Row: {
+          bios_version: string | null
+          created_at: string
+          datacenter: string | null
+          environment: string | null
+          hostname: string
+          id: string
+          idrac_version: string | null
+          ip_address: unknown
+          last_discovered: string | null
+          last_updated: string | null
+          model: string | null
+          rack_location: string | null
+          service_tag: string | null
+          status: Database["public"]["Enums"]["server_status"] | null
+          updated_at: string
+          vcenter_id: string | null
+        }
+        Insert: {
+          bios_version?: string | null
+          created_at?: string
+          datacenter?: string | null
+          environment?: string | null
+          hostname: string
+          id?: string
+          idrac_version?: string | null
+          ip_address: unknown
+          last_discovered?: string | null
+          last_updated?: string | null
+          model?: string | null
+          rack_location?: string | null
+          service_tag?: string | null
+          status?: Database["public"]["Enums"]["server_status"] | null
+          updated_at?: string
+          vcenter_id?: string | null
+        }
+        Update: {
+          bios_version?: string | null
+          created_at?: string
+          datacenter?: string | null
+          environment?: string | null
+          hostname?: string
+          id?: string
+          idrac_version?: string | null
+          ip_address?: unknown
+          last_discovered?: string | null
+          last_updated?: string | null
+          model?: string | null
+          rack_location?: string | null
+          service_tag?: string | null
+          status?: Database["public"]["Enums"]["server_status"] | null
+          updated_at?: string
+          vcenter_id?: string | null
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json | null
+        }
+        Relationships: []
+      }
+      update_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error_message: string | null
+          firmware_package_id: string
+          id: string
+          logs: string | null
+          progress: number | null
+          scheduled_at: string | null
+          server_id: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["update_job_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          firmware_package_id: string
+          id?: string
+          logs?: string | null
+          progress?: number | null
+          scheduled_at?: string | null
+          server_id: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["update_job_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error_message?: string | null
+          firmware_package_id?: string
+          id?: string
+          logs?: string | null
+          progress?: number | null
+          scheduled_at?: string | null
+          server_id?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["update_job_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "update_jobs_firmware_package_id_fkey"
+            columns: ["firmware_package_id"]
+            isOneToOne: false
+            referencedRelation: "firmware_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "update_jobs_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vcenters: {
+        Row: {
+          created_at: string
+          hostname: string
+          id: string
+          ignore_ssl: boolean | null
+          name: string
+          port: number | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          hostname: string
+          id?: string
+          ignore_ssl?: boolean | null
+          name: string
+          port?: number | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          hostname?: string
+          id?: string
+          ignore_ssl?: boolean | null
+          name?: string
+          port?: number | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +288,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      connection_method: "redfish" | "racadm" | "vcenter"
+      firmware_type: "idrac" | "bios" | "storage" | "network" | "other"
+      server_status: "online" | "offline" | "updating" | "error" | "unknown"
+      update_job_status:
+        | "pending"
+        | "running"
+        | "completed"
+        | "failed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +423,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      connection_method: ["redfish", "racadm", "vcenter"],
+      firmware_type: ["idrac", "bios", "storage", "network", "other"],
+      server_status: ["online", "offline", "updating", "error", "unknown"],
+      update_job_status: [
+        "pending",
+        "running",
+        "completed",
+        "failed",
+        "cancelled",
+      ],
+    },
   },
 } as const
