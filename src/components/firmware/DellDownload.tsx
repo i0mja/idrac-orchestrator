@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
@@ -125,106 +126,115 @@ export function DellDownload({ onClose }: DellDownloadProps) {
   };
 
   return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Server className="w-5 h-5" />
-          Download from Dell Repository
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Search Form */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Server Model</label>
-            <Input
-              placeholder="e.g., PowerEdge R740"
-              value={searchModel}
-              onChange={(e) => setSearchModel(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Firmware Type</label>
-            <Select value={firmwareType} onValueChange={setFirmwareType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="idrac">iDRAC</SelectItem>
-                <SelectItem value="bios">BIOS</SelectItem>
-                <SelectItem value="storage">Storage</SelectItem>
-                <SelectItem value="network">Network</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-end gap-2">
-            <Button 
-              onClick={handleSearch} 
-              disabled={isSearching}
-              className="flex-1"
-            >
-              {isSearching ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Search className="w-4 h-4 mr-2" />
-              )}
-              Search
-            </Button>
-          </div>
-        </div>
-
-        {/* Search Results */}
-        {searchResults.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Search Results ({searchResults.length})</h3>
-            <div className="space-y-3 max-h-96 overflow-y-auto">
-              {searchResults.map((item) => (
-                <div key={item.id} className="p-4 rounded-lg bg-muted/30 border border-border">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h4 className="font-semibold">{item.name}</h4>
-                        <Badge variant="outline">{getFirmwareTypeBadge(item.category)}</Badge>
-                        <Badge variant="secondary">v{item.version}</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {formatFileSize(item.fileSize)} • Released: {new Date(item.releaseDate).toLocaleDateString()}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{item.description}</p>
-                      {item.supportedModels.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Supported models: {item.supportedModels.join(', ')}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      onClick={() => handleDownload(item)}
-                      disabled={downloadingItems.has(item.id)}
-                      size="sm"
-                    >
-                      {downloadingItems.has(item.id) ? (
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-2" />
-                      )}
-                      {downloadingItems.has(item.id) ? 'Downloading...' : 'Download'}
-                    </Button>
-                  </div>
-                </div>
-              ))}
+    <>
+      <DialogHeader>
+        <DialogTitle>Download from Dell Repository</DialogTitle>
+        <DialogDescription>
+          Search and download firmware packages directly from Dell's support repository
+        </DialogDescription>
+      </DialogHeader>
+      
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Server className="w-5 h-5" />
+            Search Dell Firmware
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Search Form */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Server Model</label>
+              <Input
+                placeholder="e.g., PowerEdge R740"
+                value={searchModel}
+                onChange={(e) => setSearchModel(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Firmware Type</label>
+              <Select value={firmwareType} onValueChange={setFirmwareType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="idrac">iDRAC</SelectItem>
+                  <SelectItem value="bios">BIOS</SelectItem>
+                  <SelectItem value="storage">Storage</SelectItem>
+                  <SelectItem value="network">Network</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-end gap-2">
+              <Button 
+                onClick={handleSearch} 
+                disabled={isSearching}
+                className="flex-1"
+              >
+                {isSearching ? (
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 mr-2" />
+                )}
+                Search
+              </Button>
             </div>
           </div>
-        )}
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Search Results */}
+          {searchResults.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Search Results ({searchResults.length})</h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {searchResults.map((item) => (
+                  <div key={item.id} className="p-4 rounded-lg bg-muted/30 border border-border">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h4 className="font-semibold">{item.name}</h4>
+                          <Badge variant="outline">{getFirmwareTypeBadge(item.category)}</Badge>
+                          <Badge variant="secondary">v{item.version}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          {formatFileSize(item.fileSize)} • Released: {new Date(item.releaseDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-muted-foreground">{item.description}</p>
+                        {item.supportedModels.length > 0 && (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            Supported models: {item.supportedModels.join(', ')}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        onClick={() => handleDownload(item)}
+                        disabled={downloadingItems.has(item.id)}
+                        size="sm"
+                      >
+                        {downloadingItems.has(item.id) ? (
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4 mr-2" />
+                        )}
+                        {downloadingItems.has(item.id) ? 'Downloading...' : 'Download'}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
