@@ -1,0 +1,87 @@
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Server,
+  Calendar,
+  Users,
+  Settings,
+  Activity,
+  Shield,
+  Database,
+  Download
+} from "lucide-react";
+
+type PageType = "dashboard" | "inventory" | "firmware" | "scheduler" | "health" | "users" | "settings";
+
+interface SidebarProps {
+  currentPage: PageType;
+  onPageChange: (page: PageType) => void;
+  userRole: "admin" | "operator" | "viewer";
+}
+
+const menuItems: Array<{
+  id: PageType;
+  label: string;
+  icon: any;
+  roles: string[];
+}> = [
+  { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
+  { id: "inventory", label: "Server Inventory", icon: Server, roles: ["admin", "operator", "viewer"] },
+  { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
+  { id: "scheduler", label: "Job Scheduler", icon: Calendar, roles: ["admin", "operator"] },
+  { id: "health", label: "Health Checks", icon: Shield, roles: ["admin", "operator", "viewer"] },
+  { id: "users", label: "User Management", icon: Users, roles: ["admin"] },
+  { id: "settings", label: "Settings", icon: Settings, roles: ["admin"] },
+];
+
+export function Sidebar({ currentPage, onPageChange, userRole }: SidebarProps) {
+  const filteredMenuItems = menuItems.filter(item => 
+    item.roles.includes(userRole)
+  );
+
+  return (
+    <div className="w-64 h-full bg-sidebar border-r border-sidebar-border">
+      <div className="p-6">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
+            <Database className="w-4 h-4 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold text-gradient">iDrac Updater</h1>
+            <p className="text-xs text-muted-foreground">Enterprise Edition</p>
+          </div>
+        </div>
+
+        <nav className="space-y-2">
+          {filteredMenuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Button
+                key={item.id}
+                variant="ghost"
+                className={cn(
+                  "w-full justify-start gap-3 h-10",
+                  currentPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
+                )}
+                onClick={() => onPageChange(item.id)}
+              >
+                <Icon className="w-4 h-4" />
+                {item.label}
+              </Button>
+            );
+          })}
+        </nav>
+      </div>
+
+      <div className="absolute bottom-4 left-4 right-4">
+        <div className="card-enterprise p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
+            <span className="text-sm font-medium">System Status</span>
+          </div>
+          <p className="text-xs text-muted-foreground">All services operational</p>
+        </div>
+      </div>
+    </div>
+  );
+}
