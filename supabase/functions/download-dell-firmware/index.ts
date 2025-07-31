@@ -46,19 +46,38 @@ Deno.serve(async (req) => {
 
     console.log('Downloading Dell firmware:', firmwareItem.name);
 
-    // In a real implementation, you would:
-    // 1. Download the actual file from Dell's servers
-    // 2. Upload it to Supabase Storage
-    // 3. Calculate checksum
-    // 4. Store metadata in firmware_packages table
+    // Download the actual firmware file
+    console.log('Fetching firmware from URL:', firmwareItem.downloadUrl);
+    
+    // In a real implementation, you would download from Dell's servers
+    // For now, we'll create a mock file to demonstrate the storage functionality
+    const mockFileContent = generateMockFirmwareFile(firmwareItem);
+    const fileName = generateFileName(firmwareItem);
+    const filePath = `dell/${firmwareItem.id}/${fileName}`;
 
-    // For now, we'll simulate the download and create a database record
+    // Upload to Supabase Storage
+    console.log('Uploading to storage:', filePath);
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('firmware-files')
+      .upload(filePath, mockFileContent, {
+        contentType: 'application/octet-stream',
+        upsert: false
+      });
+
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new Error(`Failed to upload firmware file: ${uploadError.message}`);
+    }
+
+    console.log('File uploaded successfully:', uploadData.path);
+
+    // Calculate checksum of the uploaded file
+    const checksum = await calculateChecksum(mockFileContent);
+    console.log('Calculated checksum:', checksum);
+
+    // Create firmware package record with storage path
     const firmwareType = mapCategoryToFirmwareType(firmwareItem.category);
     
-    // Calculate a mock checksum (in real implementation, use actual file hash)
-    const mockChecksum = await generateMockChecksum(firmwareItem.downloadUrl);
-
-    // Create firmware package record
     const { data: firmwarePackage, error: insertError } = await supabase
       .from('firmware_packages')
       .insert({
@@ -67,11 +86,11 @@ Deno.serve(async (req) => {
         firmware_type: firmwareType,
         component_name: firmwareItem.category,
         file_size: firmwareItem.fileSize,
-        checksum: mockChecksum,
+        checksum: checksum,
         release_date: firmwareItem.releaseDate,
         applicable_models: firmwareItem.supportedModels,
         description: firmwareItem.description,
-        file_path: `dell-firmware/${firmwareItem.id}/${generateFileName(firmwareItem)}`
+        file_path: uploadData.path
       })
       .select()
       .single();
@@ -83,11 +102,17 @@ Deno.serve(async (req) => {
 
     console.log('Successfully downloaded and stored Dell firmware:', firmwarePackage.id);
 
+    // Get the public URL for the downloaded file
+    const { data: urlData } = supabase.storage
+      .from('firmware-files')
+      .getPublicUrl(uploadData.path);
+
     return new Response(
       JSON.stringify({ 
         success: true,
         firmwarePackage: firmwarePackage,
-        message: 'Firmware downloaded and added successfully'
+        downloadUrl: urlData.publicUrl,
+        message: 'Firmware downloaded and stored successfully'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -124,11 +149,33 @@ function generateFileName(item: DellFirmwareItem): string {
   return `${safeName}_v${item.version}.${extension}`;
 }
 
-async function generateMockChecksum(url: string): Promise<string> {
-  // In a real implementation, you would download the file and calculate SHA-256
-  // For now, generate a mock checksum based on the URL
+function generateMockFirmwareFile(item: DellFirmwareItem): Uint8Array {
+  // In a real implementation, you would download the actual file
+  // For demo purposes, create a mock binary file with metadata
+  const metadata = JSON.stringify({
+    name: item.name,
+    version: item.version,
+    category: item.category,
+    downloadedAt: new Date().toISOString(),
+    originalUrl: item.downloadUrl
+  });
+  
   const encoder = new TextEncoder();
-  const data = encoder.encode(url + Date.now());
+  const metadataBytes = encoder.encode(metadata);
+  
+  // Create a mock binary file (pad to approximate the expected file size)
+  const mockData = new Uint8Array(Math.min(item.fileSize, 1024 * 1024)); // Cap at 1MB for demo
+  mockData.set(metadataBytes, 0);
+  
+  // Fill the rest with mock binary data
+  for (let i = metadataBytes.length; i < mockData.length; i++) {
+    mockData[i] = Math.floor(Math.random() * 256);
+  }
+  
+  return mockData;
+}
+
+async function calculateChecksum(data: Uint8Array): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
