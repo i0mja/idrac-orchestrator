@@ -8,6 +8,8 @@ import { JobScheduler } from "@/components/scheduler/JobScheduler";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
+import { SetupWizard } from "@/components/setup/SetupWizard";
+import { useSystemConfig } from "@/hooks/useSystemConfig";
 
 type UserRole = "admin" | "operator" | "viewer";
 type PageType = "dashboard" | "inventory" | "firmware" | "scheduler" | "health" | "users" | "settings";
@@ -16,6 +18,29 @@ export default function IdracUpdater() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
   const [userRole] = useState<UserRole>("admin"); // Simulated user role
   const [userName] = useState("John Administrator");
+  const { config, loading, updateConfig } = useSystemConfig();
+  
+  // Show setup wizard if system is not configured
+  if (loading) {
+    return (
+      <div className="h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading system configuration...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!config?.setup_completed) {
+    return (
+      <SetupWizard 
+        onComplete={() => {
+          updateConfig('setup_completed', true);
+        }}
+      />
+    );
+  }
 
   const renderContent = () => {
     switch (currentPage) {
