@@ -3,10 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { useUpdateJobs } from "@/hooks/useUpdateJobs";
 import { useServers } from "@/hooks/useServers";
 import { formatDistanceToNow } from "date-fns";
+import { DellDownload } from "./DellDownload";
+import { useState } from "react";
 import { 
   Download, 
   Upload, 
@@ -15,13 +18,15 @@ import {
   CheckCircle,
   AlertTriangle,
   Play,
-  RefreshCw
+  RefreshCw,
+  Server
 } from "lucide-react";
 
 export function FirmwareManagement() {
   const { packages, loading: packagesLoading } = useFirmwarePackages();
   const { jobs, loading: jobsLoading, cancelJob, retryJob } = useUpdateJobs();
   const { servers } = useServers();
+  const [showDellDownload, setShowDellDownload] = useState(false);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -57,10 +62,19 @@ export function FirmwareManagement() {
           <h2 className="text-2xl font-bold">Firmware Management</h2>
           <p className="text-muted-foreground">Manage firmware packages and update jobs</p>
         </div>
-        <Button variant="enterprise">
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Package
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowDellDownload(true)}
+          >
+            <Server className="w-4 h-4 mr-2" />
+            Dell Repository
+          </Button>
+          <Button variant="enterprise">
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Package
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="packages" className="space-y-6">
@@ -202,6 +216,13 @@ export function FirmwareManagement() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dell Download Dialog */}
+      <Dialog open={showDellDownload} onOpenChange={setShowDellDownload}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DellDownload onClose={() => setShowDellDownload(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
