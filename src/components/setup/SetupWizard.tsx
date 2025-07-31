@@ -206,7 +206,10 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         <Card className="card-enterprise">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              {steps[currentStep - 1].icon && <steps[currentStep - 1].icon className="w-5 h-5" />}
+              {(() => {
+                const IconComponent = steps[currentStep - 1].icon;
+                return IconComponent ? <IconComponent className="w-5 h-5" /> : null;
+              })()}
               {steps[currentStep - 1].title}
             </CardTitle>
           </CardHeader>

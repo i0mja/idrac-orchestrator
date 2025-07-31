@@ -93,12 +93,12 @@ export function SettingsPage() {
       const configMap = new Map(data?.map(item => [item.key, item.value]) || []);
       
       setConfig({
-        organization_name: configMap.get('organization_name') || '',
-        admin_email: configMap.get('admin_email') || '',
-        timezone: configMap.get('timezone') || 'UTC',
-        notification_settings: configMap.get('notification_settings') || { email_alerts: true },
-        auto_discovery: configMap.get('auto_discovery') || { enabled: true, interval_hours: 24, ip_ranges: ['192.168.1.0/24'] },
-        security: configMap.get('security_settings') || { require_approval: true, backup_before_update: true, max_concurrent_updates: 5 }
+        organization_name: (configMap.get('organization_name') as string) || '',
+        admin_email: (configMap.get('admin_email') as string) || '',
+        timezone: (configMap.get('timezone') as string) || 'UTC',
+        notification_settings: (configMap.get('notification_settings') as { email_alerts: boolean; slack_webhook?: string; }) || { email_alerts: true },
+        auto_discovery: (configMap.get('auto_discovery') as { enabled: boolean; interval_hours: number; ip_ranges: string[]; }) || { enabled: true, interval_hours: 24, ip_ranges: ['192.168.1.0/24'] },
+        security: (configMap.get('security_settings') as { require_approval: boolean; backup_before_update: boolean; max_concurrent_updates: number; }) || { require_approval: true, backup_before_update: true, max_concurrent_updates: 5 }
       });
     } catch (error) {
       console.error('Error loading settings:', error);

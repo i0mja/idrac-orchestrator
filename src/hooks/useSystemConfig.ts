@@ -41,13 +41,13 @@ export function useSystemConfig() {
       const configMap = new Map(data?.map(item => [item.key, item.value]) || []);
       
       setConfig({
-        setup_completed: configMap.get('setup_completed') || false,
-        organization_name: configMap.get('organization_name'),
-        admin_email: configMap.get('admin_email'),
-        timezone: configMap.get('timezone'),
-        notification_settings: configMap.get('notification_settings'),
-        auto_discovery: configMap.get('auto_discovery'),
-        security_settings: configMap.get('security_settings')
+        setup_completed: Boolean(configMap.get('setup_completed')) || false,
+        organization_name: configMap.get('organization_name') as string,
+        admin_email: configMap.get('admin_email') as string,
+        timezone: configMap.get('timezone') as string,
+        notification_settings: configMap.get('notification_settings') as { email_alerts: boolean; slack_webhook?: string; },
+        auto_discovery: configMap.get('auto_discovery') as { enabled: boolean; interval_hours: number; ip_ranges: string[]; },
+        security_settings: configMap.get('security_settings') as { require_approval: boolean; backup_before_update: boolean; max_concurrent_updates: number; }
       });
     } catch (error) {
       console.error('Error loading system config:', error);
