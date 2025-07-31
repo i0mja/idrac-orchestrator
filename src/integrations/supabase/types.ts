@@ -369,10 +369,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      is_setup_completed: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       connection_method: "redfish" | "racadm" | "vcenter"
