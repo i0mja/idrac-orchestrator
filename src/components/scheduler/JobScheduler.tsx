@@ -1,104 +1,152 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useUpdateJobs } from "@/hooks/useUpdateJobs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useServers } from "@/hooks/useServers";
-import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
+import { useSystemEvents } from "@/hooks/useSystemEvents";
+import { useAutoOrchestration } from "@/hooks/useAutoOrchestration";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { 
   Calendar, 
   Clock, 
   Play, 
   Pause, 
-  Trash2, 
-  Plus,
+  Settings,
   RefreshCw,
-  Zap,
   Bot,
-  Settings
+  Timer,
+  Zap,
+  Info,
+  CheckCircle,
+  AlertTriangle
 } from "lucide-react";
 import { MaintenanceWindowManager } from "./MaintenanceWindowManager";
-import { UpdateOrchestratorScheduler } from "./UpdateOrchestratorScheduler";
 import { AutomationPolicies } from "./AutomationPolicies";
 
+interface CronJob {
+  id: string;
+  name: string;
+  schedule: string;
+  function_name: string;
+  enabled: boolean;
+  last_run?: string;
+  next_run?: string;
+  success_count: number;
+  failure_count: number;
+}
+
 export function JobScheduler() {
-  const { jobs, loading: jobsLoading, createUpdateJob } = useUpdateJobs();
   const { servers } = useServers();
-  const { packages } = useFirmwarePackages();
+  const { events } = useSystemEvents();
+  const { config: autoConfig } = useAutoOrchestration();
   const { toast } = useToast();
+  
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [newJob, setNewJob] = useState({
-    serverId: "",
-    firmwarePackageId: "",
-    scheduledAt: ""
-  });
-  const [isCreating, setIsCreating] = useState(false);
+  // Mock cron jobs data (in a real implementation, this would come from your cron system)
+  useEffect(() => {
+    const mockCronJobs: CronJob[] = [
+      {
+        id: "auto-orchestration",
+        name: "Auto-Orchestration",
+        schedule: autoConfig?.enabled ? `0 0 1 */${autoConfig.execution_interval_months || 6} *` : "disabled",
+        function_name: "auto-orchestration",
+        enabled: autoConfig?.enabled || false,
+        last_run: "2024-01-15T02:00:00Z",
+        next_run: autoConfig?.enabled ? "2024-07-01T02:00:00Z" : undefined,
+        success_count: 12,
+        failure_count: 1
+      },
+      {
+        id: "health-check",
+        name: "System Health Check",
+        schedule: "0 */4 * * *", // Every 4 hours
+        function_name: "server-health-check",
+        enabled: true,
+        last_run: "2024-01-30T12:00:00Z",
+        next_run: "2024-01-30T16:00:00Z",
+        success_count: 180,
+        failure_count: 3
+      },
+      {
+        id: "firmware-scan",
+        name: "Firmware Availability Scan",
+        schedule: "0 2 * * 1", // Every Monday at 2 AM
+        function_name: "search-dell-firmware",
+        enabled: true,
+        last_run: "2024-01-29T02:00:00Z",
+        next_run: "2024-02-05T02:00:00Z",
+        success_count: 52,
+        failure_count: 0
+      }
+    ];
+    
+    setCronJobs(mockCronJobs);
+    setLoading(false);
+  }, [autoConfig]);
 
-  const handleCreateJob = async () => {
-    if (!newJob.serverId || !newJob.firmwarePackageId) {
-      toast({
-        title: "Missing Information",
-        description: "Please select both server and firmware package",
-        variant: "destructive",
-      });
-      return;
+  const getStatusBadge = (job: CronJob) => {
+    if (!job.enabled) {
+      return <Badge variant="outline">Disabled</Badge>;
     }
-
-    setIsCreating(true);
-    try {
-      await createUpdateJob(
-        newJob.serverId, 
-        newJob.firmwarePackageId, 
-        newJob.scheduledAt || undefined
-      );
-      setNewJob({ serverId: "", firmwarePackageId: "", scheduledAt: "" });
-    } finally {
-      setIsCreating(false);
+    
+    const successRate = job.success_count / (job.success_count + job.failure_count);
+    if (successRate >= 0.95) {
+      return <Badge className="bg-green-100 text-green-800 border-green-300">Healthy</Badge>;
+    } else if (successRate >= 0.8) {
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Warning</Badge>;
+    } else {
+      return <Badge className="bg-red-100 text-red-800 border-red-300">Critical</Badge>;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "completed": return <Badge className="status-online">Completed</Badge>;
-      case "running": return <Badge className="status-updating">Running</Badge>;
-      case "failed": return <Badge className="status-offline">Failed</Badge>;
-      case "pending": return <Badge className="status-warning">Pending</Badge>;
-      case "cancelled": return <Badge variant="outline">Cancelled</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
+  const formatCronSchedule = (schedule: string) => {
+    if (schedule === "disabled") return "Disabled";
+    
+    const descriptions: Record<string, string> = {
+      "0 0 1 */6 *": "Every 6 months on the 1st",
+      "0 */4 * * *": "Every 4 hours",
+      "0 2 * * 1": "Mondays at 2:00 AM"
+    };
+    
+    return descriptions[schedule] || schedule;
   };
 
-  const scheduledJobs = jobs.filter(job => job.scheduled_at || job.status === 'pending');
-  const activeJobs = jobs.filter(job => job.status === 'running');
-  const completedJobs = jobs.filter(job => job.status === 'completed');
+  const scheduledEvents = events.filter(event => 
+    event.event_type.includes('orchestration') || 
+    event.event_type.includes('scheduled') ||
+    event.event_type.includes('maintenance')
+  );
+
+  const enabledJobs = cronJobs.filter(job => job.enabled);
+  const totalExecutions = cronJobs.reduce((sum, job) => sum + job.success_count + job.failure_count, 0);
+  const totalFailures = cronJobs.reduce((sum, job) => sum + job.failure_count, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Job Scheduler & Orchestration</h2>
-          <p className="text-muted-foreground">Schedule jobs, maintenance windows, and automation policies</p>
+          <h2 className="text-2xl font-bold">Job Scheduler & Automation</h2>
+          <p className="text-muted-foreground">Manage scheduled tasks, maintenance windows, and automation policies</p>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="card-enterprise">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Scheduled Jobs</p>
-                <h3 className="text-2xl font-bold">{scheduledJobs.length}</h3>
+                <p className="text-sm text-muted-foreground">Active Cron Jobs</p>
+                <h3 className="text-2xl font-bold">{enabledJobs.length}</h3>
               </div>
-              <Clock className="w-8 h-8 text-warning" />
+              <Timer className="w-8 h-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -107,10 +155,10 @@ export function JobScheduler() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Running Jobs</p>
-                <h3 className="text-2xl font-bold">{activeJobs.length}</h3>
+                <p className="text-sm text-muted-foreground">Total Executions</p>
+                <h3 className="text-2xl font-bold">{totalExecutions}</h3>
               </div>
-              <Play className="w-8 h-8 text-primary" />
+              <Play className="w-8 h-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -119,29 +167,62 @@ export function JobScheduler() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Completed Jobs</p>
-                <h3 className="text-2xl font-bold">{completedJobs.length}</h3>
+                <p className="text-sm text-muted-foreground">Failures</p>
+                <h3 className="text-2xl font-bold text-destructive">{totalFailures}</h3>
               </div>
-              <Calendar className="w-8 h-8 text-success" />
+              <AlertTriangle className="w-8 h-8 text-destructive" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-enterprise">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Success Rate</p>
+                <h3 className="text-2xl font-bold text-success">
+                  {totalExecutions > 0 ? Math.round(((totalExecutions - totalFailures) / totalExecutions) * 100) : 0}%
+                </h3>
+              </div>
+              <CheckCircle className="w-8 h-8 text-success" />
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Auto-Orchestration Status Alert */}
+      {autoConfig && (
+        <Alert>
+          <Zap className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>
+                Auto-orchestration is {autoConfig.enabled ? 'enabled' : 'disabled'}. 
+                {autoConfig.enabled && ` Next execution in ${autoConfig.execution_interval_months} months.`}
+              </span>
+              <Button size="sm" variant="outline" onClick={() => window.location.hash = '#enterprise'}>
+                <Settings className="w-3 h-3 mr-1" />
+                Configure
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Tabs */}
-      <Tabs defaultValue="jobs" className="space-y-6">
+      <Tabs defaultValue="cron" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="jobs" className="gap-2">
+          <TabsTrigger value="cron" className="gap-2">
+            <Timer className="w-4 h-4" />
+            Scheduled Jobs
+          </TabsTrigger>
+          <TabsTrigger value="events" className="gap-2">
             <Calendar className="w-4 h-4" />
-            Individual Jobs
+            Job History
           </TabsTrigger>
           <TabsTrigger value="maintenance" className="gap-2">
             <Clock className="w-4 h-4" />
             Maintenance Windows
-          </TabsTrigger>
-          <TabsTrigger value="orchestration" className="gap-2">
-            <Zap className="w-4 h-4" />
-            Update Orchestration
           </TabsTrigger>
           <TabsTrigger value="automation" className="gap-2">
             <Bot className="w-4 h-4" />
@@ -149,166 +230,142 @@ export function JobScheduler() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="jobs" className="space-y-6">
-          <div className="flex justify-end">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="enterprise">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Schedule Job
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Schedule Update Job</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="server">Target Server</Label>
-                    <Select value={newJob.serverId} onValueChange={(value) => setNewJob(prev => ({ ...prev, serverId: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select server" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {servers.map((server) => (
-                          <SelectItem key={server.id} value={server.id}>
-                            {server.hostname} ({String(server.ip_address)})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="firmware">Firmware Package</Label>
-                    <Select value={newJob.firmwarePackageId} onValueChange={(value) => setNewJob(prev => ({ ...prev, firmwarePackageId: value }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select firmware" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {packages.map((pkg) => (
-                          <SelectItem key={pkg.id} value={pkg.id}>
-                            {pkg.name} v{pkg.version} ({pkg.firmware_type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="scheduledAt">Schedule Time (optional)</Label>
-                    <Input
-                      id="scheduledAt"
-                      type="datetime-local"
-                      value={newJob.scheduledAt}
-                      onChange={(e) => setNewJob(prev => ({ ...prev, scheduledAt: e.target.value }))}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">Leave empty to start immediately</p>
-                  </div>
-                  <Button onClick={handleCreateJob} disabled={isCreating} className="w-full">
-                    {isCreating ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Schedule Job
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-
+        <TabsContent value="cron" className="space-y-6">
           <Card className="card-enterprise">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                All Jobs ({jobs.length})
+                <Timer className="w-5 h-5" />
+                Scheduled Jobs & Cron Tasks
               </CardTitle>
+              <CardDescription>
+                Automated tasks running on schedule
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              {jobsLoading ? (
+              {loading ? (
                 <div className="flex justify-center items-center h-32">
                   <RefreshCw className="w-6 h-6 animate-spin" />
-                  <span className="ml-2">Loading jobs...</span>
+                  <span className="ml-2">Loading scheduled jobs...</span>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Server</TableHead>
-                      <TableHead>Firmware</TableHead>
+                      <TableHead>Job Name</TableHead>
+                      <TableHead>Schedule</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Scheduled</TableHead>
-                      <TableHead>Started</TableHead>
-                      <TableHead>Completed</TableHead>
+                      <TableHead>Last Run</TableHead>
+                      <TableHead>Next Run</TableHead>
+                      <TableHead>Success Rate</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {jobs.map((job) => (
-                      <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.server?.hostname || 'Unknown'}</TableCell>
-                        <TableCell>
-                          {job.firmware_package?.name} v{job.firmware_package?.version}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(job.status)}</TableCell>
-                        <TableCell>
-                          {job.scheduled_at 
-                            ? formatDistanceToNow(new Date(job.scheduled_at)) + ' ago'
-                            : 'Immediate'
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {job.started_at 
-                            ? formatDistanceToNow(new Date(job.started_at)) + ' ago'
-                            : '-'
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {job.completed_at 
-                            ? formatDistanceToNow(new Date(job.completed_at)) + ' ago'
-                            : '-'
-                          }
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            {job.status === 'running' && (
-                              <Button variant="outline" size="sm">
-                                <Pause className="w-4 h-4" />
+                    {cronJobs.map((job) => {
+                      const successRate = job.success_count / (job.success_count + job.failure_count);
+                      return (
+                        <TableRow key={job.id}>
+                          <TableCell className="font-medium">{job.name}</TableCell>
+                          <TableCell className="text-sm">
+                            {formatCronSchedule(job.schedule)}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(job)}</TableCell>
+                          <TableCell>
+                            {job.last_run 
+                              ? formatDistanceToNow(new Date(job.last_run)) + ' ago'
+                              : 'Never'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            {job.next_run && job.enabled
+                              ? format(new Date(job.next_run), 'MMM dd, HH:mm')
+                              : '-'
+                            }
+                          </TableCell>
+                          <TableCell>
+                            <span className={successRate >= 0.95 ? 'text-success' : successRate >= 0.8 ? 'text-warning' : 'text-destructive'}>
+                              {Math.round(successRate * 100)}%
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({job.success_count}/{job.success_count + job.failure_count})
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button variant="outline" size="sm" disabled>
+                                {job.enabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                               </Button>
-                            )}
-                            {(job.status === 'pending' || job.status === 'failed') && (
-                              <Button variant="outline" size="sm">
-                                <Trash2 className="w-4 h-4" />
+                              <Button variant="outline" size="sm" disabled>
+                                <Settings className="w-4 h-4" />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {jobs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
-                          No jobs scheduled. Create your first job above.
-                        </TableCell>
-                      </TableRow>
-                    )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               )}
+            </CardContent>
+          </Card>
+
+          <Alert>
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              Cron job management requires database-level configuration. Contact your administrator to modify job schedules.
+            </AlertDescription>
+          </Alert>
+        </TabsContent>
+
+        <TabsContent value="events" className="space-y-6">
+          <Card className="card-enterprise">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Scheduled Job History
+              </CardTitle>
+              <CardDescription>
+                Recent execution history for scheduled tasks
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Event</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Timestamp</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {scheduledEvents.slice(0, 10).map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">{event.title}</TableCell>
+                      <TableCell>{event.event_type}</TableCell>
+                      <TableCell>
+                        <Badge variant={event.severity === 'error' ? 'destructive' : event.severity === 'warning' ? 'secondary' : 'default'}>
+                          {event.severity}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{format(new Date(event.created_at), 'MMM dd, HH:mm')}</TableCell>
+                    </TableRow>
+                  ))}
+                  {scheduledEvents.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8">
+                        No scheduled job events found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="maintenance" className="space-y-6">
           <MaintenanceWindowManager servers={servers} />
-        </TabsContent>
-
-        <TabsContent value="orchestration" className="space-y-6">
-          <UpdateOrchestratorScheduler servers={servers} />
         </TabsContent>
 
         <TabsContent value="automation" className="space-y-6">
