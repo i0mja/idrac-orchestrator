@@ -3,26 +3,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 export function useRealServers() {
-  const [serverCount, setServerCount] = useState(0);
-  const [onlineCount, setOnlineCount] = useState(0);
+  const [servers, setServers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const fetchServerStats = async () => {
+  const fetchServers = async () => {
     try {
       const { data, error } = await supabase
         .from('servers')
-        .select('status');
+        .select('*');
 
       if (error) throw error;
       
-      setServerCount(data?.length || 0);
-      setOnlineCount(data?.filter(s => s.status === 'online').length || 0);
+      setServers(data || []);
     } catch (error) {
-      console.error('Error fetching server stats:', error);
+      console.error('Error fetching servers:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch server statistics",
+        description: "Failed to fetch servers",
         variant: "destructive",
       });
     } finally {
@@ -31,7 +29,7 @@ export function useRealServers() {
   };
 
   useEffect(() => {
-    fetchServerStats();
+    fetchServers();
 
     // Set up real-time subscription
     const subscription = supabase
@@ -39,7 +37,7 @@ export function useRealServers() {
       .on('postgres_changes', 
         { event: '*', schema: 'public', table: 'servers' }, 
         () => {
-          fetchServerStats();
+          fetchServers();
         }
       )
       .subscribe();
@@ -50,9 +48,8 @@ export function useRealServers() {
   }, []);
 
   return {
-    serverCount,
-    onlineCount,
+    servers,
     loading,
-    refresh: fetchServerStats
+    refresh: fetchServers
   };
 }

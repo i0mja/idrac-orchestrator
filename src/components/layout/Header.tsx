@@ -11,7 +11,10 @@ interface HeaderProps {
 
 export function Header({ userRole, userName }: HeaderProps) {
   const { signOut } = useAuth();
-  const { serverCount, onlineCount, loading } = useRealServers();
+  const { servers, loading } = useRealServers();
+  
+  const serverCount = servers.length;
+  const onlineCount = servers.filter(server => server.status === 'online').length;
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
