@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, User, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 interface HeaderProps {
   userRole: "admin" | "operator" | "viewer";
@@ -8,6 +9,8 @@ interface HeaderProps {
 }
 
 export function Header({ userRole, userName }: HeaderProps) {
+  const { signOut } = useAuth();
+
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case "admin": return "default";
@@ -45,7 +48,7 @@ export function Header({ userRole, userName }: HeaderProps) {
             </div>
           </div>
 
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={signOut}>
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
