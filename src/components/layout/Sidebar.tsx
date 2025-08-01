@@ -9,7 +9,8 @@ import {
   Shield,
   Database,
   Download,
-  Building2
+  Building2,
+  Bell
 } from "lucide-react";
 
 type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings";

@@ -41,6 +41,10 @@ export interface UpdateSequencePlan {
   created_by?: string;
   created_at: string;
   updated_at: string;
+  is_auto_generated?: boolean;
+  next_execution_date?: string;
+  execution_interval_months?: number;
+  overwritten_plan_id?: string;
 }
 
 export interface UpdateStep {

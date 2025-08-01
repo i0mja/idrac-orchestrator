@@ -372,9 +372,11 @@ export function DellEnterpriseManagement() {
           <AlertDescription>
             <div className="flex items-center justify-between">
               <span>{criticalEvents.length} critical events require attention.</span>
-              <Button size="sm" variant="outline" onClick={() => window.location.href = '#alerts'}>
-                <Bell className="w-3 h-3 mr-1" />
-                View Alerts
+              <Button size="sm" variant="outline" asChild>
+                <a href="/alerts">
+                  <Bell className="w-3 h-3 mr-1" />
+                  View Alerts
+                </a>
               </Button>
             </div>
           </AlertDescription>

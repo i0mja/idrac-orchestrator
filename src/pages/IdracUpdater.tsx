@@ -11,6 +11,7 @@ import { JobScheduler } from "@/components/scheduler/JobScheduler";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
+import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import SetupWizard from "@/components/setup/SetupWizard";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
