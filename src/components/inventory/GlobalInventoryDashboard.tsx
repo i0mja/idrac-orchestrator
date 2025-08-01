@@ -101,9 +101,9 @@ export function GlobalInventoryDashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Server Management & Inventory</h2>
+          <h2 className="text-2xl font-bold">Global Inventory</h2>
           <p className="text-muted-foreground">
-            Comprehensive server management, inventory tracking, and production monitoring
+            Comprehensive server inventory, asset tracking, and hardware management
           </p>
         </div>
         <div className="flex gap-2">

@@ -1,7 +1,7 @@
-import IdracUpdater from "./IdracUpdater";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 
 const Index = () => {
-  return <IdracUpdater />;
+  return <DashboardOverview />;
 };
 
 export default Index;
