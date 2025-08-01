@@ -18,6 +18,7 @@ import { useVMwareIntegration } from "@/hooks/useVMwareIntegration";
 import { useServers } from "@/hooks/useServers";
 import { useAutoOrchestration } from "@/hooks/useAutoOrchestration";
 import { useSystemEvents } from "@/hooks/useSystemEvents";
+import { VCenterSyncManager } from "@/components/vcenter/VCenterSyncManager";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { 
