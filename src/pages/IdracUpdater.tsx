@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
-import { UnifiedServerManagement } from "@/components/inventory/UnifiedServerManagement";
+
 import { GlobalInventoryDashboard } from "@/components/inventory/GlobalInventoryDashboard";
 import { DellEnterpriseManagement } from "@/components/enterprise/DellEnterpriseManagement";
 import { FirmwareManagement } from "@/components/firmware/FirmwareManagement";
@@ -18,13 +18,13 @@ import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "operator" | "viewer";
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
+type PageType = "dashboard" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 export default function IdracUpdater() {
   // Initialize currentPage from URL hash
   const getPageFromHash = () => {
     const hash = window.location.hash.slice(1); // Remove the #
-    const validPages: PageType[] = ["dashboard", "inventory", "global-inventory", "enterprise", "firmware", "health", "users", "settings", "alerts", "vcenter"];
+    const validPages: PageType[] = ["dashboard", "global-inventory", "enterprise", "firmware", "health", "users", "settings", "alerts", "vcenter"];
     return validPages.includes(hash as PageType) ? (hash as PageType) : "dashboard";
   };
 
@@ -89,8 +89,6 @@ export default function IdracUpdater() {
     switch (currentPage) {
       case "dashboard":
         return <DashboardOverview />;
-      case "inventory":
-        return <UnifiedServerManagement />;
       case "global-inventory":
         return <GlobalInventoryDashboard />;
       case "enterprise":

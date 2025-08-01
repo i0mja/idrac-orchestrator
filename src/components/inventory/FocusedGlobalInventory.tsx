@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HostInventoryVenn } from './HostInventoryVenn';
 import { useHostInventory } from '@/hooks/useHostInventory';
+import { useServers } from '@/hooks/useServers';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { 
@@ -25,15 +27,24 @@ import {
   Package,
   HardDrive,
   Cpu,
-  Monitor
+  Monitor,
+  Calendar,
+  Activity,
+  Database,
+  MapPin
 } from 'lucide-react';
 
 export function FocusedGlobalInventory() {
   const { stats, hosts, loading, getHostsByCategory, syncVCenterHosts, refreshStats } = useHostInventory();
+  const { servers, discoverServers, addServer } = useServers();
   const [selectedCategory, setSelectedCategory] = useState<'total' | 'vcenter' | 'standalone'>('total');
   const [searchTerm, setSearchTerm] = useState('');
   const [showSyncDialog, setShowSyncDialog] = useState(false);
   const [showAddHostDialog, setShowAddHostDialog] = useState(false);
+  const [showDiscoveryDialog, setShowDiscoveryDialog] = useState(false);
+  const [discoveryMethod, setDiscoveryMethod] = useState<'network' | 'vcenter' | 'manual'>('network');
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [networkRange, setNetworkRange] = useState('192.168.1.0/24');
   const [syncForm, setSyncForm] = useState({
     vcenterId: '',
     password: ''
@@ -43,7 +54,14 @@ export function FocusedGlobalInventory() {
     ip_address: '',
     model: '',
     service_tag: '',
-    environment: 'production'
+    environment: 'production',
+    datacenter: '',
+    rack_location: ''
+  });
+  const [discoveryForm, setDiscoveryForm] = useState({
+    ipRange: '192.168.1.0/24',
+    username: 'root',
+    password: ''
   });
   const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
@@ -97,6 +115,30 @@ export function FocusedGlobalInventory() {
     }
   };
 
+  const handleNetworkDiscovery = async () => {
+    if (!discoveryForm.ipRange || !discoveryForm.username || !discoveryForm.password) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all discovery fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscovering(true);
+    try {
+      await discoverServers(discoveryForm.ipRange, {
+        username: discoveryForm.username,
+        password: discoveryForm.password
+      });
+      setShowDiscoveryDialog(false);
+      setDiscoveryForm({ ipRange: '192.168.1.0/24', username: 'root', password: '' });
+      refreshStats(); // Refresh inventory after discovery
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
   const handleAddHost = async () => {
     if (!newHost.hostname || !newHost.ip_address) {
       toast({
@@ -108,18 +150,30 @@ export function FocusedGlobalInventory() {
     }
 
     try {
-      // In a real implementation, this would call an API to add the host
-      toast({
-        title: "Host Added",
-        description: `Successfully added ${newHost.hostname} to inventory`,
-      });
+      // Use the real addServer function to add a new server
+      await addServer({
+        hostname: newHost.hostname,
+        ip_address: newHost.ip_address,
+        model: newHost.model,
+        service_tag: newHost.service_tag,
+        environment: newHost.environment,
+        datacenter: newHost.datacenter,
+        rack_location: newHost.rack_location,
+        status: 'unknown' as any,
+        host_type: 'standalone',
+        last_discovered: new Date().toISOString(),
+        last_updated: new Date().toISOString()
+      } as any);
+      
       setShowAddHostDialog(false);
       setNewHost({
         hostname: '',
         ip_address: '',
         model: '',
         service_tag: '',
-        environment: 'production'
+        environment: 'production',
+        datacenter: '',
+        rack_location: ''
       });
       refreshStats(); // Refresh inventory
     } catch (error) {
@@ -155,9 +209,171 @@ export function FocusedGlobalInventory() {
             Refresh
           </Button>
           
-          <Dialog open={showAddHostDialog} onOpenChange={setShowAddHostDialog}>
+          <Dialog open={showDiscoveryDialog} onOpenChange={setShowDiscoveryDialog}>
             <DialogTrigger asChild>
               <Button variant="enterprise">
+                <Search className="w-4 h-4 mr-2" />
+                Discover Servers
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Server Discovery</DialogTitle>
+              </DialogHeader>
+              <Tabs value={discoveryMethod} onValueChange={(value) => setDiscoveryMethod(value as any)} className="space-y-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="network">Network Scan</TabsTrigger>
+                  <TabsTrigger value="vcenter">vCenter Sync</TabsTrigger>
+                  <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="network" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="ipRange">IP Range</Label>
+                      <Input
+                        id="ipRange"
+                        value={discoveryForm.ipRange}
+                        onChange={(e) => setDiscoveryForm(prev => ({ ...prev, ipRange: e.target.value }))}
+                        placeholder="192.168.1.0/24"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="username">iDRAC Username</Label>
+                        <Input
+                          id="username"
+                          value={discoveryForm.username}
+                          onChange={(e) => setDiscoveryForm(prev => ({ ...prev, username: e.target.value }))}
+                          placeholder="root"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="password">iDRAC Password</Label>
+                        <Input
+                          id="password"
+                          type="password"
+                          value={discoveryForm.password}
+                          onChange={(e) => setDiscoveryForm(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="password"
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={handleNetworkDiscovery} disabled={isDiscovering} className="w-full">
+                      {isDiscovering ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                          Discovering...
+                        </>
+                      ) : (
+                        <>
+                          <Search className="w-4 h-4 mr-2" />
+                          Start Network Discovery
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="vcenter" className="space-y-4">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Database className="w-12 h-12 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">vCenter Discovery</h3>
+                    <p>
+                      Use the vCenter Sync feature below to discover hosts from your vCenter infrastructure.
+                    </p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="manual" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="manual-hostname">Hostname</Label>
+                        <Input
+                          id="manual-hostname"
+                          value={newHost.hostname}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, hostname: e.target.value }))}
+                          placeholder="server-01.example.com"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-ip">IP Address</Label>
+                        <Input
+                          id="manual-ip"
+                          value={newHost.ip_address}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, ip_address: e.target.value }))}
+                          placeholder="192.168.1.100"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="manual-model">Model</Label>
+                        <Input
+                          id="manual-model"
+                          value={newHost.model}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, model: e.target.value }))}
+                          placeholder="Dell PowerEdge R750"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-service_tag">Service Tag</Label>
+                        <Input
+                          id="manual-service_tag"
+                          value={newHost.service_tag}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, service_tag: e.target.value }))}
+                          placeholder="1ABC234"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <Label htmlFor="manual-datacenter">Datacenter</Label>
+                        <Input
+                          id="manual-datacenter"
+                          value={newHost.datacenter}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, datacenter: e.target.value }))}
+                          placeholder="DC-01"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-rack">Rack Location</Label>
+                        <Input
+                          id="manual-rack"
+                          value={newHost.rack_location}
+                          onChange={(e) => setNewHost(prev => ({ ...prev, rack_location: e.target.value }))}
+                          placeholder="Rack-15-U20"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="manual-environment">Environment</Label>
+                        <Select value={newHost.environment} onValueChange={(value) => setNewHost(prev => ({ ...prev, environment: value }))}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="production">Production</SelectItem>
+                            <SelectItem value="development">Development</SelectItem>
+                            <SelectItem value="staging">Staging</SelectItem>
+                            <SelectItem value="testing">Testing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button onClick={handleAddHost} className="w-full">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Server Manually
+                    </Button>
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </DialogContent>
+          </Dialog>
+          
+          <Dialog open={showAddHostDialog} onOpenChange={setShowAddHostDialog}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Host
               </Button>
@@ -194,29 +410,47 @@ export function FocusedGlobalInventory() {
                     placeholder="Dell PowerEdge R750"
                   />
                 </div>
-                <div>
-                  <Label htmlFor="service_tag">Service Tag</Label>
-                  <Input
-                    id="service_tag"
-                    value={newHost.service_tag}
-                    onChange={(e) => setNewHost(prev => ({ ...prev, service_tag: e.target.value }))}
-                    placeholder="1ABC234"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="environment">Environment</Label>
-                  <Select value={newHost.environment} onValueChange={(value) => setNewHost(prev => ({ ...prev, environment: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="production">Production</SelectItem>
-                      <SelectItem value="development">Development</SelectItem>
-                      <SelectItem value="staging">Staging</SelectItem>
-                      <SelectItem value="testing">Testing</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div>
+                    <Label htmlFor="service_tag">Service Tag</Label>
+                    <Input
+                      id="service_tag"
+                      value={newHost.service_tag}
+                      onChange={(e) => setNewHost(prev => ({ ...prev, service_tag: e.target.value }))}
+                      placeholder="1ABC234"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="datacenter">Datacenter</Label>
+                    <Input
+                      id="datacenter"
+                      value={newHost.datacenter}
+                      onChange={(e) => setNewHost(prev => ({ ...prev, datacenter: e.target.value }))}
+                      placeholder="DC-01"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="rack">Rack Location</Label>
+                    <Input
+                      id="rack"
+                      value={newHost.rack_location}
+                      onChange={(e) => setNewHost(prev => ({ ...prev, rack_location: e.target.value }))}
+                      placeholder="Rack-15-U20"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="environment">Environment</Label>
+                    <Select value={newHost.environment} onValueChange={(value) => setNewHost(prev => ({ ...prev, environment: value }))}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="production">Production</SelectItem>
+                        <SelectItem value="development">Development</SelectItem>
+                        <SelectItem value="staging">Staging</SelectItem>
+                        <SelectItem value="testing">Testing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 <Button onClick={handleAddHost} className="w-full">
                   <Plus className="w-4 h-4 mr-2" />
                   Add to Inventory
@@ -367,7 +601,11 @@ export function FocusedGlobalInventory() {
                 Export Inventory
               </Button>
 
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => setShowDiscoveryDialog(true)}
+              >
                 <Search className="w-4 h-4 mr-2" />
                 Discover Servers
               </Button>

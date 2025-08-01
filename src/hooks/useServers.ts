@@ -76,6 +76,29 @@ export function useServers() {
     }
   };
 
+  const addServer = async (serverData: Omit<Server, 'id' | 'created_at' | 'updated_at'>) => {
+    try {
+      const { error } = await supabase
+        .from('servers')
+        .insert([serverData as any]);
+
+      if (error) throw error;
+      
+      await fetchServers();
+      toast({
+        title: "Success",
+        description: "Server added successfully",
+      });
+    } catch (error) {
+      console.error('Error adding server:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add server",
+        variant: "destructive",
+      });
+    }
+  };
+
   const updateServer = async (id: string, updates: Partial<Server>) => {
     try {
       const { error } = await supabase
@@ -180,6 +203,7 @@ export function useServers() {
     loading,
     fetchServers,
     discoverServers,
+    addServer,
     updateServer,
     deleteServer,
     testConnection,

@@ -13,7 +13,7 @@ import {
   Network
 } from "lucide-react";
 
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
+type PageType = "dashboard" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -29,7 +29,6 @@ const menuItems: Array<{
 }> = [
   { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
-  { id: "inventory", label: "Server Discovery", icon: Server, roles: ["admin", "operator", "viewer"] },
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Enterprise Management", icon: Building2, roles: ["admin", "operator"] },
   { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
