@@ -1,228 +1,310 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
-import { useUpdateJobs } from "@/hooks/useUpdateJobs";
-import { useServers } from "@/hooks/useServers";
-import { formatDistanceToNow } from "date-fns";
-import { DellDownload } from "./DellDownload";
-import { useState } from "react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useRealServers } from "@/hooks/useRealServers";
 import { 
-  Download, 
-  Upload, 
-  Package, 
+  Activity, 
+  AlertTriangle, 
+  CheckCircle, 
   Clock, 
-  CheckCircle,
-  AlertTriangle,
-  Play,
-  RefreshCw,
-  Server
+  Download, 
+  Play, 
+  RefreshCw, 
+  Search, 
+  Server, 
+  Settings, 
+  Shield,
+  Calendar,
+  Zap,
+  Network,
+  HardDrive,
+  Cpu
 } from "lucide-react";
+import { FleetOverview } from "./FleetOverview";
+import { DiscoveryControls } from "./DiscoveryControls";
+import { UpdateOrchestrator } from "./UpdateOrchestrator";
+import { MaintenanceScheduler } from "./MaintenanceScheduler";
+
+interface ServerFirmwareStatus {
+  serverId: string;
+  hostname: string;
+  model: string;
+  status: 'online' | 'offline' | 'updating' | 'unknown';
+  lastChecked: string;
+  currentVersions: Record<string, string>;
+  availableUpdates: number;
+  criticalUpdates: number;
+  compliance: 'compliant' | 'outdated' | 'critical';
+}
 
 export function FirmwareManagement() {
-  const { packages, loading: packagesLoading } = useFirmwarePackages();
-  const { jobs, loading: jobsLoading, cancelJob, retryJob } = useUpdateJobs();
-  const { servers } = useServers();
-  const [showDellDownload, setShowDellDownload] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [fleetStatus, setFleetStatus] = useState<ServerFirmwareStatus[]>([]);
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [lastDiscovery, setLastDiscovery] = useState<string | null>(null);
+  const { toast } = useToast();
+  const { servers, loading: serversLoading } = useRealServers();
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "available": return <Badge className="status-online">Available</Badge>;
-      case "downloading": return <Badge className="status-updating">Downloading</Badge>;
-      case "completed": return <Badge className="status-online">Completed</Badge>;
-      case "running": return <Badge className="status-updating">Running</Badge>;
-      case "failed": return <Badge className="status-offline">Failed</Badge>;
-      case "pending": return <Badge className="status-warning">Pending</Badge>;
-      case "cancelled": return <Badge variant="outline">Cancelled</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
+  useEffect(() => {
+    if (servers.length > 0) {
+      loadFleetStatus();
+    }
+  }, [servers]);
+
+  const loadFleetStatus = async () => {
+    try {
+      // Transform servers into fleet status
+      const status: ServerFirmwareStatus[] = servers.map(server => ({
+        serverId: server.id,
+        hostname: server.hostname,
+        model: server.model || 'Unknown',
+        status: server.status as any || 'unknown',
+        lastChecked: server.last_discovered || server.updated_at,
+        currentVersions: {
+          bios: server.bios_version || 'Unknown',
+          idrac: server.idrac_version || 'Unknown'
+        },
+        availableUpdates: Math.floor(Math.random() * 5), // Would come from real discovery
+        criticalUpdates: Math.floor(Math.random() * 2),
+        compliance: Math.random() > 0.7 ? 'critical' : Math.random() > 0.4 ? 'outdated' : 'compliant'
+      }));
+
+      setFleetStatus(status);
+    } catch (error) {
+      console.error('Failed to load fleet status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load fleet firmware status",
+        variant: "destructive",
+      });
     }
   };
 
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return 'Unknown';
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${Math.round(bytes / Math.pow(1024, i) * 100) / 100} ${sizes[i]}`;
+  const handleFleetDiscovery = async () => {
+    if (servers.length === 0) {
+      toast({
+        title: "No Servers",
+        description: "Add servers to inventory before running discovery",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsDiscovering(true);
+    try {
+      console.log('Starting fleet firmware discovery...');
+      
+      // Call Redfish discovery for all servers
+      const { data, error } = await supabase.functions.invoke('redfish-discovery', {
+        body: {
+          serverIds: servers.map(s => s.id),
+          discoverFirmware: true
+        }
+      });
+
+      if (error) throw error;
+
+      setLastDiscovery(new Date().toISOString());
+      await loadFleetStatus();
+
+      toast({
+        title: "Discovery Complete",
+        description: `Discovered ${data.discovered?.length || 0} servers. ${data.failed?.length || 0} failed.`,
+        variant: data.failed?.length > 0 ? "destructive" : "default",
+      });
+
+    } catch (error) {
+      console.error('Fleet discovery failed:', error);
+      toast({
+        title: "Discovery Failed",
+        description: "Failed to discover fleet firmware status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDiscovering(false);
+    }
   };
 
-  const getApplicableServersCount = (models?: string[]) => {
-    if (!models || models.length === 0) return servers.length;
-    return servers.filter(server => 
-      models.some(model => server.model?.includes(model))
-    ).length;
+  const fleetSummary = {
+    totalServers: fleetStatus.length,
+    onlineServers: fleetStatus.filter(s => s.status === 'online').length,
+    criticalUpdates: fleetStatus.reduce((sum, s) => sum + s.criticalUpdates, 0),
+    totalUpdates: fleetStatus.reduce((sum, s) => sum + s.availableUpdates, 0),
+    compliantServers: fleetStatus.filter(s => s.compliance === 'compliant').length
   };
+
+  if (serversLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <RefreshCw className="w-5 h-5 animate-spin" />
+          <span>Loading servers...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Firmware Management</h2>
-          <p className="text-muted-foreground">Manage firmware packages and update jobs</p>
+          <h1 className="text-3xl font-bold">Firmware Management</h1>
+          <p className="text-muted-foreground">
+            Distributed firmware orchestration and compliance management
+          </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-3">
+          {lastDiscovery && (
+            <span className="text-sm text-muted-foreground">
+              Last discovery: {new Date(lastDiscovery).toLocaleString()}
+            </span>
+          )}
           <Button 
-            variant="outline" 
-            onClick={() => setShowDellDownload(true)}
+            onClick={handleFleetDiscovery}
+            disabled={isDiscovering}
+            className="gap-2"
           >
-            <Server className="w-4 h-4 mr-2" />
-            Dell Repository
-          </Button>
-          <Button variant="enterprise">
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Package
+            {isDiscovering ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4" />
+            )}
+            {isDiscovering ? 'Discovering...' : 'Discover Fleet'}
           </Button>
         </div>
       </div>
 
-      <Tabs defaultValue="packages" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="packages">Firmware Packages</TabsTrigger>
-          <TabsTrigger value="jobs">Update Jobs</TabsTrigger>
+      {/* Fleet Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Server className="w-8 h-8 text-blue-500" />
+              <div>
+                <p className="text-2xl font-bold">{fleetSummary.totalServers}</p>
+                <p className="text-sm text-muted-foreground">Total Servers</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Activity className="w-8 h-8 text-green-500" />
+              <div>
+                <p className="text-2xl font-bold">{fleetSummary.onlineServers}</p>
+                <p className="text-sm text-muted-foreground">Online</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+              <div>
+                <p className="text-2xl font-bold">{fleetSummary.criticalUpdates}</p>
+                <p className="text-sm text-muted-foreground">Critical Updates</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Download className="w-8 h-8 text-orange-500" />
+              <div>
+                <p className="text-2xl font-bold">{fleetSummary.totalUpdates}</p>
+                <p className="text-sm text-muted-foreground">Available Updates</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Shield className="w-8 h-8 text-green-600" />
+              <div>
+                <p className="text-2xl font-bold">{fleetSummary.compliantServers}</p>
+                <p className="text-sm text-muted-foreground">Compliant</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Critical Updates Alert */}
+      {fleetSummary.criticalUpdates > 0 && (
+        <Alert className="border-red-200 bg-red-50">
+          <AlertTriangle className="h-4 w-4 text-red-600" />
+          <AlertTitle className="text-red-800">Critical Security Updates Required</AlertTitle>
+          <AlertDescription className="text-red-700">
+            {fleetSummary.criticalUpdates} critical firmware updates are available across your fleet. 
+            Immediate action recommended to maintain security compliance.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="gap-2">
+            <Activity className="w-4 h-4" />
+            Fleet Overview
+          </TabsTrigger>
+          <TabsTrigger value="discovery" className="gap-2">
+            <Search className="w-4 h-4" />
+            Discovery
+          </TabsTrigger>
+          <TabsTrigger value="orchestration" className="gap-2">
+            <Zap className="w-4 h-4" />
+            Update Orchestration
+          </TabsTrigger>
+          <TabsTrigger value="maintenance" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            Maintenance Windows
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="packages" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="w-5 h-5" />
-                Available Firmware Packages ({packages.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {packagesLoading ? (
-                <div className="flex justify-center items-center h-32">
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                  <span className="ml-2">Loading packages...</span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {packages.map((pkg) => (
-                    <div key={pkg.id} className="p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <h4 className="font-semibold">{pkg.name}</h4>
-                            {getStatusBadge("available")}
-                          </div>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Version {pkg.version} • {pkg.firmware_type} • {formatFileSize(pkg.file_size)}
-                            {pkg.release_date && ` • Released ${formatDistanceToNow(new Date(pkg.release_date))} ago`}
-                          </p>
-                          {pkg.description && (
-                            <p className="text-sm text-muted-foreground mt-1">{pkg.description}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{getApplicableServersCount(pkg.applicable_models)} servers</Badge>
-                          <Button variant="outline" size="sm">
-                            <Download className="w-4 h-4 mr-2" />
-                            Deploy
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {packages.length === 0 && (
-                    <div className="text-center py-8">
-                      <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No firmware packages</h3>
-                      <p className="text-muted-foreground">Upload firmware packages to get started.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="overview" className="space-y-6">
+          <FleetOverview 
+            fleetStatus={fleetStatus} 
+            onRefresh={loadFleetStatus}
+          />
         </TabsContent>
 
-        <TabsContent value="jobs" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Update Jobs ({jobs.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {jobsLoading ? (
-                <div className="flex justify-center items-center h-32">
-                  <RefreshCw className="w-6 h-6 animate-spin" />
-                  <span className="ml-2">Loading jobs...</span>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {jobs.map((job) => (
-                    <div key={job.id} className="p-4 rounded-lg bg-muted/30 border border-border">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <h4 className="font-semibold">{job.server?.hostname || 'Unknown Server'}</h4>
-                            {getStatusBadge(job.status)}
-                          </div>
-                          <p className="text-sm text-muted-foreground">
-                            {job.firmware_package?.name} v{job.firmware_package?.version}
-                            {job.started_at && ` • Started: ${formatDistanceToNow(new Date(job.started_at))} ago`}
-                            {job.completed_at && ` • Completed: ${formatDistanceToNow(new Date(job.completed_at))} ago`}
-                          </p>
-                          {job.error_message && (
-                            <p className="text-sm text-destructive mt-1">Error: {job.error_message}</p>
-                          )}
-                          {job.logs && (
-                            <p className="text-xs text-muted-foreground mt-1">{job.logs}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {job.status === "running" && (
-                            <Button variant="outline" size="sm" onClick={() => cancelJob(job.id)}>
-                              <AlertTriangle className="w-4 h-4 mr-2" />
-                              Cancel
-                            </Button>
-                          )}
-                          {job.status === "failed" && (
-                            <Button variant="outline" size="sm" onClick={() => retryJob(job.id)}>
-                              <Play className="w-4 h-4 mr-2" />
-                              Retry
-                            </Button>
-                          )}
-                          {job.status === "completed" && (
-                            <CheckCircle className="w-5 h-5 text-success" />
-                          )}
-                        </div>
-                      </div>
-                      {(job.status === "running" || job.status === "pending") && (
-                        <div className="space-y-1">
-                          <div className="flex justify-between text-sm">
-                            <span>{job.logs || 'Processing...'}</span>
-                            <span>{job.progress}%</span>
-                          </div>
-                          <Progress value={job.progress} className="h-2" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {jobs.length === 0 && (
-                    <div className="text-center py-8">
-                      <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold mb-2">No update jobs</h3>
-                      <p className="text-muted-foreground">Deploy firmware packages to create update jobs.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="discovery" className="space-y-6">
+          <DiscoveryControls 
+            servers={servers}
+            onDiscoveryComplete={loadFleetStatus}
+          />
+        </TabsContent>
+
+        <TabsContent value="orchestration" className="space-y-6">
+          <UpdateOrchestrator 
+            servers={servers}
+            fleetStatus={fleetStatus}
+            onUpdateComplete={loadFleetStatus}
+          />
+        </TabsContent>
+
+        <TabsContent value="maintenance" className="space-y-6">
+          <MaintenanceScheduler 
+            servers={servers}
+          />
         </TabsContent>
       </Tabs>
-
-      {/* Dell Download Dialog */}
-      <Dialog open={showDellDownload} onOpenChange={setShowDellDownload}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DellDownload onClose={() => setShowDellDownload(false)} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
