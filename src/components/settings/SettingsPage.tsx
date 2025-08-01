@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { IdmConfiguration } from "./IdmConfiguration";
 import { 
   Settings, 
   Network, 
@@ -21,7 +22,8 @@ import {
   Plus,
   Trash2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Users
 } from "lucide-react";
 
 interface SystemConfig {
@@ -316,9 +318,10 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="vcenters">vCenters</TabsTrigger>
+          <TabsTrigger value="idm">IDM</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
         </TabsList>
@@ -518,6 +521,10 @@ export function SettingsPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="idm" className="space-y-6">
+          <IdmConfiguration />
         </TabsContent>
 
         <TabsContent value="security" className="space-y-6">
