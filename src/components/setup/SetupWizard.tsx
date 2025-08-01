@@ -124,6 +124,105 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     full_name: ""
   });
 
+  // Fill test data function
+  const fillTestData = () => {
+    setOrgConfig({
+      name: "Acme Corporation",
+      contact_email: "admin@acme.com",
+      environment: "production",
+      timezone: "UTC"
+    });
+
+    setIdracConfig({
+      username: "root",
+      password: "Password123!",
+      port: 443,
+      ssl_verify: false,
+      connection_timeout: 30
+    });
+
+    setStorageConfig({
+      local_path: "/opt/firmware",
+      max_size_gb: 500,
+      retention_days: 90,
+      auto_cleanup: true
+    });
+
+    setSmtpConfig({
+      host: "smtp.acme.com",
+      port: 587,
+      username: "firmware@acme.com",
+      password: "EmailPass123!",
+      use_tls: true,
+      from_address: "firmware@acme.com"
+    });
+
+    setAuthConfig({
+      method: "local",
+      password_policy: {
+        min_length: 8,
+        require_uppercase: true,
+        require_numbers: true,
+        require_special: true
+      },
+      session_timeout_hours: 8,
+      max_failed_attempts: 5
+    });
+
+    setLdapConfig({
+      server_url: "ldap://ldap.acme.com:389",
+      bind_dn: "cn=admin,dc=acme,dc=com",
+      bind_password: "LdapPass123!",
+      user_search_base: "ou=users,dc=acme,dc=com",
+      user_search_filter: "(uid={username})",
+      group_search_base: "ou=groups,dc=acme,dc=com",
+      group_search_filter: "(member={dn})"
+    });
+
+    setNetworkConfig({
+      discovery_ranges: ["192.168.1.0/24", "10.0.0.0/16"],
+      proxy_url: "http://proxy.acme.com:8080",
+      dns_servers: ["8.8.8.8", "8.8.4.4"],
+      connection_timeout: 30
+    });
+
+    setSecurityConfig({
+      enforce_https: true,
+      api_rate_limit: 100,
+      failed_login_attempts: 5,
+      account_lockout_minutes: 30,
+      require_mfa: true
+    });
+
+    setBackupConfig({
+      enabled: true,
+      schedule: "0 2 * * *",
+      retention_days: 30,
+      include_firmware_files: true
+    });
+
+    setMonitoringConfig({
+      log_level: "INFO",
+      health_check_interval: 300,
+      disk_usage_alert: 85,
+      memory_usage_alert: 90,
+      enable_metrics: true
+    });
+
+    setAdminUser({
+      username: "admin",
+      email: "admin@acme.com",
+      full_name: "System Administrator",
+      password: "AdminPass123!",
+      confirm_password: "AdminPass123!"
+    });
+
+    toast({
+      title: "Test Data Loaded",
+      description: "All fields have been filled with test data.",
+    });
+  };
+
   const steps = [
     { id: 1, title: "Organization", icon: Settings, description: "Basic organization settings" },
     { id: 2, title: "iDRAC Access", icon: Server, description: "Default server credentials" },
@@ -1033,10 +1132,25 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
       <div className="container mx-auto py-8 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2">Firmware Management System Setup</h1>
-            <p className="text-muted-foreground">
-              Configure your enterprise firmware management platform
-            </p>
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex-1" />
+              <div className="text-center">
+                <h1 className="text-3xl font-bold mb-2">Firmware Management System Setup</h1>
+                <p className="text-muted-foreground">
+                  Configure your enterprise firmware management platform
+                </p>
+              </div>
+              <div className="flex-1 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fillTestData}
+                  className="text-xs"
+                >
+                  Fill Test Data
+                </Button>
+              </div>
+            </div>
           </div>
 
           {/* Progress Steps */}
