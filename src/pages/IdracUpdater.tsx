@@ -21,10 +21,33 @@ type UserRole = "admin" | "operator" | "viewer";
 type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 export default function IdracUpdater() {
-  const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
+  // Initialize currentPage from URL hash
+  const getPageFromHash = () => {
+    const hash = window.location.hash.slice(1); // Remove the #
+    const validPages: PageType[] = ["dashboard", "inventory", "global-inventory", "enterprise", "firmware", "health", "users", "settings", "alerts", "vcenter"];
+    return validPages.includes(hash as PageType) ? (hash as PageType) : "dashboard";
+  };
+
+  const [currentPage, setCurrentPage] = useState<PageType>(getPageFromHash());
   const { config, loading, updateConfig } = useSystemConfig();
   const { user, profile, loading: authLoading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  
+  // Listen for hash changes to sync currentPage with URL
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentPage(getPageFromHash());
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  // Update URL hash when currentPage changes
+  const handlePageChange = (page: PageType) => {
+    setCurrentPage(page);
+    window.location.hash = page;
+  };
 
   // Redirect to auth if not authenticated
   useEffect(() => {
@@ -93,7 +116,7 @@ export default function IdracUpdater() {
     <div className="h-screen bg-background flex">
       <Sidebar 
         currentPage={currentPage} 
-        onPageChange={(page) => setCurrentPage(page)} 
+        onPageChange={handlePageChange}
         userRole={(profile?.role as "admin" | "operator" | "viewer") || "operator"}
       />
       
