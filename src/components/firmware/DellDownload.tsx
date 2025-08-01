@@ -63,6 +63,20 @@ export function DellDownload({ onClose }: DellDownloadProps) {
           title: "No Results",
           description: "No firmware found for the specified model",
         });
+      } else {
+        // Show different messages based on data source
+        if (data?.source === 'sample_data') {
+          toast({
+            title: "Sample Data Returned",
+            description: `Found ${data.results.length} sample firmware items. ${data.notice}`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Search Complete",
+            description: `Found ${data.results.length} firmware items from Dell repository`,
+          });
+        }
       }
     } catch (error) {
       console.error('Search error:', error);
@@ -90,10 +104,18 @@ export function DellDownload({ onClose }: DellDownloadProps) {
 
       await fetchPackages();
       
-      toast({
-        title: "Download Complete",
-        description: `${item.name} has been downloaded and added to your firmware packages`,
-      });
+      if (data?.isReferenceOnly) {
+        toast({
+          title: "Reference Entry Created",
+          description: `${item.name} reference added. Download actual firmware from Dell support site.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Download Complete",
+          description: data?.message || `${item.name} has been downloaded and added to your firmware packages`,
+        });
+      }
     } catch (error) {
       console.error('Download error:', error);
       toast({
@@ -187,7 +209,12 @@ export function DellDownload({ onClose }: DellDownloadProps) {
           {/* Search Results */}
           {searchResults.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Search Results ({searchResults.length})</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Search Results ({searchResults.length})</h3>
+                <Badge variant="outline" className="text-xs">
+                  Showing Dell firmware for {searchModel}
+                </Badge>
+              </div>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {searchResults.map((item) => (
                   <div key={item.id} className="p-4 rounded-lg bg-muted/30 border border-border">
