@@ -11,7 +11,7 @@ import {
   Download
 } from "lucide-react";
 
-type PageType = "dashboard" | "inventory" | "firmware" | "scheduler" | "health" | "users" | "settings";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "firmware" | "scheduler" | "health" | "users" | "settings";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -26,7 +26,8 @@ const menuItems: Array<{
   roles: string[];
 }> = [
   { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
-  { id: "inventory", label: "Server Inventory", icon: Server, roles: ["admin", "operator", "viewer"] },
+  { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
+  { id: "inventory", label: "Server Discovery", icon: Server, roles: ["admin", "operator", "viewer"] },
   { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
   { id: "scheduler", label: "Job Scheduler", icon: Calendar, roles: ["admin", "operator"] },
   { id: "health", label: "Health Checks", icon: Shield, roles: ["admin", "operator", "viewer"] },
