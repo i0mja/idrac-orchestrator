@@ -66,19 +66,49 @@ interface AutomationPoliciesProps {
 export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   const [policies, setPolicies] = useState<AutomationPolicy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [newPolicy, setNewPolicy] = useState({
+  const [editingPolicy, setEditingPolicy] = useState<AutomationPolicy | null>(null);
+  const [newPolicy, setNewPolicy] = useState<{
+    name: string;
+    description: string;
+    cluster_name: string;
+    policy_type: 'firmware_check' | 'security_update' | 'quarterly_update' | 'emergency_patch';
+    schedule: {
+      frequency: 'weekly' | 'monthly' | 'quarterly' | 'on_demand';
+      day_of_week?: number;
+      day_of_month?: number;
+      time: string;
+    };
+    update_strategy: {
+      type: 'rolling' | 'parallel' | 'sequential';
+      batch_size: number;
+      wait_between_batches: number;
+      max_concurrent: number;
+    };
+    safety_checks: {
+      min_healthy_hosts: number;
+      require_maintenance_mode: boolean;
+      verify_vm_migration: boolean;
+      rollback_on_failure: boolean;
+      max_downtime_minutes: number;
+    };
+    filters: {
+      firmware_types: string[];
+      criticality_levels: string[];
+      exclude_hosts: string[];
+    };
+  }>({
     name: '',
     description: '',
     cluster_name: 'all',
-    policy_type: 'firmware_check' as const,
+    policy_type: 'firmware_check',
     schedule: {
-      frequency: 'weekly' as const,
+      frequency: 'weekly',
       day_of_week: 1,
       day_of_month: undefined,
       time: '02:00'
     },
     update_strategy: {
-      type: 'rolling' as const,
+      type: 'rolling',
       batch_size: 1,
       wait_between_batches: 30,
       max_concurrent: 1
@@ -274,6 +304,85 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
     });
   };
 
+  const editPolicy = (policy: AutomationPolicy) => {
+    setEditingPolicy(policy);
+    setNewPolicy({
+      name: policy.name,
+      description: policy.description,
+      cluster_name: policy.cluster_name || 'all',
+      policy_type: policy.policy_type,
+      schedule: policy.schedule,
+      update_strategy: policy.update_strategy,
+      safety_checks: policy.safety_checks,
+      filters: policy.filters
+    });
+  };
+
+  const updatePolicy = async () => {
+    if (!editingPolicy || !newPolicy.name || !newPolicy.description) {
+      toast({
+        title: "Missing Information",
+        description: "Name and description are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const updatedPolicy: AutomationPolicy = {
+        ...editingPolicy,
+        ...newPolicy,
+        cluster_name: newPolicy.cluster_name === 'all' ? undefined : newPolicy.cluster_name,
+      };
+
+      setPolicies(prev => prev.map(p => p.id === editingPolicy.id ? updatedPolicy : p));
+      setEditingPolicy(null);
+      
+      setNewPolicy({
+        name: '',
+        description: '',
+        cluster_name: 'all',
+        policy_type: 'firmware_check',
+        schedule: {
+          frequency: 'weekly',
+          day_of_week: 1,
+          day_of_month: undefined,
+          time: '02:00'
+        },
+        update_strategy: {
+          type: 'rolling',
+          batch_size: 1,
+          wait_between_batches: 30,
+          max_concurrent: 1
+        },
+        safety_checks: {
+          min_healthy_hosts: 2,
+          require_maintenance_mode: true,
+          verify_vm_migration: true,
+          rollback_on_failure: true,
+          max_downtime_minutes: 60
+        },
+        filters: {
+          firmware_types: ['bios', 'idrac'],
+          criticality_levels: ['critical', 'high'],
+          exclude_hosts: []
+        }
+      });
+
+      toast({
+        title: "Policy Updated",
+        description: "Automation policy has been updated successfully",
+      });
+    } catch (error) {
+      console.error('Failed to update policy:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update automation policy",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getPolicyTypeBadge = (type: string) => {
     switch (type) {
       case 'firmware_check': return <Badge variant="outline" className="text-blue-600">Firmware Check</Badge>;
@@ -310,7 +419,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
             Configure automated firmware management policies
           </p>
         </div>
-        <Dialog>
+        <Dialog open={!!editingPolicy} onOpenChange={(open) => !open && setEditingPolicy(null)}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="w-4 h-4" />
@@ -319,7 +428,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
           </DialogTrigger>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Create Automation Policy</DialogTitle>
+              <DialogTitle>
+                {editingPolicy ? 'Edit Automation Policy' : 'Create Automation Policy'}
+              </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 max-h-[70vh] overflow-y-auto">
               {/* Basic Info */}
@@ -522,10 +633,10 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                 </div>
               </div>
 
-              <Button onClick={createPolicy} className="w-full">
-                <Bot className="w-4 h-4 mr-2" />
-                Create Policy
-              </Button>
+                <Button onClick={editingPolicy ? updatePolicy : createPolicy} className="w-full">
+                  <Bot className="w-4 h-4 mr-2" />
+                  {editingPolicy ? 'Update Policy' : 'Create Policy'}
+                </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -622,7 +733,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                     <Label className="text-sm">Active</Label>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => editPolicy(policy)}>
                       <Edit2 className="w-4 h-4" />
                     </Button>
                     <Button 

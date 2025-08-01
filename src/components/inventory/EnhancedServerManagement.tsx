@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useServerDuplicates } from "@/hooks/useServerDuplicates";
+import { useUpdateJobs } from "@/hooks/useUpdateJobs";
+import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { 
   Server, 
   Edit, 
@@ -26,7 +29,9 @@ import {
   Zap,
   Filter,
   RotateCw,
-  Settings
+  Settings,
+  Calendar,
+  Copy
 } from "lucide-react";
 
 interface ServerExtended {
@@ -70,6 +75,11 @@ export function EnhancedServerManagement() {
   const [selectedServers, setSelectedServers] = useState<string[]>([]);
   const [editingServer, setEditingServer] = useState<ServerExtended | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [schedulingServer, setSchedulingServer] = useState<ServerExtended | null>(null);
+  const [newJob, setNewJob] = useState({
+    firmwarePackageId: "",
+    scheduledAt: ""
+  });
   const [filters, setFilters] = useState({
     environment: 'all',
     status: 'all',
@@ -83,6 +93,9 @@ export function EnhancedServerManagement() {
     environment: 'production'
   });
   const { toast } = useToast();
+  const { duplicates, loading: duplicatesLoading, detectDuplicates, keepPrimary } = useServerDuplicates();
+  const { createUpdateJob } = useUpdateJobs();
+  const { packages } = useFirmwarePackages();
 
   useEffect(() => {
     loadServers();
@@ -278,6 +291,45 @@ export function EnhancedServerManagement() {
     });
   };
 
+  const scheduleServerUpdate = async () => {
+    if (!schedulingServer || !newJob.firmwarePackageId) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a firmware package",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createUpdateJob(
+        schedulingServer.id,
+        newJob.firmwarePackageId,
+        newJob.scheduledAt || undefined
+      );
+      
+      setSchedulingServer(null);
+      setNewJob({ firmwarePackageId: "", scheduledAt: "" });
+      
+      toast({
+        title: "Update Scheduled",
+        description: `Update job scheduled for ${schedulingServer.hostname}`,
+      });
+    } catch (error) {
+      console.error('Error scheduling update:', error);
+      toast({
+        title: "Error",
+        description: "Failed to schedule server update",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDuplicateResolution = async (primaryId: string, duplicateIds: string[]) => {
+    await keepPrimary(primaryId, duplicateIds);
+    await loadServers();
+  };
+
   const filteredServers = servers.filter(server => {
     if (filters.environment !== 'all' && server.environment !== filters.environment) return false;
     if (filters.status !== 'all' && server.status !== filters.status) return false;
@@ -424,11 +476,15 @@ export function EnhancedServerManagement() {
         </Card>
       </div>
 
-      <Tabs defaultValue="servers" className="space-y-4">
+        <Tabs defaultValue="servers" className="space-y-4">
         <TabsList>
           <TabsTrigger value="servers">All Servers</TabsTrigger>
           <TabsTrigger value="dell">Dell Servers</TabsTrigger>
           <TabsTrigger value="groups">Server Groups</TabsTrigger>
+          <TabsTrigger value="duplicates" className="gap-2">
+            <Copy className="w-4 h-4" />
+            Duplicates ({duplicates.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="servers" className="space-y-4">
@@ -535,20 +591,28 @@ export function EnhancedServerManagement() {
                       <CardTitle className="text-lg">{server.hostname}</CardTitle>
                     </div>
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setEditingServer(server)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => deleteServer(server.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                       <Button
+                         size="sm"
+                         variant="ghost"
+                         onClick={() => setSchedulingServer(server)}
+                         title="Schedule Update"
+                       >
+                         <Calendar className="w-4 h-4" />
+                       </Button>
+                       <Button
+                         size="sm"
+                         variant="ghost"
+                         onClick={() => setEditingServer(server)}
+                       >
+                         <Edit className="w-4 h-4" />
+                       </Button>
+                       <Button
+                         size="sm"
+                         variant="ghost"
+                         onClick={() => deleteServer(server.id)}
+                       >
+                         <Trash2 className="w-4 h-4" />
+                       </Button>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -714,6 +778,92 @@ export function EnhancedServerManagement() {
             ))}
           </div>
         </TabsContent>
+
+        <TabsContent value="duplicates" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Copy className="w-5 h-5" />
+                Duplicate Server Detection
+              </CardTitle>
+              <CardDescription>
+                Identify and resolve duplicate server entries from different discovery sources
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {duplicatesLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <RotateCw className="w-6 h-6 animate-spin" />
+                  <span className="ml-2">Detecting duplicates...</span>
+                </div>
+              ) : duplicates.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-4 text-green-600" />
+                  <h3 className="text-lg font-semibold mb-2">No Duplicates Found</h3>
+                  <p>All servers appear to be unique based on hostname and IP address.</p>
+                  <Button onClick={detectDuplicates} variant="outline" className="mt-4">
+                    <RotateCw className="w-4 h-4 mr-2" />
+                    Re-scan for Duplicates
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      Found {duplicates.length} potential duplicate group(s)
+                    </p>
+                    <Button onClick={detectDuplicates} variant="outline" size="sm">
+                      <RotateCw className="w-4 h-4 mr-2" />
+                      Re-scan
+                    </Button>
+                  </div>
+                  
+                  {duplicates.map((duplicate) => (
+                    <Card key={duplicate.id} className="border-orange-200">
+                      <CardHeader>
+                        <CardTitle className="text-orange-600 flex items-center gap-2">
+                          <AlertTriangle className="w-5 h-5" />
+                          Duplicate Group
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-sm font-medium text-green-800">Primary Server (Keep)</p>
+                            <p className="font-semibold">{duplicate.hostname}</p>
+                            <p className="text-sm text-muted-foreground">{duplicate.ip_address}</p>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium">Duplicates to Remove:</p>
+                            {duplicate.duplicates.map((dup) => (
+                              <div key={dup.id} className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                <p className="font-semibold">{dup.hostname}</p>
+                                <p className="text-sm text-muted-foreground">{dup.ip_address}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Created: {new Date(dup.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <Button 
+                            onClick={() => handleDuplicateResolution(duplicate.id, duplicate.duplicates.map(d => d.id))}
+                            className="w-full"
+                            variant="destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Merge Duplicates (Keep Primary)
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
 
       {/* Edit Server Dialog */}
@@ -776,6 +926,61 @@ export function EnhancedServerManagement() {
                 <Button 
                   variant="outline" 
                   onClick={() => setEditingServer(null)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Schedule Server Update Dialog */}
+      {schedulingServer && (
+        <Dialog open={!!schedulingServer} onOpenChange={() => setSchedulingServer(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Schedule Update: {schedulingServer.hostname}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="schedule-firmware">Firmware Package</Label>
+                <Select value={newJob.firmwarePackageId} onValueChange={(value) => setNewJob(prev => ({ ...prev, firmwarePackageId: value }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select firmware package" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {packages.map((pkg) => (
+                      <SelectItem key={pkg.id} value={pkg.id}>
+                        {pkg.name} v{pkg.version} ({pkg.firmware_type})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="schedule-time">Schedule Time (optional)</Label>
+                <Input
+                  id="schedule-time"
+                  type="datetime-local"
+                  value={newJob.scheduledAt}
+                  onChange={(e) => setNewJob(prev => ({ ...prev, scheduledAt: e.target.value }))}
+                />
+                <p className="text-xs text-muted-foreground mt-1">Leave empty to start immediately</p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={scheduleServerUpdate} 
+                  className="flex-1"
+                  disabled={!newJob.firmwarePackageId}
+                >
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Schedule Update
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setSchedulingServer(null)}
                   className="flex-1"
                 >
                   Cancel
