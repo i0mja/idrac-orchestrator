@@ -22,22 +22,10 @@ interface DellFirmwareItem {
   supportedModels: string[];
   deviceId?: string;
   vendorId?: string;
+  checksum?: string;
+  componentType?: string;
 }
 
-interface DellApiResponse {
-  DriverListData?: Array<{
-    Name: string;
-    DriverVersion: string;
-    ReleaseDate: string;
-    FileSize: number;
-    DownloadUrl: string;
-    Category: string;
-    Description: string;
-    SupportedDevices: string[];
-    DeviceId?: string;
-    VendorId?: string;
-  }>;
-}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight requests
@@ -60,17 +48,18 @@ Deno.serve(async (req) => {
 
     console.log('Searching Dell firmware for model:', model, 'type:', firmwareType);
 
-    // Try to get real Dell firmware data
+    // Try to get real Dell firmware data from catalog
     const realResults = await searchDellFirmware(model, firmwareType);
     
     if (realResults.length > 0) {
-      console.log('Found', realResults.length, 'real firmware items from Dell');
+      console.log('Found', realResults.length, 'real firmware items from Dell catalog');
       return new Response(
         JSON.stringify({ 
-          success: true,
           results: realResults,
-          searchQuery: { model, firmwareType },
-          source: 'dell_api'
+          source: 'dell_catalog',
+          totalCount: realResults.length,
+          model: model,
+          firmwareType: firmwareType || 'all'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -78,17 +67,18 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Fallback to realistic sample data with clear indication
-    console.log('Dell API unavailable, returning sample firmware data');
+    // Fallback to enhanced sample data with clear indication
+    console.log('Dell catalog unavailable, returning enhanced sample firmware data');
     const sampleResults = await generateRealisticSamples(model, firmwareType);
 
     return new Response(
       JSON.stringify({ 
-        success: true,
         results: sampleResults,
-        searchQuery: { model, firmwareType },
         source: 'sample_data',
-        notice: 'This is sample data. For production use, configure Dell API access or implement web scraping.'
+        notice: 'Unable to connect to Dell servers. Showing enhanced sample data for demonstration.',
+        totalCount: sampleResults.length,
+        model: model,
+        firmwareType: firmwareType || 'all'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -112,89 +102,160 @@ Deno.serve(async (req) => {
 
 async function searchDellFirmware(model: string, firmwareType?: string): Promise<DellFirmwareItem[]> {
   try {
-    // Method 1: Try Dell's official support API (requires API key)
-    const dellApiKey = Deno.env.get('DELL_API_KEY');
-    if (dellApiKey) {
-      return await searchViaOfficialAPI(model, firmwareType, dellApiKey);
-    }
-
-    // Method 2: Try scraping Dell support site (more complex but works)
-    return await searchViaWebScraping(model, firmwareType);
-
-  } catch (error) {
-    console.error('Dell firmware search failed:', error);
-    return [];
-  }
-}
-
-async function searchViaOfficialAPI(model: string, firmwareType?: string, apiKey: string): Promise<DellFirmwareItem[]> {
-  try {
-    // Dell's official API endpoint (hypothetical - Dell doesn't have a public firmware API)
-    // This would be the ideal approach if Dell provided it
-    const apiUrl = `https://api.dell.com/support/v2/drivers?model=${encodeURIComponent(model)}`;
-    
-    const response = await fetch(apiUrl, {
+    // Method 1: Try to fetch real Dell Catalog.xml.gz (like the Python script)
+    console.log('Attempting to fetch Dell Catalog.xml.gz');
+    const catalogResponse = await fetch('https://downloads.dell.com/Catalog/Catalog.xml.gz', {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json',
-        'User-Agent': 'iDRAC-Updater/1.0'
-      }
+        'User-Agent': 'iDRAC-Updater/1.0 (Dell Firmware Management)',
+        'Accept': 'application/gzip, */*'
+      },
+      signal: AbortSignal.timeout(30000) // 30 second timeout
     });
 
-    if (!response.ok) {
-      throw new Error(`Dell API error: ${response.status}`);
+    if (catalogResponse.ok) {
+      console.log('Successfully fetched Dell catalog');
+      const catalogBuffer = await catalogResponse.arrayBuffer();
+      
+      // Decompress the gzip data
+      const decompressed = new Response(catalogBuffer).body?.pipeThrough(new DecompressionStream('gzip'));
+      const catalogXml = await new Response(decompressed).text();
+      
+      console.log('Catalog decompressed, parsing XML...');
+      const results = await parseDellCatalog(catalogXml, model, firmwareType);
+      
+      if (results.length > 0) {
+        console.log(`Found ${results.length} firmware items from Dell catalog`);
+        return results;
+      } else {
+        console.log('No firmware found in Dell catalog for specified model');
+      }
+    } else {
+      throw new Error(`Failed to fetch catalog: ${catalogResponse.status}`);
     }
 
-    const data: DellApiResponse = await response.json();
-    return parseDellApiResponse(data, model);
-
   } catch (error) {
-    console.error('Dell official API failed:', error);
+    console.error('Dell catalog fetch failed:', error);
+  }
+
+  return [];
+}
+
+async function parseDellCatalog(catalogXml: string, model: string, firmwareType?: string): Promise<DellFirmwareItem[]> {
+  const results: DellFirmwareItem[] = [];
+  
+  try {
+    // Parse XML using DOMParser
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(catalogXml, 'text/xml');
+    
+    // Find software bundles for the specified model
+    const softwareBundles = xmlDoc.querySelectorAll('SoftwareBundle');
+    const modelLower = model.toLowerCase().replace(/\s+/g, '').replace('poweredge', '');
+    
+    console.log(`Searching ${softwareBundles.length} software bundles for model: ${model}`);
+    
+    for (const bundle of softwareBundles) {
+      const bundlePath = bundle.getAttribute('path') || '';
+      
+      // Check if bundle is for the requested model (more flexible matching)
+      if (!bundlePath.toLowerCase().includes(modelLower) && 
+          !bundlePath.toLowerCase().includes(model.toLowerCase())) {
+        continue;
+      }
+      
+      // Check target systems
+      const targetModels = bundle.querySelectorAll('TargetSystems Brand Model Display');
+      let modelMatch = false;
+      
+      for (const targetModel of targetModels) {
+        const targetText = targetModel.textContent?.toLowerCase() || '';
+        if (targetText.includes(modelLower) || targetText.includes(model.toLowerCase())) {
+          modelMatch = true;
+          break;
+        }
+      }
+      
+      if (!modelMatch) continue;
+      
+      console.log(`Found bundle for model: ${model}`);
+      
+      // Process packages in this bundle
+      const packages = bundle.querySelectorAll('Contents Package');
+      for (const pkg of packages) {
+        const packagePath = pkg.getAttribute('path');
+        if (!packagePath) continue;
+        
+        // Find corresponding software component
+        const components = xmlDoc.querySelectorAll('SoftwareComponent');
+        for (const component of components) {
+          const componentPath = component.getAttribute('path');
+          if (componentPath !== packagePath) continue;
+          
+          const name = component.querySelector('Name Display')?.textContent || 'Unknown';
+          const componentTypeElement = component.querySelector('ComponentType');
+          const componentType = componentTypeElement?.getAttribute('value') || '';
+          const category = componentTypeElement?.querySelector('Display')?.textContent || 'Other';
+          
+          // Filter by firmware type if specified
+          if (firmwareType && firmwareType !== 'all') {
+            const typeMatch = mapComponentTypeToFirmwareType(componentType, category);
+            if (typeMatch !== firmwareType) {
+              continue;
+            }
+          }
+          
+          // Extract firmware details
+          const version = component.querySelector('DellVersion')?.textContent || 
+                         component.querySelector('VendorVersion')?.textContent || '1.0.0';
+          const description = component.querySelector('Description Display')?.textContent || '';
+          const releaseDate = component.querySelector('ReleaseDate')?.textContent || new Date().toISOString();
+          const checksum = component.getAttribute('hashMD5') || '';
+          const fileSize = parseInt(component.getAttribute('size') || '0');
+          
+          // Get supported models from the bundle
+          const supportedModels: string[] = [];
+          for (const targetModel of targetModels) {
+            const modelName = targetModel.textContent;
+            if (modelName) supportedModels.push(modelName);
+          }
+          
+          const firmwareItem: DellFirmwareItem = {
+            id: `dell-${componentPath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            name,
+            version,
+            releaseDate,
+            fileSize,
+            downloadUrl: `https://downloads.dell.com/${componentPath}`,
+            category,
+            description,
+            supportedModels: supportedModels.length > 0 ? supportedModels : [model],
+            checksum,
+            componentType
+          };
+          
+          results.push(firmwareItem);
+        }
+      }
+    }
+    
+    console.log(`Parsed ${results.length} firmware items from Dell catalog`);
+    return results;
+    
+  } catch (error) {
+    console.error('Error parsing Dell catalog:', error);
     throw error;
   }
 }
 
-async function searchViaWebScraping(model: string, firmwareType?: string): Promise<DellFirmwareItem[]> {
-  try {
-    // Dell support URL structure
-    const supportUrl = `https://www.dell.com/support/home/en-us/drivers/driversdetails?driverid=`;
-    
-    // For security and reliability, we'll implement a basic scraper
-    // In production, you'd want a more robust solution
-    console.log('Attempting to scrape Dell support site for:', model);
-    
-    // This is a simplified example - real implementation would:
-    // 1. Navigate to Dell support site
-    // 2. Search for the model
-    // 3. Parse the results page
-    // 4. Extract firmware download links
-    
-    // For now, return empty array to indicate scraping is not yet implemented
-    console.log('Web scraping not yet implemented - returning empty results');
-    return [];
-
-  } catch (error) {
-    console.error('Dell web scraping failed:', error);
-    return [];
-  }
-}
-
-function parseDellApiResponse(data: DellApiResponse, model: string): DellFirmwareItem[] {
-  if (!data.DriverListData) return [];
-
-  return data.DriverListData.map((driver, index) => ({
-    id: `dell-${model.toLowerCase().replace(/\s+/g, '-')}-${index}`,
-    name: driver.Name,
-    version: driver.DriverVersion,
-    releaseDate: driver.ReleaseDate,
-    fileSize: driver.FileSize,
-    downloadUrl: driver.DownloadUrl,
-    category: driver.Category,
-    description: driver.Description,
-    supportedModels: [model, ...driver.SupportedDevices],
-    deviceId: driver.DeviceId,
-    vendorId: driver.VendorId
-  }));
+function mapComponentTypeToFirmwareType(componentType: string, category: string): string {
+  const type = (componentType + ' ' + category).toLowerCase();
+  
+  if (type.includes('frmw') || type.includes('idrac') || type.includes('systems management')) return 'idrac';
+  if (type.includes('bios') || type.includes('system bios')) return 'bios';
+  if (type.includes('storage') || type.includes('raid') || type.includes('sas') || type.includes('sata')) return 'storage';
+  if (type.includes('network') || type.includes('ethernet') || type.includes('nic')) return 'network';
+  
+  return 'other';
 }
 
 async function generateRealisticSamples(model: string, firmwareType?: string): Promise<DellFirmwareItem[]> {

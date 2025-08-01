@@ -32,8 +32,23 @@ export function DellDownload({ onClose }: DellDownloadProps) {
   const [searchResults, setSearchResults] = useState<DellFirmwareItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [downloadingItems, setDownloadingItems] = useState<Set<string>>(new Set());
+  const [downloadProgress, setDownloadProgress] = useState<{[key: string]: number}>({});
   const { toast } = useToast();
   const { fetchPackages } = useFirmwarePackages();
+
+  // Popular Dell server models for quick selection
+  const popularModels = [
+    'PowerEdge R740',
+    'PowerEdge R750',
+    'PowerEdge R640',
+    'PowerEdge R650',
+    'PowerEdge R730',
+    'PowerEdge R720',
+    'PowerEdge R620',
+    'PowerEdge R540',
+    'PowerEdge R440',
+    'PowerEdge R340'
+  ];
 
   const handleSearch = async () => {
     if (!searchModel.trim()) {
@@ -168,8 +183,18 @@ export function DellDownload({ onClose }: DellDownloadProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Server Model</label>
+              <Select value={searchModel} onValueChange={setSearchModel}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select or type a model..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {popularModels.map((model) => (
+                    <SelectItem key={model} value={model}>{model}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Input
-                placeholder="e.g., PowerEdge R740"
+                placeholder="Or enter custom model..."
                 value={searchModel}
                 onChange={(e) => setSearchModel(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}

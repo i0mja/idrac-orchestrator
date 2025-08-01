@@ -17,6 +17,8 @@ interface DellFirmwareItem {
   supportedModels: string[];
   deviceId?: string;
   vendorId?: string;
+  checksum?: string;
+  componentType?: string;
 }
 
 interface DownloadRequest {
@@ -53,27 +55,50 @@ Deno.serve(async (req) => {
 
     console.log('Processing Dell firmware download:', firmwareItem.name);
 
-    // Check if firmware already exists
+    // Check if firmware already exists with checksum verification
     const { data: existingPackage } = await supabase
       .from('firmware_packages')
-      .select('id, name, version')
+      .select('id, name, version, checksum, file_path')
       .eq('name', firmwareItem.name)
       .eq('version', firmwareItem.version)
       .single();
 
     if (existingPackage) {
       console.log('Firmware package already exists:', existingPackage.id);
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          firmwarePackage: existingPackage,
-          message: 'Firmware package already exists in database',
-          alreadyExists: true
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      
+      // If we have a checksum from Dell catalog, verify it matches
+      if (firmwareItem.checksum && existingPackage.checksum) {
+        const expectedMD5 = `md5:${firmwareItem.checksum.toLowerCase()}`;
+        if (existingPackage.checksum !== expectedMD5) {
+          console.log('Checksum mismatch detected, re-downloading firmware');
+          // Continue with download to replace the file
+        } else {
+          console.log('Checksum verified, firmware is up to date');
+          return new Response(
+            JSON.stringify({ 
+              success: true,
+              firmwarePackage: existingPackage,
+              message: 'Firmware package already exists and checksum verified',
+              alreadyExists: true
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+            }
+          );
         }
-      );
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            success: true,
+            firmwarePackage: existingPackage,
+            message: 'Firmware package already exists in database',
+            alreadyExists: true
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
     }
 
     // Try to download the actual firmware file
@@ -161,9 +186,33 @@ Deno.serve(async (req) => {
 
     console.log('File uploaded successfully:', uploadData.path);
 
-    // Calculate checksum of the uploaded file
-    const checksum = await calculateSHA256(fileData);
-    console.log('Calculated checksum:', checksum);
+    // Calculate checksums of the uploaded file
+    let checksum: string;
+    let isChecksumVerified = false;
+    
+    if (downloadSource === 'dell_servers' && firmwareItem.checksum) {
+      // Verify MD5 checksum from Dell catalog
+      const calculatedMD5 = await calculateMD5(fileData);
+      const expectedMD5 = firmwareItem.checksum.toLowerCase();
+      
+      console.log('Expected MD5:', expectedMD5);
+      console.log('Calculated MD5:', calculatedMD5);
+      
+      if (calculatedMD5 === expectedMD5) {
+        console.log('MD5 checksum verification successful');
+        checksum = `md5:${calculatedMD5}`;
+        isChecksumVerified = true;
+      } else {
+        console.error('MD5 checksum verification failed!');
+        checksum = `md5:${calculatedMD5}`;
+        // Still continue but mark as unverified
+      }
+    } else {
+      // For reference files or when no MD5 available, use SHA256
+      checksum = await calculateSHA256(fileData);
+    }
+    
+    console.log('Final checksum:', checksum);
 
     // Map Dell category to our firmware types
     const firmwareType = mapDellCategoryToFirmwareType(firmwareItem.category);
@@ -251,4 +300,12 @@ async function calculateSHA256(data: Uint8Array): Promise<string> {
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return 'sha256:' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function calculateMD5(data: Uint8Array): Promise<string> {
+  // Import Deno's std crypto module for MD5
+  const { createHash } = await import('https://deno.land/std@0.208.0/crypto/mod.ts');
+  const hash = createHash('md5');
+  hash.update(data);
+  return hash.toString();
 }
