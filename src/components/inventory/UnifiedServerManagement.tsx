@@ -35,6 +35,7 @@ import {
   TestTube,
   Wifi
 } from "lucide-react";
+import { VCenterSyncManager } from "@/components/vcenter/VCenterSyncManager";
 
 export function UnifiedServerManagement() {
   const { servers, loading, discoverServers, updateServer, deleteServer, testConnection } = useServers();
