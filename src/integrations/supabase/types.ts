@@ -14,6 +14,120 @@ export type Database = {
   }
   public: {
     Tables: {
+      compatibility_matrix: {
+        Row: {
+          bios_version: string | null
+          created_at: string
+          esxi_version: string
+          id: string
+          idrac_version: string | null
+          last_validated: string | null
+          nic_firmware: string | null
+          server_model: string
+          storage_firmware: string | null
+          updated_at: string
+          validation_notes: string | null
+          validation_status: string | null
+          vmware_hcl_verified: boolean | null
+        }
+        Insert: {
+          bios_version?: string | null
+          created_at?: string
+          esxi_version: string
+          id?: string
+          idrac_version?: string | null
+          last_validated?: string | null
+          nic_firmware?: string | null
+          server_model: string
+          storage_firmware?: string | null
+          updated_at?: string
+          validation_notes?: string | null
+          validation_status?: string | null
+          vmware_hcl_verified?: boolean | null
+        }
+        Update: {
+          bios_version?: string | null
+          created_at?: string
+          esxi_version?: string
+          id?: string
+          idrac_version?: string | null
+          last_validated?: string | null
+          nic_firmware?: string | null
+          server_model?: string
+          storage_firmware?: string | null
+          updated_at?: string
+          validation_notes?: string | null
+          validation_status?: string | null
+          vmware_hcl_verified?: boolean | null
+        }
+        Relationships: []
+      }
+      dell_update_packages: {
+        Row: {
+          checksum_md5: string | null
+          checksum_sha256: string | null
+          component_type: string
+          created_at: string
+          criticality: string | null
+          dell_part_number: string | null
+          dependencies: string[] | null
+          esxi_version_compatibility: string[] | null
+          file_path: string | null
+          file_size: number | null
+          id: string
+          known_issues: string | null
+          package_name: string
+          release_date: string | null
+          requires_reboot: boolean | null
+          service_tag_compatibility: string[] | null
+          update_sequence_order: number | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          checksum_md5?: string | null
+          checksum_sha256?: string | null
+          component_type: string
+          created_at?: string
+          criticality?: string | null
+          dell_part_number?: string | null
+          dependencies?: string[] | null
+          esxi_version_compatibility?: string[] | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          known_issues?: string | null
+          package_name: string
+          release_date?: string | null
+          requires_reboot?: boolean | null
+          service_tag_compatibility?: string[] | null
+          update_sequence_order?: number | null
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          checksum_md5?: string | null
+          checksum_sha256?: string | null
+          component_type?: string
+          created_at?: string
+          criticality?: string | null
+          dell_part_number?: string | null
+          dependencies?: string[] | null
+          esxi_version_compatibility?: string[] | null
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          known_issues?: string | null
+          package_name?: string
+          release_date?: string | null
+          requires_reboot?: boolean | null
+          service_tag_compatibility?: string[] | null
+          update_sequence_order?: number | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       firmware_packages: {
         Row: {
           applicable_models: string[] | null
@@ -146,6 +260,47 @@ export type Database = {
         }
         Relationships: []
       }
+      server_backups: {
+        Row: {
+          backup_data: Json
+          backup_size: number | null
+          backup_type: string
+          created_at: string
+          created_by: string | null
+          file_path: string | null
+          id: string
+          server_id: string | null
+        }
+        Insert: {
+          backup_data: Json
+          backup_size?: number | null
+          backup_type: string
+          created_at?: string
+          created_by?: string | null
+          file_path?: string | null
+          id?: string
+          server_id?: string | null
+        }
+        Update: {
+          backup_data?: Json
+          backup_size?: number | null
+          backup_type?: string
+          created_at?: string
+          created_by?: string | null
+          file_path?: string | null
+          id?: string
+          server_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_backups_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       server_credentials: {
         Row: {
           connection_method: Database["public"]["Enums"]["connection_method"]
@@ -187,9 +342,12 @@ export type Database = {
       servers: {
         Row: {
           bios_version: string | null
+          cluster_name: string | null
           created_at: string
           datacenter: string | null
+          discovery_source: string | null
           environment: string | null
+          host_type: string | null
           hostname: string
           id: string
           idrac_version: string | null
@@ -205,9 +363,12 @@ export type Database = {
         }
         Insert: {
           bios_version?: string | null
+          cluster_name?: string | null
           created_at?: string
           datacenter?: string | null
+          discovery_source?: string | null
           environment?: string | null
+          host_type?: string | null
           hostname: string
           id?: string
           idrac_version?: string | null
@@ -223,9 +384,12 @@ export type Database = {
         }
         Update: {
           bios_version?: string | null
+          cluster_name?: string | null
           created_at?: string
           datacenter?: string | null
+          discovery_source?: string | null
           environment?: string | null
+          host_type?: string | null
           hostname?: string
           id?: string
           idrac_version?: string | null
@@ -331,6 +495,118 @@ export type Database = {
           },
         ]
       }
+      update_orchestration_plans: {
+        Row: {
+          cluster_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          current_step: number | null
+          id: string
+          name: string
+          rollback_plan: Json | null
+          safety_checks: Json
+          server_ids: string[]
+          started_at: string | null
+          status: string | null
+          total_steps: number | null
+          update_sequence: Json
+          updated_at: string
+          vmware_settings: Json | null
+        }
+        Insert: {
+          cluster_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_step?: number | null
+          id?: string
+          name: string
+          rollback_plan?: Json | null
+          safety_checks: Json
+          server_ids: string[]
+          started_at?: string | null
+          status?: string | null
+          total_steps?: number | null
+          update_sequence: Json
+          updated_at?: string
+          vmware_settings?: Json | null
+        }
+        Update: {
+          cluster_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          current_step?: number | null
+          id?: string
+          name?: string
+          rollback_plan?: Json | null
+          safety_checks?: Json
+          server_ids?: string[]
+          started_at?: string | null
+          status?: string | null
+          total_steps?: number | null
+          update_sequence?: Json
+          updated_at?: string
+          vmware_settings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "update_orchestration_plans_cluster_id_fkey"
+            columns: ["cluster_id"]
+            isOneToOne: false
+            referencedRelation: "vcenter_clusters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vcenter_clusters: {
+        Row: {
+          active_hosts: number | null
+          created_at: string
+          drs_enabled: boolean | null
+          ha_enabled: boolean | null
+          id: string
+          maintenance_mode_policy: string | null
+          name: string
+          total_hosts: number | null
+          updated_at: string
+          vcenter_id: string | null
+        }
+        Insert: {
+          active_hosts?: number | null
+          created_at?: string
+          drs_enabled?: boolean | null
+          ha_enabled?: boolean | null
+          id?: string
+          maintenance_mode_policy?: string | null
+          name: string
+          total_hosts?: number | null
+          updated_at?: string
+          vcenter_id?: string | null
+        }
+        Update: {
+          active_hosts?: number | null
+          created_at?: string
+          drs_enabled?: boolean | null
+          ha_enabled?: boolean | null
+          id?: string
+          maintenance_mode_policy?: string | null
+          name?: string
+          total_hosts?: number | null
+          updated_at?: string
+          vcenter_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vcenter_clusters_vcenter_id_fkey"
+            columns: ["vcenter_id"]
+            isOneToOne: false
+            referencedRelation: "vcenters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vcenters: {
         Row: {
           created_at: string
@@ -338,6 +614,7 @@ export type Database = {
           id: string
           ignore_ssl: boolean | null
           name: string
+          password: string | null
           port: number | null
           updated_at: string
           username: string
@@ -348,6 +625,7 @@ export type Database = {
           id?: string
           ignore_ssl?: boolean | null
           name: string
+          password?: string | null
           port?: number | null
           updated_at?: string
           username: string
@@ -358,11 +636,65 @@ export type Database = {
           id?: string
           ignore_ssl?: boolean | null
           name?: string
+          password?: string | null
           port?: number | null
           updated_at?: string
           username?: string
         }
         Relationships: []
+      }
+      virtual_machines: {
+        Row: {
+          cpu_count: number | null
+          created_at: string
+          id: string
+          is_template: boolean | null
+          memory_mb: number | null
+          power_state: string | null
+          server_id: string | null
+          storage_gb: number | null
+          updated_at: string
+          vm_id: string
+          vm_name: string
+          vm_tools_status: string | null
+        }
+        Insert: {
+          cpu_count?: number | null
+          created_at?: string
+          id?: string
+          is_template?: boolean | null
+          memory_mb?: number | null
+          power_state?: string | null
+          server_id?: string | null
+          storage_gb?: number | null
+          updated_at?: string
+          vm_id: string
+          vm_name: string
+          vm_tools_status?: string | null
+        }
+        Update: {
+          cpu_count?: number | null
+          created_at?: string
+          id?: string
+          is_template?: boolean | null
+          memory_mb?: number | null
+          power_state?: string | null
+          server_id?: string | null
+          storage_gb?: number | null
+          updated_at?: string
+          vm_id?: string
+          vm_name?: string
+          vm_tools_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "virtual_machines_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

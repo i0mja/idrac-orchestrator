@@ -8,7 +8,7 @@ export interface Server {
   ip_address: string | unknown; // PostgreSQL INET type
   model?: string | null;
   service_tag?: string | null;
-  status: 'online' | 'offline' | 'unknown' | 'updating' | 'error';
+  status: 'online' | 'offline' | 'unknown' | 'updating' | 'error' | 'maintenance';
   host_type: string;
   vcenter_id?: string | null;
   cluster_name?: string | null;
@@ -80,7 +80,7 @@ export function useServers() {
     try {
       const { error } = await supabase
         .from('servers')
-        .update(updates)
+        .update(updates as any)
         .eq('id', id);
 
       if (error) throw error;
