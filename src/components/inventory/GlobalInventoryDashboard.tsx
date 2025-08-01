@@ -203,10 +203,6 @@ export function GlobalInventoryDashboard() {
           <h1 className="text-2xl font-bold">Global Asset Management</h1>
           <p className="text-muted-foreground">Comprehensive inventory and asset tracking</p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Server
-        </Button>
       </div>
 
       {/* Key Metrics Dashboard */}
@@ -579,22 +575,33 @@ export function GlobalInventoryDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {[...new Set(servers.filter(s => s.datacenter).map(s => s.datacenter))].map((datacenter) => {
-                    const dcServers = servers.filter(s => s.datacenter === datacenter);
-                    const onlineInDC = dcServers.filter(s => s.status === 'online').length;
-                    return (
-                      <div key={datacenter} className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="font-medium">{datacenter}</span>
-                          <div className="flex gap-2">
-                            <Badge variant="outline">{dcServers.length} total</Badge>
-                            <Badge className="status-online">{onlineInDC} online</Badge>
+                  {[...new Set(servers.filter(s => s.datacenter).map(s => s.datacenter))].length > 0 ? (
+                    [...new Set(servers.filter(s => s.datacenter).map(s => s.datacenter))].map((datacenter) => {
+                      const dcServers = servers.filter(s => s.datacenter === datacenter);
+                      const onlineInDC = dcServers.filter(s => s.status === 'online').length;
+                      return (
+                        <div key={datacenter} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-medium">{datacenter}</span>
+                            <div className="flex gap-2">
+                              <Badge variant="outline">{dcServers.length} total</Badge>
+                              <Badge className="status-online">{onlineInDC} online</Badge>
+                            </div>
                           </div>
+                          <Progress value={(onlineInDC / dcServers.length) * 100} className="h-2" />
                         </div>
-                        <Progress value={(onlineInDC / dcServers.length) * 100} className="h-2" />
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-6">
+                      <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold mb-2">No Datacenter Information</h3>
+                      <p className="text-muted-foreground text-sm">
+                        Datacenter locations will appear here once configured.<br/>
+                        Set datacenter information through server discovery or manual configuration.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -679,32 +686,17 @@ export function GlobalInventoryDashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="w-5 h-5" />
-                  Warranty Status
+                  Warranty Information
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {servers.filter(s => (s as any).warranty_end_date).slice(0, 10).map((server) => (
-                    <div key={server.id} className="flex justify-between items-center">
-                      <div>
-                        <p className="font-medium">{server.hostname}</p>
-                        <p className="text-sm text-muted-foreground">{server.model}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={
-                          calculateWarrantyStatus((server as any).warranty_end_date) === 'Expired' ? 'destructive' :
-                          calculateWarrantyStatus((server as any).warranty_end_date) === 'Expiring Soon' ? 'default' : 'outline'
-                        }>
-                          {calculateWarrantyStatus((server as any).warranty_end_date)}
-                        </Badge>
-                        {(server as any).warranty_end_date && (
-                          <p className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(new Date((server as any).warranty_end_date))}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                <div className="text-center py-6">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Warranty Tracking</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Warranty information will be displayed here once server details are populated.<br/>
+                    Add warranty dates through server discovery or manual configuration.
+                  </p>
                 </div>
               </CardContent>
             </Card>
