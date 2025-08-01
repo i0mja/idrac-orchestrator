@@ -71,7 +71,7 @@ export function VCenterClusterManager() {
       // Group servers by cluster
       const clusterMap: Record<string, ClusterHost[]> = {};
       servers?.forEach(server => {
-        const clusterName = server.cluster_name || 'Standalone';
+        const clusterName = (server as any).cluster_name || 'Standalone';
         if (!clusterMap[clusterName]) {
           clusterMap[clusterName] = [];
         }
@@ -79,10 +79,10 @@ export function VCenterClusterManager() {
         clusterMap[clusterName].push({
           id: server.id,
           hostname: server.hostname,
-          ip_address: server.ip_address,
+          ip_address: String(server.ip_address),
           model: server.model || 'Unknown',
           status: server.status as any,
-          cluster_name: server.cluster_name,
+          cluster_name: (server as any).cluster_name,
           drs_enabled: true, // Would come from vCenter API
           ha_agent_active: server.status === 'online',
           current_vms: Math.floor(Math.random() * 20), // Mock data
