@@ -7,7 +7,7 @@ import { UnifiedServerManagement } from "@/components/inventory/UnifiedServerMan
 import { GlobalInventoryDashboard } from "@/components/inventory/GlobalInventoryDashboard";
 import { DellEnterpriseManagement } from "@/components/enterprise/DellEnterpriseManagement";
 import { FirmwareManagement } from "@/components/firmware/FirmwareManagement";
-import { JobScheduler } from "@/components/scheduler/JobScheduler";
+
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
@@ -18,7 +18,7 @@ import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "operator" | "viewer";
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts" | "vcenter";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 export default function IdracUpdater() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
@@ -74,8 +74,6 @@ export default function IdracUpdater() {
         return <DellEnterpriseManagement />;
       case "firmware":
         return <FirmwareManagement />;
-      case "scheduler":
-        return <JobScheduler />;
       case "health":
         return <HealthChecks />;
       case "alerts":

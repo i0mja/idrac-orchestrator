@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Server,
-  Calendar,
   Users,
   Settings,
   Activity,
@@ -14,7 +13,7 @@ import {
   Network
 } from "lucide-react";
 
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts" | "vcenter";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -34,7 +33,6 @@ const menuItems: Array<{
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Enterprise Management", icon: Building2, roles: ["admin", "operator"] },
   { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
-  { id: "scheduler", label: "Job Scheduler", icon: Calendar, roles: ["admin", "operator"] },
   { id: "health", label: "Health Checks", icon: Shield, roles: ["admin", "operator", "viewer"] },
   { id: "alerts", label: "Alerts & Events", icon: Bell, roles: ["admin", "operator", "viewer"] },
   { id: "users", label: "User Management", icon: Users, roles: ["admin"] },
