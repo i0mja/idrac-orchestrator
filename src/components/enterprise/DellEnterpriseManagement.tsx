@@ -10,10 +10,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import { useDellEnterprise } from "@/hooks/useDellEnterprise";
 import { useVMwareIntegration } from "@/hooks/useVMwareIntegration";
 import { useServers } from "@/hooks/useServers";
+import { useAutoOrchestration } from "@/hooks/useAutoOrchestration";
+import { useSystemEvents } from "@/hooks/useSystemEvents";
 import { useToast } from "@/hooks/use-toast";
+import { format } from 'date-fns';
 import { 
   Server, 
   HardDrive,
@@ -34,13 +40,18 @@ import {
   Monitor,
   RotateCw,
   FileText,
-  Target
+  Target,
+  Bot,
+  Bell,
+  Info
 } from "lucide-react";
 
 export function DellEnterpriseManagement() {
   const { dellPackages, orchestrationPlans, loading: dellLoading, createOrchestrationPlan, executeOrchestrationPlan } = useDellEnterprise();
   const { virtualMachines, serverBackups, createServerBackup, enterMaintenanceMode, exitMaintenanceMode, syncVMsFromHost } = useVMwareIntegration();
   const { servers } = useServers();
+  const { config: autoConfig, loading: autoLoading, updateConfig, toggleAutoOrchestration } = useAutoOrchestration();
+  const { criticalEvents, warningEvents, unacknowledgedCount, triggerAutoOrchestration } = useSystemEvents();
   const { toast } = useToast();
 
   const [selectedServers, setSelectedServers] = useState<string[]>([]);
@@ -354,13 +365,302 @@ export function DellEnterpriseManagement() {
         </Card>
       </div>
 
-      <Tabs defaultValue="orchestration" className="space-y-4">
+      {/* Auto-Orchestration Alert */}
+      {autoConfig && criticalEvents.length > 0 && (
+        <Alert>
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="flex items-center justify-between">
+              <span>{criticalEvents.length} critical events require attention.</span>
+              <Button size="sm" variant="outline" onClick={() => window.location.href = '#alerts'}>
+                <Bell className="w-3 h-3 mr-1" />
+                View Alerts
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Tabs defaultValue="auto-orchestration" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="orchestration">Orchestration Plans</TabsTrigger>
+          <TabsTrigger value="auto-orchestration">Auto-Orchestration</TabsTrigger>
+          <TabsTrigger value="orchestration">Manual Plans</TabsTrigger>
           <TabsTrigger value="dell-packages">Dell Update Packages</TabsTrigger>
           <TabsTrigger value="compatibility">Compatibility Matrix</TabsTrigger>
           <TabsTrigger value="enterprise-servers">Enterprise Servers</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="auto-orchestration" className="space-y-4">
+          <div className="grid gap-6">
+            {/* Auto-Orchestration Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bot className="w-5 h-5" />
+                  Auto-Orchestration Status
+                  {autoConfig?.enabled && (
+                    <Badge variant="default" className="ml-2">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Active
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Automated 6-month update orchestration with 15-minute intervals
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!autoConfig ? (
+                  <div className="text-center py-8">
+                    <RotateCw className="w-6 h-6 animate-spin mx-auto mb-2" />
+                    <p>Loading auto-orchestration configuration...</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Toggle and Manual Trigger */}
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <Switch 
+                            checked={autoConfig.enabled}
+                            onCheckedChange={toggleAutoOrchestration}
+                          />
+                          <Label className="font-medium">
+                            Auto-Orchestration {autoConfig.enabled ? 'Enabled' : 'Disabled'}
+                          </Label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {autoConfig.enabled 
+                            ? 'Servers will be automatically scheduled for updates every 6 months'
+                            : 'Automatic scheduling is disabled. Manual plans only.'}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={triggerAutoOrchestration}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        <Zap className="w-4 h-4" />
+                        Trigger Now
+                      </Button>
+                    </div>
+
+                    {/* Configuration Summary */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Update Interval</p>
+                            <p className="text-xl font-bold">{autoConfig.execution_interval_months} months</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Host Interval</p>
+                            <p className="text-xl font-bold">{autoConfig.update_interval_minutes} min</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="p-4">
+                          <div className="space-y-1">
+                            <p className="text-sm text-muted-foreground">Maintenance Window</p>
+                            <p className="text-xl font-bold">
+                              {autoConfig.maintenance_window_start} - {autoConfig.maintenance_window_end}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Auto-Generated Plans */}
+                    <Separator />
+                    <div>
+                      <h4 className="font-semibold mb-3 flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        Auto-Generated Plans
+                      </h4>
+                      <div className="space-y-3">
+                        {orchestrationPlans.filter(plan => plan.is_auto_generated).length === 0 ? (
+                          <div className="text-center py-6 text-muted-foreground">
+                            <Bot className="w-8 h-8 mx-auto mb-2" />
+                            <p>No auto-generated plans yet</p>
+                            <p className="text-sm">
+                              {autoConfig.enabled 
+                                ? 'Plans will be created automatically based on server update schedules'
+                                : 'Enable auto-orchestration to generate plans automatically'}
+                            </p>
+                          </div>
+                        ) : (
+                          orchestrationPlans
+                            .filter(plan => plan.is_auto_generated)
+                            .map((plan) => (
+                              <Card key={plan.id} className="border-l-4 border-l-blue-500">
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <h5 className="font-medium">{plan.name}</h5>
+                                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                        <span>{plan.server_ids.length} servers</span>
+                                        {plan.next_execution_date && (
+                                          <span className="flex items-center gap-1">
+                                            <Clock className="w-3 h-3" />
+                                            Next: {format(new Date(plan.next_execution_date), 'MMM dd, yyyy')}
+                                          </span>
+                                        )}
+                                        {plan.overwritten_plan_id && (
+                                          <Badge variant="outline" className="text-xs">
+                                            <Info className="w-3 h-3 mr-1" />
+                                            Overwrote Manual
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {getPlanStatusBadge(plan.status)}
+                                      {plan.status === 'planned' && (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => executeOrchestrationPlan(plan.id)}
+                                        >
+                                          <Play className="w-3 h-3 mr-1" />
+                                          Execute
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Events Summary */}
+                    {(criticalEvents.length > 0 || warningEvents.length > 0 || unacknowledgedCount > 0) && (
+                      <>
+                        <Separator />
+                        <div>
+                          <h4 className="font-semibold mb-3 flex items-center gap-2">
+                            <Bell className="w-4 h-4" />
+                            Recent Events
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {criticalEvents.length > 0 && (
+                              <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  {criticalEvents.length} critical event{criticalEvents.length > 1 ? 's' : ''} need immediate attention
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            {warningEvents.length > 0 && (
+                              <Alert>
+                                <AlertTriangle className="h-4 w-4" />
+                                <AlertDescription>
+                                  {warningEvents.length} warning{warningEvents.length > 1 ? 's' : ''} require review
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            {unacknowledgedCount > 0 && (
+                              <Alert>
+                                <Bell className="h-4 w-4" />
+                                <AlertDescription>
+                                  {unacknowledgedCount} event{unacknowledgedCount > 1 ? 's' : ''} pending acknowledgment
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Configuration Panel */}
+            {autoConfig && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Auto-Orchestration Configuration
+                  </CardTitle>
+                  <CardDescription>
+                    Adjust automatic update scheduling and safety parameters
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="interval-months">Update Interval (months)</Label>
+                      <Input
+                        id="interval-months"
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={autoConfig.execution_interval_months}
+                        onChange={(e) => updateConfig({ execution_interval_months: parseInt(e.target.value) })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        How often servers should be updated (recommended: 6 months)
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="interval-minutes">Host Update Interval (minutes)</Label>
+                      <Input
+                        id="interval-minutes"
+                        type="number"
+                        min="5"
+                        max="60"
+                        value={autoConfig.update_interval_minutes}
+                        onChange={(e) => updateConfig({ update_interval_minutes: parseInt(e.target.value) })}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Time between updating individual hosts (recommended: 15 minutes)
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="window-start">Maintenance Window Start</Label>
+                      <Input
+                        id="window-start"
+                        type="time"
+                        value={autoConfig.maintenance_window_start}
+                        onChange={(e) => updateConfig({ maintenance_window_start: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="window-end">Maintenance Window End</Label>
+                      <Input
+                        id="window-end"
+                        type="time"
+                        value={autoConfig.maintenance_window_end}
+                        onChange={(e) => updateConfig({ maintenance_window_end: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Cluster Priority Order</Label>
+                    <div className="flex gap-2">
+                      {autoConfig.cluster_priority_order.map((env, index) => (
+                        <Badge key={index} variant="outline" className="capitalize">
+                          {index + 1}. {env}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Clusters will be updated in this order: production first, then staging, then development
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
 
         <TabsContent value="orchestration" className="space-y-4">
           <Card>

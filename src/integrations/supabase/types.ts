@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_orchestration_config: {
+        Row: {
+          cluster_priority_order: string[] | null
+          created_at: string
+          enabled: boolean | null
+          execution_interval_months: number | null
+          id: string
+          maintenance_window_end: string | null
+          maintenance_window_start: string | null
+          update_interval_minutes: number | null
+          updated_at: string
+        }
+        Insert: {
+          cluster_priority_order?: string[] | null
+          created_at?: string
+          enabled?: boolean | null
+          execution_interval_months?: number | null
+          id?: string
+          maintenance_window_end?: string | null
+          maintenance_window_start?: string | null
+          update_interval_minutes?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cluster_priority_order?: string[] | null
+          created_at?: string
+          enabled?: boolean | null
+          execution_interval_months?: number | null
+          id?: string
+          maintenance_window_end?: string | null
+          maintenance_window_start?: string | null
+          update_interval_minutes?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       compatibility_matrix: {
         Row: {
           bios_version: string | null
@@ -432,6 +468,48 @@ export type Database = {
         }
         Relationships: []
       }
+      system_events: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
       update_jobs: {
         Row: {
           completed_at: string | null
@@ -502,8 +580,12 @@ export type Database = {
           created_at: string
           created_by: string | null
           current_step: number | null
+          execution_interval_months: number | null
           id: string
+          is_auto_generated: boolean | null
           name: string
+          next_execution_date: string | null
+          overwritten_plan_id: string | null
           rollback_plan: Json | null
           safety_checks: Json
           server_ids: string[]
@@ -520,8 +602,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_step?: number | null
+          execution_interval_months?: number | null
           id?: string
+          is_auto_generated?: boolean | null
           name: string
+          next_execution_date?: string | null
+          overwritten_plan_id?: string | null
           rollback_plan?: Json | null
           safety_checks: Json
           server_ids: string[]
@@ -538,8 +624,12 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           current_step?: number | null
+          execution_interval_months?: number | null
           id?: string
+          is_auto_generated?: boolean | null
           name?: string
+          next_execution_date?: string | null
+          overwritten_plan_id?: string | null
           rollback_plan?: Json | null
           safety_checks?: Json
           server_ids?: string[]
