@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -87,8 +87,8 @@ export function EnterpriseManagement() {
     pauseOrchestrationPlan 
   } = useDellEnterprise();
 
-  // Calculate enterprise metrics
-  const enterpriseMetrics = {
+  // Memoize expensive calculations to prevent flickering
+  const enterpriseMetrics = useMemo(() => ({
     totalServers: servers.length,
     dellServers: servers.filter(s => s.model?.toLowerCase().includes('dell')).length,
     onlineServers: servers.filter(s => s.status === 'online').length,
@@ -97,19 +97,31 @@ export function EnterpriseManagement() {
     orchestrationPlans: orchestrationPlans.length,
     clustersCount: [...new Set(servers.map(s => s.cluster_name).filter(Boolean))].length,
     complianceScore: Math.round((servers.filter(s => s.status === 'online').length / Math.max(servers.length, 1)) * 100)
-  };
+  }), [servers, systemEvents, dellPackages, orchestrationPlans]);
 
-  // Get system health score
-  const healthScore = calculateSystemHealthScore();
+  // Memoize system health score calculation
+  const healthScore = useMemo(() => {
+    if (loading || servers.length === 0) {
+      return { overallScore: 0, breakdown: {}, recommendations: [] };
+    }
+    return calculateSystemHealthScore();
+  }, [calculateSystemHealthScore, loading, servers.length]);
   
-  // Get clusters
-  const clusters = [...new Set(servers.map(s => s.cluster_name).filter(Boolean))];
-  const filteredServers = selectedCluster === "all" 
-    ? servers 
-    : servers.filter(s => s.cluster_name === selectedCluster);
+  // Memoize clusters calculation
+  const clusters = useMemo(() => 
+    [...new Set(servers.map(s => s.cluster_name).filter(Boolean))], 
+    [servers]
+  );
+  
+  const filteredServers = useMemo(() => 
+    selectedCluster === "all" 
+      ? servers 
+      : servers.filter(s => s.cluster_name === selectedCluster),
+    [selectedCluster, servers]
+  );
 
-  // Handle operations
-  const handleBulkFirmwareDiscovery = async () => {
+  // Stabilize callback functions to prevent re-renders
+  const handleBulkFirmwareDiscovery = useCallback(async () => {
     try {
       const serverIds = filteredServers
         .filter(s => s.status === 'online')
@@ -139,9 +151,9 @@ export function EnterpriseManagement() {
         variant: "destructive"
       });
     }
-  };
+  }, [filteredServers, discoverFirmwareIntelligent, refresh, toast]);
 
-  const handleCreateOrchestrationPlan = async () => {
+  const handleCreateOrchestrationPlan = useCallback(async () => {
     try {
       const selectedServers = filteredServers
         .filter(s => s.status === 'online')
@@ -215,9 +227,9 @@ export function EnterpriseManagement() {
         variant: "destructive"
       });
     }
-  };
+  }, [filteredServers, dellPackages, createOrchestrationPlan, toast]);
 
-  const handleExecutePlan = async (planId: string) => {
+  const handleExecutePlan = useCallback(async (planId: string) => {
     try {
       await executeOrchestrationPlan(planId);
       toast({
@@ -231,9 +243,9 @@ export function EnterpriseManagement() {
         variant: "destructive"
       });
     }
-  };
+  }, [executeOrchestrationPlan, toast]);
 
-  const handlePausePlan = async (planId: string) => {
+  const handlePausePlan = useCallback(async (planId: string) => {
     try {
       await pauseOrchestrationPlan(planId);
       toast({
@@ -247,17 +259,19 @@ export function EnterpriseManagement() {
         variant: "destructive"
       });
     }
-  };
+  }, [pauseOrchestrationPlan, toast]);
 
+  // Show stable loading state
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="h-8 bg-muted rounded animate-pulse" />
+      <div className="space-y-6 animate-fade-in">
+        <div className="h-8 bg-muted/30 rounded" />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted rounded animate-pulse" />
+            <div key={i} className="h-32 bg-muted/30 rounded" />
           ))}
         </div>
+        <div className="text-center text-muted-foreground">Loading enterprise data...</div>
       </div>
     );
   }
