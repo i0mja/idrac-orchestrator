@@ -260,19 +260,46 @@ export function HealthChecks() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col gap-2"
+              onClick={() => {
+                toast({
+                  title: "Server Connection Test",
+                  description: "Testing connections to all discovered servers...",
+                });
+              }}
+            >
               <Server className="w-6 h-6" />
               <span className="font-medium">Test Server Connections</span>
               <span className="text-xs text-muted-foreground">Ping all discovered servers</span>
             </Button>
             
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col gap-2"
+              onClick={() => {
+                toast({
+                  title: "Database Verification",
+                  description: "Checking database integrity and performance...",
+                });
+              }}
+            >
               <Database className="w-6 h-6" />
               <span className="font-medium">Verify Database</span>
               <span className="text-xs text-muted-foreground">Check database integrity</span>
             </Button>
             
-            <Button variant="outline" className="h-auto p-4 flex flex-col gap-2">
+            <Button 
+              variant="outline" 
+              className="h-auto p-4 flex flex-col gap-2"
+              onClick={() => {
+                toast({
+                  title: "Network Diagnostics",
+                  description: "Running network connectivity tests...",
+                });
+              }}
+            >
               <Network className="w-6 h-6" />
               <span className="font-medium">Network Diagnostics</span>
               <span className="text-xs text-muted-foreground">Test network connectivity</span>

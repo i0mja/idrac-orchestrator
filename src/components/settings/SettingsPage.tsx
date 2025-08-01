@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Users
 } from "lucide-react";
+import { TimezoneSelect } from "@/components/ui/timezone-select";
 
 interface SystemConfig {
   organization_name: string;
@@ -318,9 +319,8 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="vcenters">vCenters</TabsTrigger>
           <TabsTrigger value="idm">IDM</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -354,10 +354,10 @@ export function SettingsPage() {
               </div>
               <div>
                 <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
+                <TimezoneSelect
                   value={config.timezone}
-                  onChange={(e) => setConfig(prev => ({ ...prev, timezone: e.target.value }))}
+                  onValueChange={(value) => setConfig(prev => ({ ...prev, timezone: value }))}
+                  placeholder="Select timezone..."
                 />
               </div>
             </CardContent>
@@ -411,168 +411,6 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="vcenters" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Network className="w-5 h-5" />
-                vCenter Servers ({vcenters.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="vcenter-name">Name</Label>
-                  <Input
-                    id="vcenter-name"
-                    value={newVCenter.name}
-                    onChange={(e) => setNewVCenter(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Production vCenter"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vcenter-hostname">Hostname/IP</Label>
-                  <Input
-                    id="vcenter-hostname"
-                    value={newVCenter.hostname}
-                    onChange={(e) => setNewVCenter(prev => ({ ...prev, hostname: e.target.value }))}
-                    placeholder="vcenter.yourcompany.com"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vcenter-username">Username</Label>
-                  <Input
-                    id="vcenter-username"
-                    value={newVCenter.username}
-                    onChange={(e) => setNewVCenter(prev => ({ ...prev, username: e.target.value }))}
-                    placeholder="administrator@vsphere.local"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vcenter-password">Password</Label>
-                  <Input
-                    id="vcenter-password"
-                    type="password"
-                    value={newVCenter.password}
-                    onChange={(e) => setNewVCenter(prev => ({ ...prev, password: e.target.value }))}
-                    placeholder="Enter vCenter password"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="vcenter-port">Port</Label>
-                  <Input
-                    id="vcenter-port"
-                    type="number"
-                    value={newVCenter.port}
-                    onChange={(e) => setNewVCenter(prev => ({ ...prev, port: parseInt(e.target.value) }))}
-                  />
-                </div>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="ignore-ssl"
-                  checked={newVCenter.ignore_ssl}
-                  onCheckedChange={(checked) => setNewVCenter(prev => ({ ...prev, ignore_ssl: checked }))}
-                />
-                <Label htmlFor="ignore-ssl">Ignore SSL certificate errors</Label>
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={testConnection} 
-                  disabled={isTestingConnection}
-                  variant="outline" 
-                  className="flex-1"
-                >
-                  {isTestingConnection ? (
-                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                  )}
-                  {isTestingConnection ? 'Testing...' : 'Test Connection'}
-                </Button>
-                <Button onClick={addVCenter} className="flex-1">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add vCenter
-                </Button>
-              </div>
-
-              {vcenters.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="font-semibold">Configured vCenters</h4>
-                  {vcenters.map((vcenter) => (
-                    <div key={vcenter.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <h5 className="font-medium">{vcenter.name}</h5>
-                        <p className="text-sm text-muted-foreground">
-                          {vcenter.hostname}:{vcenter.port} • {vcenter.username}
-                          {vcenter.ignore_ssl && <Badge variant="outline" className="ml-2">SSL Ignored</Badge>}
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => removeVCenter(vcenter.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="idm" className="space-y-6">
-          <IdmConfiguration />
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                Security & Update Policies
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="require-approval"
-                  checked={config.security.require_approval}
-                  onCheckedChange={(checked) => setConfig(prev => ({
-                    ...prev,
-                    security: { ...prev.security, require_approval: checked }
-                  }))}
-                />
-                <Label htmlFor="require-approval">Require manual approval for firmware updates</Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="backup-before-update"
-                  checked={config.security.backup_before_update}
-                  onCheckedChange={(checked) => setConfig(prev => ({
-                    ...prev,
-                    security: { ...prev.security, backup_before_update: checked }
-                  }))}
-                />
-                <Label htmlFor="backup-before-update">Create backup before firmware updates</Label>
-              </div>
-              <div>
-                <Label htmlFor="max-concurrent">Maximum Concurrent Updates</Label>
-                <Input
-                  id="max-concurrent"
-                  type="number"
-                  value={config.security.max_concurrent_updates}
-                  onChange={(e) => setConfig(prev => ({
-                    ...prev,
-                    security: { ...prev.security, max_concurrent_updates: parseInt(e.target.value) }
-                  }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
           <Card className="card-enterprise">

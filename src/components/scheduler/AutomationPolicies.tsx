@@ -72,7 +72,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   const [newPolicy, setNewPolicy] = useState<{
     name: string;
     description: string;
+    target_type?: 'cluster' | 'server';
     cluster_name: string;
+    server_ids?: string[];
     policy_type: 'firmware_check' | 'security_update' | 'quarterly_update' | 'emergency_patch';
     schedule: {
       frequency: 'weekly' | 'monthly' | 'quarterly' | 'on_demand';
@@ -101,7 +103,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   }>({
     name: '',
     description: '',
+    target_type: 'cluster',
     cluster_name: 'all',
+    server_ids: [],
     policy_type: 'firmware_check',
     schedule: {
       frequency: 'weekly',
@@ -245,7 +249,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       setNewPolicy({
         name: '',
         description: '',
+        target_type: 'cluster',
         cluster_name: 'all',
+        server_ids: [],
         policy_type: 'firmware_check',
         schedule: {
           frequency: 'weekly',
@@ -311,7 +317,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
     setNewPolicy({
       name: policy.name,
       description: policy.description,
+      target_type: 'cluster',
       cluster_name: policy.cluster_name || 'all',
+      server_ids: [],
       policy_type: policy.policy_type,
       schedule: policy.schedule,
       update_strategy: policy.update_strategy,
@@ -343,7 +351,9 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       setNewPolicy({
         name: '',
         description: '',
+        target_type: 'cluster',
         cluster_name: 'all',
+        server_ids: [],
         policy_type: 'firmware_check',
         schedule: {
           frequency: 'weekly',
@@ -473,21 +483,68 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="cluster">Target Cluster (Optional)</Label>
-                  <Select value={newPolicy.cluster_name} onValueChange={(value) => setNewPolicy(prev => ({ ...prev, cluster_name: value }))}>
+                  <Label htmlFor="target-type">Target Type</Label>
+                  <Select 
+                    value={newPolicy.target_type || 'cluster'} 
+                    onValueChange={(value) => setNewPolicy(prev => ({ 
+                      ...prev, 
+                      target_type: value as 'cluster' | 'server',
+                      cluster_name: value === 'server' ? undefined : prev.cluster_name,
+                      server_ids: value === 'cluster' ? [] : prev.server_ids
+                    }))}
+                  >
                     <SelectTrigger>
-                      <SelectValue placeholder="All clusters" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All clusters</SelectItem>
-                      {clusterNames.map((cluster) => (
-                        <SelectItem key={cluster} value={cluster}>
-                          {cluster}
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="cluster">Target Clusters</SelectItem>
+                      <SelectItem value="server">Target Individual Servers</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {(!newPolicy.target_type || newPolicy.target_type === 'cluster') && (
+                  <div>
+                    <Label htmlFor="cluster">Target Cluster</Label>
+                    <Select value={newPolicy.cluster_name} onValueChange={(value) => setNewPolicy(prev => ({ ...prev, cluster_name: value }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All clusters" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All clusters</SelectItem>
+                        {clusterNames.map((cluster) => (
+                          <SelectItem key={cluster} value={cluster}>
+                            {cluster}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {newPolicy.target_type === 'server' && (
+                  <div>
+                    <Label htmlFor="servers">Target Servers</Label>
+                    <Select 
+                      value={newPolicy.server_ids?.[0] || ''} 
+                      onValueChange={(value) => setNewPolicy(prev => ({ 
+                        ...prev, 
+                        server_ids: value ? [value] : [] 
+                      }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select servers..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {servers.map((server) => (
+                          <SelectItem key={server.id} value={server.id}>
+                            {server.hostname} ({server.ip_address})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
 
               {/* Schedule */}
