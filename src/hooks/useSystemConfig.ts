@@ -69,6 +69,8 @@ export function useSystemConfig() {
           key,
           value,
           description: `System configuration for ${key}`
+        }, {
+          onConflict: 'key'
         });
 
       if (error) throw error;
