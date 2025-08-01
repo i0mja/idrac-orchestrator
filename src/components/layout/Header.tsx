@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRealServers } from "@/hooks/useRealServers";
 
 interface HeaderProps {
   userRole: "admin" | "operator" | "viewer";
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 export function Header({ userRole, userName }: HeaderProps) {
   const { signOut } = useAuth();
+  const { serverCount, onlineCount, loading } = useRealServers();
 
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
@@ -25,9 +27,9 @@ export function Header({ userRole, userName }: HeaderProps) {
       <div className="flex items-center justify-between h-full px-6">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
+            <div className={`w-2 h-2 rounded-full ${loading ? 'bg-muted animate-pulse' : serverCount > 0 ? 'bg-success animate-pulse' : 'bg-warning'}`} />
             <span className="text-sm text-muted-foreground">
-              Connected to 247 servers
+              {loading ? 'Loading...' : serverCount > 0 ? `${onlineCount}/${serverCount} servers online` : 'No servers connected'}
             </span>
           </div>
         </div>

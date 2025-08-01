@@ -1,158 +1,103 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useRealUsers } from "@/hooks/useRealUsers";
+import { formatDistanceToNow } from "date-fns";
 import { 
   Users, 
-  UserPlus, 
-  Shield, 
-  Edit, 
-  Trash2, 
+  UserPlus,
+  UserCheck,
+  UserX,
+  Clock,
+  Shield,
   Eye,
   Settings,
+  Trash2,
+  Edit,
+  Search,
+  Filter,
+  RefreshCw,
   Crown,
   Wrench
 } from "lucide-react";
 
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: 'admin' | 'operator' | 'viewer';
-  status: 'active' | 'inactive' | 'pending';
-  lastLogin?: string;
-  createdAt: string;
-  adGroup?: string;
-}
-
 export function UserManagement() {
-  const { toast } = useToast();
-  
-  // Mock user data - in real implementation, this would come from Supabase
-  const [users, setUsers] = useState<User[]>([
-    {
-      id: '1',
-      username: 'john.admin',
-      email: 'john.admin@company.com',
-      role: 'admin',
-      status: 'active',
-      lastLogin: '2024-01-15T10:30:00Z',
-      createdAt: '2024-01-01T09:00:00Z',
-      adGroup: 'IDrac-Admins'
-    },
-    {
-      id: '2',
-      username: 'sarah.operator',
-      email: 'sarah.operator@company.com',
-      role: 'operator',
-      status: 'active',
-      lastLogin: '2024-01-15T08:15:00Z',
-      createdAt: '2024-01-03T14:20:00Z',
-      adGroup: 'IDrac-Operators'
-    },
-    {
-      id: '3',
-      username: 'mike.viewer',
-      email: 'mike.viewer@company.com',
-      role: 'viewer',
-      status: 'active',
-      lastLogin: '2024-01-14T16:45:00Z',
-      createdAt: '2024-01-05T11:10:00Z',
-      adGroup: 'IDrac-Viewers'
-    },
-    {
-      id: '4',
-      username: 'temp.user',
-      email: 'temp.user@company.com',
-      role: 'viewer',
-      status: 'pending',
-      createdAt: '2024-01-15T12:00:00Z',
-      adGroup: 'IDrac-Viewers'
-    }
-  ]);
-
   const [searchTerm, setSearchTerm] = useState("");
   const [newUser, setNewUser] = useState({
     username: '',
     email: '',
-    role: 'viewer' as const,
-    adGroup: ''
+    role: 'viewer',
+    full_name: ''
   });
+  const { toast } = useToast();
+  const { users, loading, createUser, deleteUser } = useRealUsers();
 
+  // Filter users based on search term
   const filteredUsers = users.filter(user =>
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (user.full_name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
   );
+
+  // Calculate real statistics
+  const totalUsers = users.length;
+  const activeUsers = users.filter(u => u.is_active).length;
+  const adminUsers = users.filter(u => u.role === 'admin').length;
+  const pendingUsers = users.filter(u => !u.last_login).length;
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin': return <Crown className="w-4 h-4 text-warning" />;
-      case 'operator': return <Wrench className="w-4 h-4 text-primary" />;
-      case 'viewer': return <Eye className="w-4 h-4 text-muted-foreground" />;
+      case "admin": return <Crown className="w-4 h-4 text-warning" />;
+      case "operator": return <Wrench className="w-4 h-4 text-primary" />;
+      case "viewer": return <Eye className="w-4 h-4 text-muted-foreground" />;
       default: return <Users className="w-4 h-4" />;
     }
   };
 
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'admin': return <Badge className="status-offline">Admin</Badge>;
-      case 'operator': return <Badge className="status-updating">Operator</Badge>;
-      case 'viewer': return <Badge className="status-warning">Viewer</Badge>;
+      case "admin": return <Badge className="status-offline">Admin</Badge>;
+      case "operator": return <Badge className="status-updating">Operator</Badge>;
+      case "viewer": return <Badge className="status-warning">Viewer</Badge>;
       default: return <Badge variant="outline">{role}</Badge>;
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'active': return <Badge className="status-online">Active</Badge>;
-      case 'inactive': return <Badge variant="outline">Inactive</Badge>;
-      case 'pending': return <Badge className="status-warning">Pending</Badge>;
-      default: return <Badge variant="outline">{status}</Badge>;
-    }
+  const getStatusBadge = (user: typeof users[0]) => {
+    if (!user.is_active) return <Badge className="status-offline">Inactive</Badge>;
+    if (!user.last_login) return <Badge className="status-warning">Pending</Badge>;
+    return <Badge className="status-online">Active</Badge>;
   };
 
   const handleCreateUser = () => {
     if (!newUser.username || !newUser.email) {
       toast({
-        title: "Missing Information",
-        description: "Please fill in username and email",
+        title: "Error",
+        description: "Please fill in all required fields",
         variant: "destructive",
       });
       return;
     }
 
-    const user: User = {
-      id: Math.random().toString(36).substr(2, 9),
+    createUser({
       username: newUser.username,
       email: newUser.email,
       role: newUser.role,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      adGroup: newUser.adGroup
-    };
-
-    setUsers(prev => [...prev, user]);
-    setNewUser({ username: '', email: '', role: 'viewer', adGroup: '' });
-    
-    toast({
-      title: "User Created",
-      description: `User ${newUser.username} has been created successfully`,
+      full_name: newUser.full_name
     });
+
+    setNewUser({ username: '', email: '', role: 'viewer', full_name: '' });
   };
 
   const handleDeleteUser = (userId: string) => {
-    setUsers(prev => prev.filter(u => u.id !== userId));
-    toast({
-      title: "User Deleted",
-      description: "User has been removed from the system",
-    });
+    deleteUser(userId);
   };
 
   const rolePermissions = {
@@ -178,6 +123,15 @@ export function UserManagement() {
       'Read-only access'
     ]
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <RefreshCw className="w-6 h-6 animate-spin" />
+        <span className="ml-2">Loading users...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -218,8 +172,17 @@ export function UserManagement() {
                 />
               </div>
               <div>
+                <Label htmlFor="full_name">Full Name</Label>
+                <Input
+                  id="full_name"
+                  value={newUser.full_name}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, full_name: e.target.value }))}
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
                 <Label htmlFor="role">Role</Label>
-                <Select value={newUser.role} onValueChange={(value: any) => setNewUser(prev => ({ ...prev, role: value }))}>
+                <Select value={newUser.role} onValueChange={(value: string) => setNewUser(prev => ({ ...prev, role: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -229,15 +192,6 @@ export function UserManagement() {
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div>
-                <Label htmlFor="adGroup">AD Group (optional)</Label>
-                <Input
-                  id="adGroup"
-                  value={newUser.adGroup}
-                  onChange={(e) => setNewUser(prev => ({ ...prev, adGroup: e.target.value }))}
-                  placeholder="IDrac-Operators"
-                />
               </div>
               <Button onClick={handleCreateUser} className="w-full">
                 <UserPlus className="w-4 h-4 mr-2" />
@@ -255,7 +209,7 @@ export function UserManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
-                <h3 className="text-2xl font-bold">{users.length}</h3>
+                <h3 className="text-2xl font-bold">{totalUsers}</h3>
               </div>
               <Users className="w-8 h-8 text-primary" />
             </div>
@@ -267,9 +221,9 @@ export function UserManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Active Users</p>
-                <h3 className="text-2xl font-bold">{users.filter(u => u.status === 'active').length}</h3>
+                <h3 className="text-2xl font-bold">{activeUsers}</h3>
               </div>
-              <Shield className="w-8 h-8 text-success" />
+              <UserCheck className="w-8 h-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -279,7 +233,7 @@ export function UserManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Admins</p>
-                <h3 className="text-2xl font-bold">{users.filter(u => u.role === 'admin').length}</h3>
+                <h3 className="text-2xl font-bold">{adminUsers}</h3>
               </div>
               <Crown className="w-8 h-8 text-warning" />
             </div>
@@ -291,9 +245,9 @@ export function UserManagement() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pending</p>
-                <h3 className="text-2xl font-bold">{users.filter(u => u.status === 'pending').length}</h3>
+                <h3 className="text-2xl font-bold">{pendingUsers}</h3>
               </div>
-              <Settings className="w-8 h-8 text-warning" />
+              <Clock className="w-8 h-8 text-warning" />
             </div>
           </CardContent>
         </Card>
@@ -334,20 +288,20 @@ export function UserManagement() {
                       <TableCell>
                         <div>
                           <div className="flex items-center gap-2">
-                            {getRoleIcon(user.role)}
+                            {getRoleIcon(user.role || 'viewer')}
                             <span className="font-medium">{user.username}</span>
                           </div>
                           <p className="text-sm text-muted-foreground">{user.email}</p>
-                          {user.adGroup && (
-                            <p className="text-xs text-muted-foreground">AD: {user.adGroup}</p>
+                          {user.full_name && (
+                            <p className="text-xs text-muted-foreground">{user.full_name}</p>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{getRoleBadge(user.role)}</TableCell>
-                      <TableCell>{getStatusBadge(user.status)}</TableCell>
+                      <TableCell>{getRoleBadge(user.role || 'viewer')}</TableCell>
+                      <TableCell>{getStatusBadge(user)}</TableCell>
                       <TableCell>
-                        {user.lastLogin 
-                          ? new Date(user.lastLogin).toLocaleDateString()
+                        {user.last_login 
+                          ? formatDistanceToNow(new Date(user.last_login)) + ' ago'
                           : 'Never'
                         }
                       </TableCell>
@@ -369,6 +323,13 @@ export function UserManagement() {
                   ))}
                 </TableBody>
               </Table>
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No users found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search criteria.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

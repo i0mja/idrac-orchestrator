@@ -79,7 +79,7 @@ export function Sidebar({ currentPage, onPageChange, userRole }: SidebarProps) {
             <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
             <span className="text-sm font-medium">System Status</span>
           </div>
-          <p className="text-xs text-muted-foreground">All services operational</p>
+          <p className="text-xs text-muted-foreground">Ready for operations</p>
         </div>
       </div>
     </div>
