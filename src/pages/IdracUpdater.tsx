@@ -17,7 +17,7 @@ import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "operator" | "viewer";
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts";
 
 export default function IdracUpdater() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
@@ -77,6 +77,8 @@ export default function IdracUpdater() {
         return <JobScheduler />;
       case "health":
         return <HealthChecks />;
+      case "alerts":
+        return <AlertsEventsPage />;
       case "users":
         return <UserManagement />;
       case "settings":

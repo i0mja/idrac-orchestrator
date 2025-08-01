@@ -13,7 +13,7 @@ import {
   Bell
 } from "lucide-react";
 
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -34,6 +34,7 @@ const menuItems: Array<{
   { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
   { id: "scheduler", label: "Job Scheduler", icon: Calendar, roles: ["admin", "operator"] },
   { id: "health", label: "Health Checks", icon: Shield, roles: ["admin", "operator", "viewer"] },
+  { id: "alerts", label: "Alerts & Events", icon: Bell, roles: ["admin", "operator", "viewer"] },
   { id: "users", label: "User Management", icon: Users, roles: ["admin"] },
   { id: "settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
