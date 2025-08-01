@@ -33,6 +33,32 @@ Deno.serve(async (req) => {
     const cleanHostname = hostname.replace(/^https?:\/\//, '').replace(/\/$/, '');
     const vcenterUrl = `https://${cleanHostname}:${port}`;
 
+    // Check if this appears to be a local/private network address
+    const isPrivateNetwork = 
+      cleanHostname.includes('.local') || 
+      cleanHostname.includes('.grp') || 
+      cleanHostname.includes('.corp') || 
+      cleanHostname.includes('.internal') ||
+      cleanHostname.startsWith('192.168.') ||
+      cleanHostname.startsWith('10.') ||
+      cleanHostname.startsWith('172.') ||
+      !cleanHostname.includes('.');
+
+    if (isPrivateNetwork) {
+      console.log('Detected private/local network vCenter');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Cannot test connection to private/local vCenter from cloud. Your vCenter appears to be on a private network that our servers cannot reach. If this is correct, you can still save the configuration - it will be tested when actually used.',
+          isPrivateNetwork: true
+        }),
+        { 
+          status: 200, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     console.log(`Attempting to connect to vCenter at: ${vcenterUrl}`);
 
     // Test connection by trying to access the vCenter API

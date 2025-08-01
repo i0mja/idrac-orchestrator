@@ -196,6 +196,12 @@ export function SettingsPage() {
           title: "Connection Successful",
           description: `Connected to vCenter successfully. Version: ${data.version || 'Unknown'}`,
         });
+      } else if (data.isPrivateNetwork) {
+        toast({
+          title: "Private Network Detected",
+          description: data.error,
+          variant: "default",
+        });
       } else {
         toast({
           title: "Connection Failed",
