@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { UpdateSchedulingCenter } from "@/components/scheduler/UpdateSchedulingCenter";
 
 interface Server {
   id: string;
@@ -416,69 +417,82 @@ export function EnterpriseManagement() {
 
         {/* Orchestration Tab */}
         <TabsContent value="orchestration" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Orchestration Plans</CardTitle>
-              <CardDescription>
-                Manage update orchestration across your infrastructure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Plan Name</TableHead>
-                    <TableHead>Servers</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {orchestrationPlans.map((plan) => (
-                    <TableRow key={plan.id}>
-                      <TableCell className="font-medium">{plan.name}</TableCell>
-                      <TableCell>{plan.server_ids?.length || 0}</TableCell>
-                      <TableCell>
-                        <Badge variant={
-                          plan.status === 'running' ? 'default' :
-                          plan.status === 'completed' ? 'secondary' :
-                          plan.status === 'failed' ? 'destructive' : 'outline'
-                        }>
-                          {plan.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress 
-                            value={plan.total_steps ? (plan.current_step / plan.total_steps) * 100 : 0} 
-                            className="w-20" 
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            {plan.current_step}/{plan.total_steps || 0}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {plan.status === 'planned' && (
-                            <Button size="sm">
-                              <Play className="w-3 h-3" />
-                            </Button>
-                          )}
-                          {plan.status === 'running' && (
-                            <Button size="sm" variant="outline">
-                              <Pause className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          <Tabs defaultValue="scheduling" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="scheduling">Update Scheduling</TabsTrigger>
+              <TabsTrigger value="plans">Orchestration Plans</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="scheduling">
+              <UpdateSchedulingCenter />
+            </TabsContent>
+
+            <TabsContent value="plans">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Orchestration Plans</CardTitle>
+                  <CardDescription>
+                    Manage update orchestration across your infrastructure
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Plan Name</TableHead>
+                        <TableHead>Servers</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Progress</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {orchestrationPlans.map((plan) => (
+                        <TableRow key={plan.id}>
+                          <TableCell className="font-medium">{plan.name}</TableCell>
+                          <TableCell>{plan.server_ids?.length || 0}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              plan.status === 'running' ? 'default' :
+                              plan.status === 'completed' ? 'secondary' :
+                              plan.status === 'failed' ? 'destructive' : 'outline'
+                            }>
+                              {plan.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress 
+                                value={plan.total_steps ? (plan.current_step / plan.total_steps) * 100 : 0} 
+                                className="w-20" 
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {plan.current_step}/{plan.total_steps || 0}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {plan.status === 'planned' && (
+                                <Button size="sm">
+                                  <Play className="w-3 h-3" />
+                                </Button>
+                              )}
+                              {plan.status === 'running' && (
+                                <Button size="sm" variant="outline">
+                                  <Pause className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Analytics Tab */}
