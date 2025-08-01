@@ -10,10 +10,11 @@ import {
   Database,
   Download,
   Building2,
-  Bell
+  Bell,
+  Network
 } from "lucide-react";
 
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -30,6 +31,7 @@ const menuItems: Array<{
   { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
   { id: "inventory", label: "Server Discovery", icon: Server, roles: ["admin", "operator", "viewer"] },
+  { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Enterprise Management", icon: Building2, roles: ["admin", "operator"] },
   { id: "firmware", label: "Firmware Management", icon: Download, roles: ["admin", "operator"] },
   { id: "scheduler", label: "Job Scheduler", icon: Calendar, roles: ["admin", "operator"] },

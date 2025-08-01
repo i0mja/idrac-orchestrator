@@ -13,11 +13,12 @@ import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import SetupWizard from "@/components/setup/SetupWizard";
+import { VCenterConfiguration } from "@/components/vcenter/VCenterConfiguration";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "operator" | "viewer";
-type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts";
+type PageType = "dashboard" | "inventory" | "global-inventory" | "enterprise" | "firmware" | "scheduler" | "health" | "users" | "settings" | "alerts" | "vcenter";
 
 export default function IdracUpdater() {
   const [currentPage, setCurrentPage] = useState<PageType>("dashboard");
@@ -79,6 +80,8 @@ export default function IdracUpdater() {
         return <HealthChecks />;
       case "alerts":
         return <AlertsEventsPage />;
+      case "vcenter":
+        return <VCenterConfiguration />;
       case "users":
         return <UserManagement />;
       case "settings":
@@ -92,7 +95,7 @@ export default function IdracUpdater() {
     <div className="h-screen bg-background flex">
       <Sidebar 
         currentPage={currentPage} 
-        onPageChange={setCurrentPage} 
+        onPageChange={(page) => setCurrentPage(page)} 
         userRole={(profile?.role as "admin" | "operator" | "viewer") || "operator"}
       />
       
