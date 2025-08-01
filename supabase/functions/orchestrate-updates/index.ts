@@ -51,6 +51,11 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const request: UpdateOrchestrationRequest = await req.json();
 
+    // Validate request
+    if (!request.serverIds || !Array.isArray(request.serverIds) || request.serverIds.length === 0) {
+      throw new Error('serverIds array is required and must not be empty');
+    }
+
     console.log(`Orchestrating updates for ${request.serverIds.length} servers`);
 
     // Validate servers and get their current state
