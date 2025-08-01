@@ -28,7 +28,7 @@ import {
   Edit,
   Cpu,
   HardDrive,
-  Memory,
+  MonitorSpeaker,
   Globe,
   Building,
   AlertTriangle,
@@ -684,7 +684,7 @@ export function GlobalInventoryDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {servers.filter(s => s.warranty_end_date).slice(0, 10).map((server) => (
+                  {servers.filter(s => (s as any).warranty_end_date).slice(0, 10).map((server) => (
                     <div key={server.id} className="flex justify-between items-center">
                       <div>
                         <p className="font-medium">{server.hostname}</p>
@@ -692,14 +692,14 @@ export function GlobalInventoryDashboard() {
                       </div>
                       <div className="text-right">
                         <Badge variant={
-                          calculateWarrantyStatus(server.warranty_end_date) === 'Expired' ? 'destructive' :
-                          calculateWarrantyStatus(server.warranty_end_date) === 'Expiring Soon' ? 'default' : 'outline'
+                          calculateWarrantyStatus((server as any).warranty_end_date) === 'Expired' ? 'destructive' :
+                          calculateWarrantyStatus((server as any).warranty_end_date) === 'Expiring Soon' ? 'default' : 'outline'
                         }>
-                          {calculateWarrantyStatus(server.warranty_end_date)}
+                          {calculateWarrantyStatus((server as any).warranty_end_date)}
                         </Badge>
-                        {server.warranty_end_date && (
+                        {(server as any).warranty_end_date && (
                           <p className="text-sm text-muted-foreground">
-                            {formatDistanceToNow(new Date(server.warranty_end_date))}
+                            {formatDistanceToNow(new Date((server as any).warranty_end_date))}
                           </p>
                         )}
                       </div>
@@ -787,7 +787,7 @@ export function GlobalInventoryDashboard() {
             <Card className="card-enterprise">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Memory className="w-5 h-5" />
+                  <MonitorSpeaker className="w-5 h-5" />
                   Memory Usage
                 </CardTitle>
               </CardHeader>
