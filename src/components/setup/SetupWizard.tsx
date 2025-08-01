@@ -293,8 +293,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
         { key: 'network_settings', value: networkConfig },
         { key: 'security_policies', value: securityConfig },
         { key: 'backup_settings', value: backupConfig },
-        { key: 'monitoring_settings', value: monitoringConfig },
-        { key: 'setup_completed', value: true }
+        { key: 'monitoring_settings', value: monitoringConfig }
       ];
 
       // Update all configurations
