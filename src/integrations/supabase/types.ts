@@ -375,13 +375,58 @@ export type Database = {
           },
         ]
       }
+      server_notes: {
+        Row: {
+          category: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          server_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          server_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          server_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_notes_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       servers: {
         Row: {
           bios_version: string | null
           cluster_name: string | null
+          cost_center: string | null
+          cpu_cores: number | null
           created_at: string
+          criticality: string | null
           datacenter: string | null
           discovery_source: string | null
+          domain: string | null
           environment: string | null
           host_type: string | null
           hostname: string
@@ -390,19 +435,27 @@ export type Database = {
           ip_address: unknown
           last_discovered: string | null
           last_updated: string | null
+          memory_gb: number | null
           model: string | null
+          purchase_date: string | null
           rack_location: string | null
           service_tag: string | null
           status: Database["public"]["Enums"]["server_status"] | null
+          storage_gb: number | null
           updated_at: string
           vcenter_id: string | null
+          warranty_end_date: string | null
         }
         Insert: {
           bios_version?: string | null
           cluster_name?: string | null
+          cost_center?: string | null
+          cpu_cores?: number | null
           created_at?: string
+          criticality?: string | null
           datacenter?: string | null
           discovery_source?: string | null
+          domain?: string | null
           environment?: string | null
           host_type?: string | null
           hostname: string
@@ -411,19 +464,27 @@ export type Database = {
           ip_address: unknown
           last_discovered?: string | null
           last_updated?: string | null
+          memory_gb?: number | null
           model?: string | null
+          purchase_date?: string | null
           rack_location?: string | null
           service_tag?: string | null
           status?: Database["public"]["Enums"]["server_status"] | null
+          storage_gb?: number | null
           updated_at?: string
           vcenter_id?: string | null
+          warranty_end_date?: string | null
         }
         Update: {
           bios_version?: string | null
           cluster_name?: string | null
+          cost_center?: string | null
+          cpu_cores?: number | null
           created_at?: string
+          criticality?: string | null
           datacenter?: string | null
           discovery_source?: string | null
+          domain?: string | null
           environment?: string | null
           host_type?: string | null
           hostname?: string
@@ -432,12 +493,16 @@ export type Database = {
           ip_address?: unknown
           last_discovered?: string | null
           last_updated?: string | null
+          memory_gb?: number | null
           model?: string | null
+          purchase_date?: string | null
           rack_location?: string | null
           service_tag?: string | null
           status?: Database["public"]["Enums"]["server_status"] | null
+          storage_gb?: number | null
           updated_at?: string
           vcenter_id?: string | null
+          warranty_end_date?: string | null
         }
         Relationships: []
       }
