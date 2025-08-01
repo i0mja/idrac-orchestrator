@@ -74,7 +74,7 @@ export function Sidebar({ currentPage, onPageChange, userRole }: SidebarProps) {
         </nav>
       </div>
 
-      <div className="absolute bottom-4 left-4 right-4">
+      <div className="absolute bottom-4 left-4 w-56">
         <div className="card-enterprise p-3">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
