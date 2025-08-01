@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
-import { ServerInventory } from "@/components/inventory/ServerInventory";
+import { UnifiedServerManagement } from "@/components/inventory/UnifiedServerManagement";
 import { GlobalInventoryDashboard } from "@/components/inventory/GlobalInventoryDashboard";
 import { FirmwareManagement } from "@/components/firmware/FirmwareManagement";
 import { JobScheduler } from "@/components/scheduler/JobScheduler";
@@ -64,7 +64,7 @@ export default function IdracUpdater() {
       case "dashboard":
         return <DashboardOverview />;
       case "inventory":
-        return <ServerInventory />;
+        return <UnifiedServerManagement />;
       case "global-inventory":
         return <GlobalInventoryDashboard />;
       case "firmware":

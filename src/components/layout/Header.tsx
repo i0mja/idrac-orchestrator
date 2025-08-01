@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useRealServers } from "@/hooks/useRealServers";
+import { useServers } from "@/hooks/useServers";
 
 interface HeaderProps {
   userRole: "admin" | "operator" | "viewer";
@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export function Header({ userRole, userName }: HeaderProps) {
   const { signOut } = useAuth();
-  const { servers, loading } = useRealServers();
+  const { servers, loading } = useServers();
   
   const serverCount = servers.length;
   const onlineCount = servers.filter(server => server.status === 'online').length;

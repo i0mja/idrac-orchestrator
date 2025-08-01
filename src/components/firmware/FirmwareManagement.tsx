@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { useRealServers } from "@/hooks/useRealServers";
+import { useServers } from "@/hooks/useServers";
 import { 
   Activity, 
   AlertTriangle, 
@@ -49,7 +49,7 @@ export function FirmwareManagement() {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [lastDiscovery, setLastDiscovery] = useState<string | null>(null);
   const { toast } = useToast();
-  const { servers, loading: serversLoading } = useRealServers();
+  const { servers, loading: serversLoading } = useServers();
 
   useEffect(() => {
     if (servers.length > 0) {

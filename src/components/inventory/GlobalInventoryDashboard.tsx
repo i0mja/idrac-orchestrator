@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { HostInventoryVenn } from './HostInventoryVenn';
-import { EnhancedServerManagement } from './EnhancedServerManagement';
+import { UnifiedServerManagement } from './UnifiedServerManagement';
 import { useHostInventory } from '@/hooks/useHostInventory';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -136,7 +136,7 @@ export function GlobalInventoryDashboard() {
         </TabsList>
 
         <TabsContent value="management" className="space-y-4">
-          <EnhancedServerManagement />
+          <UnifiedServerManagement />
         </TabsContent>
 
         <TabsContent value="inventory" className="space-y-4">

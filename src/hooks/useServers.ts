@@ -5,18 +5,20 @@ import { useToast } from '@/hooks/use-toast';
 export interface Server {
   id: string;
   hostname: string;
-  ip_address: unknown; // PostgreSQL INET type comes as unknown from Supabase
-  model?: string;
-  service_tag?: string;
-  idrac_version?: string;
-  bios_version?: string;
-  status: 'online' | 'offline' | 'updating' | 'error' | 'unknown';
-  vcenter_id?: string;
-  rack_location?: string;
-  datacenter?: string;
-  environment: string;
-  last_discovered?: string;
-  last_updated?: string;
+  ip_address: string | unknown; // PostgreSQL INET type
+  model?: string | null;
+  service_tag?: string | null;
+  status: 'online' | 'offline' | 'unknown' | 'updating' | 'error';
+  host_type: string;
+  vcenter_id?: string | null;
+  cluster_name?: string | null;
+  datacenter?: string | null;
+  environment?: string | null;
+  bios_version?: string | null;
+  idrac_version?: string | null;
+  rack_location?: string | null;
+  last_discovered?: string | null;
+  last_updated?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -28,13 +30,17 @@ export function useServers() {
 
   const fetchServers = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('servers')
         .select('*')
         .order('hostname');
 
       if (error) throw error;
-      setServers(data || []);
+      setServers((data || []).map((server: any) => ({
+        ...server,
+        host_type: server.host_type || 'standalone'
+      })));
     } catch (error) {
       console.error('Error fetching servers:', error);
       toast({
@@ -55,20 +61,16 @@ export function useServers() {
 
       if (error) throw error;
       
+      await fetchServers();
       toast({
-        title: "Discovery Started",
-        description: `Server discovery initiated for ${ipRange}`,
+        title: "Discovery Complete",
+        description: `Found ${data?.discovered || 0} servers`,
       });
-      
-      // Refresh the servers list after a delay
-      setTimeout(() => fetchServers(), 3000);
-      
-      return data;
     } catch (error) {
       console.error('Error discovering servers:', error);
       toast({
-        title: "Discovery Error",
-        description: "Failed to start server discovery",
+        title: "Discovery Failed",
+        description: "Failed to discover servers. Check credentials and network.",
         variant: "destructive",
       });
     }
@@ -98,10 +100,66 @@ export function useServers() {
     }
   };
 
+  const deleteServer = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('servers')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      await fetchServers();
+      toast({
+        title: "Success",
+        description: "Server deleted successfully",
+      });
+    } catch (error) {
+      console.error('Error deleting server:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete server",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const testConnection = async (serverId: string) => {
+    try {
+      const server = servers.find(s => s.id === serverId);
+      if (!server) throw new Error('Server not found');
+
+      const { data, error } = await supabase.functions.invoke('redfish-discovery', {
+        body: { 
+          ip: String(server.ip_address),
+          action: 'test' 
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Connection Test",
+        description: data?.connected ? "Successfully connected to server" : "Failed to connect to server",
+        variant: data?.connected ? "default" : "destructive",
+      });
+
+      return data?.connected || false;
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      toast({
+        title: "Connection Test Failed",
+        description: "Unable to test server connection",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
   useEffect(() => {
     fetchServers();
 
-    // Set up real-time subscription for server updates
+    // Set up real-time subscription
     const subscription = supabase
       .channel('servers_changes')
       .on('postgres_changes', 
@@ -123,5 +181,8 @@ export function useServers() {
     fetchServers,
     discoverServers,
     updateServer,
+    deleteServer,
+    testConnection,
+    refresh: fetchServers
   };
 }
