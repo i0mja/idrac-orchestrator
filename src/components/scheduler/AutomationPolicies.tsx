@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useVCenterService } from "@/hooks/useVCenterService";
 import { 
   Bot, 
   Calendar, 
@@ -67,6 +68,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   const [policies, setPolicies] = useState<AutomationPolicy[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [editingPolicy, setEditingPolicy] = useState<AutomationPolicy | null>(null);
+  const { vcenters, clusters, syncHosts, fullSync } = useVCenterService();
   const [newPolicy, setNewPolicy] = useState<{
     name: string;
     description: string;
@@ -407,7 +409,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
     }
   };
 
-  const clusters = Array.from(new Set(servers.map(s => s.cluster_name).filter(Boolean)));
+  const clusterNames = Array.from(new Set([...clusters.map(c => c.name), ...servers.map(s => s.cluster_name)].filter(Boolean)));
 
   return (
     <div className="space-y-6">
@@ -478,7 +480,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All clusters</SelectItem>
-                      {clusters.map((cluster) => (
+                      {clusterNames.map((cluster) => (
                         <SelectItem key={cluster} value={cluster}>
                           {cluster}
                         </SelectItem>

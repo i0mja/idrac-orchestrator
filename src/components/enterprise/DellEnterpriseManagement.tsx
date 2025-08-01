@@ -390,6 +390,7 @@ export function DellEnterpriseManagement() {
           <TabsTrigger value="orchestration">Manual Plans</TabsTrigger>
           <TabsTrigger value="dell-packages">Dell Update Packages</TabsTrigger>
           <TabsTrigger value="compatibility">Compatibility Matrix</TabsTrigger>
+          <TabsTrigger value="vcenter">vCenter Management</TabsTrigger>
           <TabsTrigger value="enterprise-servers">Enterprise Servers</TabsTrigger>
         </TabsList>
 
@@ -921,6 +922,11 @@ export function DellEnterpriseManagement() {
               </Table>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* vCenter Management Tab */}
+        <TabsContent value="vcenter" className="space-y-6">
+          <VCenterSyncManager showAllVCenters={true} />
         </TabsContent>
       </Tabs>
     </div>
