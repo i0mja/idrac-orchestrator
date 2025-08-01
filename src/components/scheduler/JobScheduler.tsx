@@ -25,8 +25,13 @@ import {
   CheckCircle,
   AlertTriangle
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MaintenanceWindowManager } from "./MaintenanceWindowManager";
-import { AutomationPolicies } from "./AutomationPolicies";
+import { UpdateManagementCenter } from "./UpdateManagementCenter";
 
 interface CronJob {
   id: string;
@@ -43,8 +48,10 @@ interface CronJob {
 export function JobScheduler() {
   const { servers } = useServers();
   const { events } = useSystemEvents();
-  const { config: autoConfig } = useAutoOrchestration();
+  const { config: autoConfig, updateConfig, toggleAutoOrchestration } = useAutoOrchestration();
   const { toast } = useToast();
+  
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,7 +207,7 @@ export function JobScheduler() {
                 Auto-orchestration is {autoConfig.enabled ? 'enabled' : 'disabled'}. 
                 {autoConfig.enabled && ` Next execution in ${autoConfig.execution_interval_months} months.`}
               </span>
-              <Button size="sm" variant="outline" onClick={() => window.location.hash = '#enterprise'}>
+              <Button size="sm" variant="outline" onClick={() => setIsConfigDialogOpen(true)}>
                 <Settings className="w-3 h-3 mr-1" />
                 Configure
               </Button>
@@ -210,8 +217,12 @@ export function JobScheduler() {
       )}
 
       {/* Main Tabs */}
-      <Tabs defaultValue="cron" className="space-y-6">
+      <Tabs defaultValue="updates" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="updates" className="gap-2">
+            <Zap className="w-4 h-4" />
+            Update Management
+          </TabsTrigger>
           <TabsTrigger value="cron" className="gap-2">
             <Timer className="w-4 h-4" />
             Scheduled Jobs
@@ -224,11 +235,11 @@ export function JobScheduler() {
             <Clock className="w-4 h-4" />
             Maintenance Windows
           </TabsTrigger>
-          <TabsTrigger value="automation" className="gap-2">
-            <Bot className="w-4 h-4" />
-            Automation Policies
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="updates" className="space-y-6">
+          <UpdateManagementCenter />
+        </TabsContent>
 
         <TabsContent value="cron" className="space-y-6">
           <Card className="card-enterprise">
@@ -367,11 +378,83 @@ export function JobScheduler() {
         <TabsContent value="maintenance" className="space-y-6">
           <MaintenanceWindowManager servers={servers} />
         </TabsContent>
-
-        <TabsContent value="automation" className="space-y-6">
-          <AutomationPolicies servers={servers} />
-        </TabsContent>
       </Tabs>
+
+      {/* Auto-Orchestration Configuration Dialog */}
+      <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Auto-Orchestration Configuration</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={autoConfig?.enabled || false}
+                onCheckedChange={() => toggleAutoOrchestration()}
+              />
+              <Label>Enable Auto-Orchestration</Label>
+            </div>
+            
+            {autoConfig?.enabled && (
+              <div className="space-y-4">
+                <div>
+                  <Label>Execution Interval (months)</Label>
+                  <Select 
+                    value={autoConfig.execution_interval_months?.toString() || '6'} 
+                    onValueChange={(value) => updateConfig({ execution_interval_months: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Monthly</SelectItem>
+                      <SelectItem value="3">Quarterly</SelectItem>
+                      <SelectItem value="6">Semi-Annual</SelectItem>
+                      <SelectItem value="12">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Label>Maintenance Window Start</Label>
+                  <Input
+                    type="time"
+                    value={autoConfig.maintenance_window_start || '02:00'}
+                    onChange={(e) => updateConfig({ maintenance_window_start: e.target.value })}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Maintenance Window End</Label>
+                  <Input
+                    type="time"
+                    value={autoConfig.maintenance_window_end || '06:00'}
+                    onChange={(e) => updateConfig({ maintenance_window_end: e.target.value })}
+                  />
+                </div>
+                
+                <div>
+                  <Label>Update Interval (minutes)</Label>
+                  <Input
+                    type="number"
+                    min="5"
+                    step="5"
+                    value={autoConfig.update_interval_minutes || 30}
+                    onChange={(e) => updateConfig({ update_interval_minutes: parseInt(e.target.value) })}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <Button 
+              onClick={() => setIsConfigDialogOpen(false)} 
+              className="w-full"
+            >
+              Save Configuration
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
