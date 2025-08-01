@@ -69,7 +69,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   const [newPolicy, setNewPolicy] = useState({
     name: '',
     description: '',
-    cluster_name: '',
+    cluster_name: 'all',
     policy_type: 'firmware_check' as const,
     schedule: {
       frequency: 'weekly' as const,
@@ -203,6 +203,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       const policy: AutomationPolicy = {
         id: Date.now().toString(),
         ...newPolicy,
+        cluster_name: newPolicy.cluster_name === 'all' ? undefined : newPolicy.cluster_name,
         is_active: true,
         created_at: new Date().toISOString()
       };
@@ -212,7 +213,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       setNewPolicy({
         name: '',
         description: '',
-        cluster_name: '',
+        cluster_name: 'all',
         policy_type: 'firmware_check',
         schedule: {
           frequency: 'weekly',
@@ -365,7 +366,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                       <SelectValue placeholder="All clusters" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All clusters</SelectItem>
+                      <SelectItem value="all">All clusters</SelectItem>
                       {clusters.map((cluster) => (
                         <SelectItem key={cluster} value={cluster}>
                           {cluster}

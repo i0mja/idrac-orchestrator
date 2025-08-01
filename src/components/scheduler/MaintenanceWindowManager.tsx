@@ -40,7 +40,7 @@ export function MaintenanceWindowManager({ servers = [] }: MaintenanceWindowMana
   const [isLoading, setIsLoading] = useState(false);
   const [newWindow, setNewWindow] = useState({
     name: '',
-    cluster_name: '',
+    cluster_name: 'all',
     start_time: '',
     end_time: '',
     timezone: 'UTC',
@@ -88,7 +88,10 @@ export function MaintenanceWindowManager({ servers = [] }: MaintenanceWindowMana
       const { data, error } = await supabase.functions.invoke('maintenance-windows', {
         body: {
           action: 'create',
-          window: newWindow
+          window: {
+            ...newWindow,
+            cluster_name: newWindow.cluster_name === 'all' ? undefined : newWindow.cluster_name
+          }
         }
       });
 
@@ -96,7 +99,7 @@ export function MaintenanceWindowManager({ servers = [] }: MaintenanceWindowMana
 
       setNewWindow({
         name: '',
-        cluster_name: '',
+        cluster_name: 'all',
         start_time: '',
         end_time: '',
         timezone: 'UTC',
@@ -193,7 +196,7 @@ export function MaintenanceWindowManager({ servers = [] }: MaintenanceWindowMana
                     <SelectValue placeholder="All clusters" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All clusters</SelectItem>
+                    <SelectItem value="all">All clusters</SelectItem>
                     {clusters.map((cluster) => (
                       <SelectItem key={cluster} value={cluster}>
                         {cluster}
