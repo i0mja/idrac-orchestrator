@@ -19,7 +19,9 @@ import {
   Save,
   RefreshCw,
   Plus,
-  Trash2
+  Trash2,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 
 interface SystemConfig {
@@ -74,6 +76,7 @@ export function SettingsPage() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -164,11 +167,59 @@ export function SettingsPage() {
     }
   };
 
+  const testConnection = async () => {
+    if (!newVCenter.hostname || !newVCenter.username || !newVCenter.password) {
+      toast({
+        title: "Missing Information",
+        description: "Hostname, username, and password are required for testing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsTestingConnection(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('test-vcenter-connection', {
+        body: {
+          hostname: newVCenter.hostname,
+          username: newVCenter.username,
+          password: newVCenter.password,
+          port: newVCenter.port,
+          ignore_ssl: newVCenter.ignore_ssl
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Connection Successful",
+          description: `Connected to vCenter successfully. Version: ${data.version || 'Unknown'}`,
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: data.error || "Failed to connect to vCenter",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error testing connection:', error);
+      toast({
+        title: "Connection Error",
+        description: "Unable to test vCenter connection",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
   const addVCenter = async () => {
-    if (!newVCenter.name || !newVCenter.hostname) {
+    if (!newVCenter.name || !newVCenter.hostname || !newVCenter.username || !newVCenter.password) {
       toast({
         title: "Validation Error",
-        description: "Name and hostname are required",
+        description: "Name, hostname, username, and password are required",
         variant: "destructive",
       });
       return;
@@ -181,6 +232,7 @@ export function SettingsPage() {
           name: newVCenter.name,
           hostname: newVCenter.hostname,
           username: newVCenter.username,
+          password: newVCenter.password,
           port: newVCenter.port,
           ignore_ssl: newVCenter.ignore_ssl
         });
@@ -388,6 +440,16 @@ export function SettingsPage() {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="vcenter-password">Password</Label>
+                  <Input
+                    id="vcenter-password"
+                    type="password"
+                    value={newVCenter.password}
+                    onChange={(e) => setNewVCenter(prev => ({ ...prev, password: e.target.value }))}
+                    placeholder="Enter vCenter password"
+                  />
+                </div>
+                <div>
                   <Label htmlFor="vcenter-port">Port</Label>
                   <Input
                     id="vcenter-port"
@@ -405,10 +467,25 @@ export function SettingsPage() {
                 />
                 <Label htmlFor="ignore-ssl">Ignore SSL certificate errors</Label>
               </div>
-              <Button onClick={addVCenter} className="w-full">
-                <Plus className="w-4 h-4 mr-2" />
-                Add vCenter
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={testConnection} 
+                  disabled={isTestingConnection}
+                  variant="outline" 
+                  className="flex-1"
+                >
+                  {isTestingConnection ? (
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                  )}
+                  {isTestingConnection ? 'Testing...' : 'Test Connection'}
+                </Button>
+                <Button onClick={addVCenter} className="flex-1">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add vCenter
+                </Button>
+              </div>
 
               {vcenters.length > 0 && (
                 <div className="space-y-3">
