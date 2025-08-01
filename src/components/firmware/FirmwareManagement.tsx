@@ -258,7 +258,7 @@ export function FirmwareManagement() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview" className="gap-2">
             <Activity className="w-4 h-4" />
             Fleet Overview
@@ -266,14 +266,6 @@ export function FirmwareManagement() {
           <TabsTrigger value="discovery" className="gap-2">
             <Search className="w-4 h-4" />
             Discovery
-          </TabsTrigger>
-          <TabsTrigger value="orchestration" className="gap-2">
-            <Zap className="w-4 h-4" />
-            Update Orchestration
-          </TabsTrigger>
-          <TabsTrigger value="maintenance" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            Maintenance Windows
           </TabsTrigger>
         </TabsList>
 
@@ -288,20 +280,6 @@ export function FirmwareManagement() {
           <DiscoveryControls 
             servers={servers}
             onDiscoveryComplete={loadFleetStatus}
-          />
-        </TabsContent>
-
-        <TabsContent value="orchestration" className="space-y-6">
-          <UpdateOrchestrator 
-            servers={servers}
-            fleetStatus={fleetStatus}
-            onUpdateComplete={loadFleetStatus}
-          />
-        </TabsContent>
-
-        <TabsContent value="maintenance" className="space-y-6">
-          <MaintenanceScheduler 
-            servers={servers}
           />
         </TabsContent>
       </Tabs>
