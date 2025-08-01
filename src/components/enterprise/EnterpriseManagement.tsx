@@ -68,7 +68,7 @@ export function EnterpriseManagement() {
     servers, 
     dellPackages, 
     systemEvents, 
-    loading, 
+    loading: dataLoading, 
     operationStates,
     discoverFirmwareIntelligent,
     calculateSystemHealthScore,
@@ -80,6 +80,16 @@ export function EnterpriseManagement() {
     toggleAutoOrchestration
   } = useAutoOrchestration();
   
+  // Add stable loading state to prevent stuttering
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  
+  // Use effect to handle initial load completion
+  useEffect(() => {
+    if (!dataLoading && servers.length >= 0) {
+      setIsInitialLoad(false);
+    }
+  }, [dataLoading, servers.length]);
+
   const { 
     orchestrationPlans,
     createOrchestrationPlan, 
@@ -88,24 +98,45 @@ export function EnterpriseManagement() {
   } = useDellEnterprise();
 
   // Memoize expensive calculations to prevent flickering
-  const enterpriseMetrics = useMemo(() => ({
-    totalServers: servers.length,
-    dellServers: servers.filter(s => s.model?.toLowerCase().includes('dell')).length,
-    onlineServers: servers.filter(s => s.status === 'online').length,
-    criticalAlerts: systemEvents.filter(e => e.severity === 'critical' && !e.acknowledged).length,
-    updatePackages: dellPackages.length,
-    orchestrationPlans: orchestrationPlans.length,
-    clustersCount: [...new Set(servers.map(s => s.cluster_name).filter(Boolean))].length,
-    complianceScore: Math.round((servers.filter(s => s.status === 'online').length / Math.max(servers.length, 1)) * 100)
-  }), [servers, systemEvents, dellPackages, orchestrationPlans]);
+  const enterpriseMetrics = useMemo(() => {
+    // Return empty state while loading to prevent stuttering
+    if (isInitialLoad || dataLoading) {
+      return {
+        totalServers: 0,
+        dellServers: 0,
+        onlineServers: 0,
+        criticalAlerts: 0,
+        updatePackages: 0,
+        orchestrationPlans: 0,
+        clustersCount: 0,
+        complianceScore: 0
+      };
+    }
+    
+    return {
+      totalServers: servers.length,
+      dellServers: servers.filter(s => s.model?.toLowerCase().includes('dell')).length,
+      onlineServers: servers.filter(s => s.status === 'online').length,
+      criticalAlerts: systemEvents.filter(e => e.severity === 'critical' && !e.acknowledged).length,
+      updatePackages: dellPackages.length,
+      orchestrationPlans: orchestrationPlans.length,
+      clustersCount: [...new Set(servers.map(s => s.cluster_name).filter(Boolean))].length,
+      complianceScore: Math.round((servers.filter(s => s.status === 'online').length / Math.max(servers.length, 1)) * 100)
+    };
+  }, [servers, systemEvents, dellPackages, orchestrationPlans, isInitialLoad, dataLoading]);
 
   // Memoize system health score calculation
   const healthScore = useMemo(() => {
-    if (loading || servers.length === 0) {
-      return { overallScore: 0, breakdown: {}, recommendations: [] };
+    if (isInitialLoad || dataLoading || servers.length === 0) {
+      return { 
+        overallScore: 0, 
+        breakdown: { serverHealth: 0, firmwareCompliance: 0, eventSeverity: 0, systemStability: 0 }, 
+        recommendations: [],
+        trend: 'stable' as const
+      };
     }
     return calculateSystemHealthScore();
-  }, [calculateSystemHealthScore, loading, servers.length]);
+  }, [calculateSystemHealthScore, isInitialLoad, dataLoading, servers.length]);
   
   // Memoize clusters calculation
   const clusters = useMemo(() => 
@@ -261,17 +292,22 @@ export function EnterpriseManagement() {
     }
   }, [pauseOrchestrationPlan, toast]);
 
-  // Show stable loading state
-  if (loading) {
+  // Show stable loading state without stuttering
+  if (isInitialLoad) {
     return (
       <div className="space-y-6 animate-fade-in">
-        <div className="h-8 bg-muted/30 rounded" />
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-primary/20 rounded-lg animate-pulse" />
+          <div>
+            <h1 className="text-3xl font-bold text-gradient">Enterprise Management</h1>
+            <p className="text-muted-foreground">Loading enterprise data...</p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted/30 rounded" />
+            <div key={i} className="h-32 bg-muted/20 rounded-lg border border-border/50" />
           ))}
         </div>
-        <div className="text-center text-muted-foreground">Loading enterprise data...</div>
       </div>
     );
   }
