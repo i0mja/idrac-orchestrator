@@ -13,17 +13,18 @@ import { SettingsPage } from "@/components/settings/SettingsPage";
 import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import SetupWizard from "@/components/setup/SetupWizard";
 import { VCenterConfiguration } from "@/components/vcenter/VCenterConfiguration";
+import { CommandControlCenter } from "@/components/scheduler/CommandControlCenter";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 
 type UserRole = "admin" | "operator" | "viewer";
-type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter";
+type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler";
 
 export default function IdracUpdater() {
   // Initialize currentPage from URL hash
   const getPageFromHash = () => {
     const hash = window.location.hash.slice(1); // Remove the #
-    const validPages: PageType[] = ["dashboard", "global-inventory", "enterprise", "health", "users", "settings", "alerts", "vcenter"];
+    const validPages: PageType[] = ["dashboard", "global-inventory", "enterprise", "health", "users", "settings", "alerts", "vcenter", "scheduler"];
     return validPages.includes(hash as PageType) ? (hash as PageType) : "dashboard";
   };
 
@@ -98,6 +99,8 @@ export default function IdracUpdater() {
         return <AlertsEventsPage />;
       case "vcenter":
         return <VCenterConfiguration />;
+      case "scheduler":
+        return <CommandControlCenter />;
       case "users":
         return <UserManagement />;
       case "settings":
