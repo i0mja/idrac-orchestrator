@@ -296,7 +296,7 @@ export function EnterpriseManagement() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="servers">Servers</TabsTrigger>
-          <TabsTrigger value="orchestration">Orchestration</TabsTrigger>
+          <TabsTrigger value="orchestration">Command Control</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -415,24 +415,24 @@ export function EnterpriseManagement() {
           </Card>
         </TabsContent>
 
-        {/* Orchestration Tab */}
+        {/* Command Control Tab */}
         <TabsContent value="orchestration" className="space-y-6">
-          <Tabs defaultValue="scheduling" className="space-y-6">
+          <Tabs defaultValue="automation" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="scheduling">Update Scheduling</TabsTrigger>
-              <TabsTrigger value="plans">Orchestration Plans</TabsTrigger>
+              <TabsTrigger value="automation">Automation Policies</TabsTrigger>
+              <TabsTrigger value="commands">Command History</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="scheduling">
+            <TabsContent value="automation">
               <UpdateSchedulingCenter />
             </TabsContent>
 
-            <TabsContent value="plans">
+            <TabsContent value="commands">
               <Card>
                 <CardHeader>
-                  <CardTitle>Orchestration Plans</CardTitle>
+                  <CardTitle>Command History</CardTitle>
                   <CardDescription>
-                    Manage update orchestration across your infrastructure
+                    Track remote command execution across your infrastructure
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

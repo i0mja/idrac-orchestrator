@@ -30,6 +30,8 @@ interface AutomationPolicy {
   description: string;
   cluster_name?: string;
   policy_type: 'firmware_check' | 'security_update' | 'quarterly_update' | 'emergency_patch';
+  target_components: string[]; // ['bios', 'idrac', 'storage', 'nic']
+  start_date: string;
   schedule: {
     frequency: 'weekly' | 'monthly' | 'quarterly' | 'on_demand';
     day_of_week?: number;
@@ -50,7 +52,6 @@ interface AutomationPolicy {
     max_downtime_minutes: number;
   };
   filters: {
-    firmware_types: string[];
     criticality_levels: string[];
     exclude_hosts: string[];
   };
@@ -76,6 +77,8 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
     cluster_name: string;
     server_ids?: string[];
     policy_type: 'firmware_check' | 'security_update' | 'quarterly_update' | 'emergency_patch';
+    target_components: string[];
+    start_date: string;
     schedule: {
       frequency: 'weekly' | 'monthly' | 'quarterly' | 'on_demand';
       day_of_week?: number;
@@ -96,7 +99,6 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       max_downtime_minutes: number;
     };
     filters: {
-      firmware_types: string[];
       criticality_levels: string[];
       exclude_hosts: string[];
     };
@@ -107,6 +109,8 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
     cluster_name: 'all',
     server_ids: [],
     policy_type: 'firmware_check',
+    target_components: ['bios', 'idrac'],
+    start_date: new Date().toISOString().split('T')[0],
     schedule: {
       frequency: 'weekly',
       day_of_week: 1,
@@ -127,7 +131,6 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
       max_downtime_minutes: 60
     },
     filters: {
-      firmware_types: ['bios', 'idrac'],
       criticality_levels: ['critical', 'high'],
       exclude_hosts: []
     }
@@ -146,9 +149,11 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
         {
           id: '1',
           name: 'Weekly Security Scan',
-          description: 'Check for critical security firmware updates weekly',
+          description: 'Check for critical security firmware updates weekly - BIOS and iDRAC',
           cluster_name: 'Production',
           policy_type: 'firmware_check',
+          target_components: ['bios', 'idrac'],
+          start_date: new Date().toISOString().split('T')[0],
           schedule: {
             frequency: 'weekly',
             day_of_week: 1,
@@ -168,7 +173,6 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
             max_downtime_minutes: 60
           },
           filters: {
-            firmware_types: ['bios', 'idrac'],
             criticality_levels: ['critical'],
             exclude_hosts: []
           },
@@ -180,8 +184,10 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
         {
           id: '2',
           name: 'Quarterly Firmware Updates',
-          description: 'Automated quarterly firmware updates with full cluster coordination',
+          description: 'Automated quarterly firmware updates with full cluster coordination - All Components',
           policy_type: 'quarterly_update',
+          target_components: ['bios', 'idrac', 'storage', 'nic'],
+          start_date: new Date(Date.now() + 86400000 * 30).toISOString().split('T')[0],
           schedule: {
             frequency: 'quarterly',
             day_of_month: 15,
@@ -201,7 +207,6 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
             max_downtime_minutes: 120
           },
           filters: {
-            firmware_types: ['bios', 'idrac', 'storage'],
             criticality_levels: ['critical', 'high', 'medium'],
             exclude_hosts: []
           },
@@ -253,6 +258,8 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
         cluster_name: 'all',
         server_ids: [],
         policy_type: 'firmware_check',
+        target_components: ['bios', 'idrac'],
+        start_date: new Date().toISOString().split('T')[0],
         schedule: {
           frequency: 'weekly',
           day_of_week: 1,
@@ -273,7 +280,6 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
           max_downtime_minutes: 60
         },
         filters: {
-          firmware_types: ['bios', 'idrac'],
           criticality_levels: ['critical', 'high'],
           exclude_hosts: []
         }
@@ -314,71 +320,74 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
 
   const editPolicy = (policy: AutomationPolicy) => {
     setEditingPolicy(policy);
-    setNewPolicy({
-      name: policy.name,
-      description: policy.description,
-      target_type: 'cluster',
-      cluster_name: policy.cluster_name || 'all',
-      server_ids: [],
-      policy_type: policy.policy_type,
-      schedule: policy.schedule,
-      update_strategy: policy.update_strategy,
-      safety_checks: policy.safety_checks,
-      filters: policy.filters
-    });
-  };
-
-  const updatePolicy = async () => {
-    if (!editingPolicy || !newPolicy.name || !newPolicy.description) {
-      toast({
-        title: "Missing Information",
-        description: "Name and description are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      const updatedPolicy: AutomationPolicy = {
-        ...editingPolicy,
-        ...newPolicy,
-        cluster_name: newPolicy.cluster_name === 'all' ? undefined : newPolicy.cluster_name,
-      };
-
-      setPolicies(prev => prev.map(p => p.id === editingPolicy.id ? updatedPolicy : p));
-      setEditingPolicy(null);
-      
       setNewPolicy({
-        name: '',
-        description: '',
+        name: policy.name,
+        description: policy.description,
         target_type: 'cluster',
-        cluster_name: 'all',
+        cluster_name: policy.cluster_name || 'all',
         server_ids: [],
-        policy_type: 'firmware_check',
-        schedule: {
-          frequency: 'weekly',
-          day_of_week: 1,
-          day_of_month: undefined,
-          time: '02:00'
-        },
-        update_strategy: {
-          type: 'rolling',
-          batch_size: 1,
-          wait_between_batches: 30,
-          max_concurrent: 1
-        },
-        safety_checks: {
-          min_healthy_hosts: 2,
-          require_maintenance_mode: true,
-          verify_vm_migration: true,
-          rollback_on_failure: true,
-          max_downtime_minutes: 60
-        },
-        filters: {
-          firmware_types: ['bios', 'idrac'],
-          criticality_levels: ['critical', 'high'],
-          exclude_hosts: []
-        }
+        policy_type: policy.policy_type,
+        target_components: policy.target_components,
+        start_date: policy.start_date,
+        schedule: policy.schedule,
+        update_strategy: policy.update_strategy,
+        safety_checks: policy.safety_checks,
+        filters: policy.filters
+      });
+    };
+
+    const updatePolicy = async () => {
+      if (!editingPolicy || !newPolicy.name || !newPolicy.description) {
+        toast({
+          title: "Missing Information",
+          description: "Name and description are required",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      try {
+        const updatedPolicy: AutomationPolicy = {
+          ...editingPolicy,
+          ...newPolicy,
+          cluster_name: newPolicy.cluster_name === 'all' ? undefined : newPolicy.cluster_name,
+        };
+
+        setPolicies(prev => prev.map(p => p.id === editingPolicy.id ? updatedPolicy : p));
+        setEditingPolicy(null);
+        
+        setNewPolicy({
+          name: '',
+          description: '',
+          target_type: 'cluster',
+          cluster_name: 'all',
+          server_ids: [],
+          policy_type: 'firmware_check',
+          target_components: ['bios', 'idrac'],
+          start_date: new Date().toISOString().split('T')[0],
+          schedule: {
+            frequency: 'weekly',
+            day_of_week: 1,
+            day_of_month: undefined,
+            time: '02:00'
+          },
+          update_strategy: {
+            type: 'rolling',
+            batch_size: 1,
+            wait_between_batches: 30,
+            max_concurrent: 1
+          },
+          safety_checks: {
+            min_healthy_hosts: 2,
+            require_maintenance_mode: true,
+            verify_vm_migration: true,
+            rollback_on_failure: true,
+            max_downtime_minutes: 60
+          },
+          filters: {
+            criticality_levels: ['critical', 'high'],
+            exclude_hosts: []
+          }
       });
 
       toast({

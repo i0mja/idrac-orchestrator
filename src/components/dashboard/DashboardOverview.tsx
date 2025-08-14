@@ -127,115 +127,165 @@ export function DashboardOverview() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Jobs */}
-        <Card className="card-enterprise">
+        <Card className="card-enterprise lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="w-5 h-5" />
-              Recent Update Jobs ({recentJobs.length})
+              Recent Command Executions ({recentJobs.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentJobs.length > 0 ? (
                 recentJobs.map((job) => (
-                  <div key={job.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div key={job.id} className="flex items-center justify-between p-4 rounded-lg bg-gradient-subtle border border-border/50">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium">{job.server?.hostname || 'Unknown Server'}</span>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="font-semibold text-foreground">{job.server?.hostname || 'Unknown Server'}</span>
                         {getStatusBadge(job.status)}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {job.firmware_package?.name} v{job.firmware_package?.version}
+                      <p className="text-sm text-muted-foreground mb-1">
+                        Command: {job.firmware_package?.name || 'Remote Command'} 
+                        {job.firmware_package?.version && ` v${job.firmware_package.version}`}
                       </p>
+                      {job.progress && job.progress > 0 && (
+                        <div className="flex items-center gap-2 mb-1">
+                          <Progress value={job.progress} className="w-32 h-1" />
+                          <span className="text-xs text-muted-foreground">{job.progress}%</span>
+                        </div>
+                      )}
                       {job.error_message && (
-                        <p className="text-sm text-destructive mt-1">{job.error_message}</p>
+                        <p className="text-sm text-destructive mt-1 font-medium">{job.error_message}</p>
                       )}
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      {job.completed_at 
-                        ? formatDistanceToNow(new Date(job.completed_at)) + ' ago'
-                        : job.started_at 
-                        ? 'Running'
-                        : 'Scheduled'
-                      }
-                    </span>
+                    <div className="text-right">
+                      <span className="text-sm text-muted-foreground">
+                        {job.completed_at 
+                          ? formatDistanceToNow(new Date(job.completed_at)) + ' ago'
+                          : job.started_at 
+                          ? 'Running'
+                          : 'Scheduled'
+                        }
+                      </span>
+                    </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8">
-                  <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No recent update jobs</p>
+                <div className="text-center py-12">
+                  <Clock className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground text-lg">No recent command executions</p>
+                  <p className="text-sm text-muted-foreground mt-1">Execute remote commands to see activity here</p>
                 </div>
               )}
             </div>
-            <Button variant="outline" className="w-full mt-4">
-              View All Jobs
+            <Button variant="outline" className="w-full mt-6 bg-gradient-subtle">
+              View Command History
             </Button>
           </CardContent>
         </Card>
 
-        {/* System Health */}
+        {/* Enhanced System Health */}
         <Card className="card-enterprise">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
-              System Health
+              Infrastructure Health
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-3">
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Server Uptime</span>
-                  <span className={uptime > 90 ? "text-success" : uptime > 70 ? "text-warning" : "text-error"}>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Fleet Availability</span>
+                  <span className={uptime > 90 ? "text-success font-semibold" : uptime > 70 ? "text-warning font-semibold" : "text-error font-semibold"}>
                     {uptime}%
                   </span>
                 </div>
-                <Progress value={uptime} className="h-2" />
+                <Progress value={uptime} className="h-3 bg-muted" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {onlineServers} of {totalServers} servers online
+                </p>
               </div>
               
               <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Firmware Packages</span>
-                  <span className="text-success">{packages.length} available</span>
-                </div>
-                <Progress value={packages.length > 0 ? 100 : 0} className="h-2" />
-              </div>
-              
-              <div>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Job Success Rate</span>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Command Success Rate</span>
                   <span className={
                     jobs.length === 0 ? "text-muted-foreground" :
-                    ((jobs.filter(j => j.status === 'completed').length / jobs.length) * 100) > 80 ? "text-success" : "text-warning"
+                    ((jobs.filter(j => j.status === 'completed').length / jobs.length) * 100) > 80 ? "text-success font-semibold" : "text-warning font-semibold"
                   }>
                     {jobs.length === 0 ? "No data" : `${Math.round((jobs.filter(j => j.status === 'completed').length / jobs.length) * 100)}%`}
                   </span>
                 </div>
                 <Progress 
                   value={jobs.length === 0 ? 0 : (jobs.filter(j => j.status === 'completed').length / jobs.length) * 100} 
-                  className="h-2" 
+                  className="h-3 bg-muted" 
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {jobs.filter(j => j.status === 'completed').length} successful of {jobs.length} total commands
+                </p>
+              </div>
+              
+              <div>
+                <div className="flex justify-between text-sm mb-2">
+                  <span className="font-medium">Firmware Packages</span>
+                  <span className="text-success font-semibold">{packages.length} available</span>
+                </div>
+                <Progress value={packages.length > 0 ? 100 : 0} className="h-3 bg-muted" />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ready for deployment
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border">
-              <div className="text-center">
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border">
+              <div className="text-center p-3 rounded-lg bg-gradient-subtle">
                 <Cpu className="w-6 h-6 text-primary mx-auto mb-1" />
-                <p className="text-sm text-muted-foreground">Running Jobs</p>
-                <p className="font-semibold">{jobs.filter(j => j.status === 'running').length}</p>
+                <p className="text-xs text-muted-foreground">Active</p>
+                <p className="font-bold text-lg">{jobs.filter(j => j.status === 'running').length}</p>
               </div>
-              <div className="text-center">
+              <div className="text-center p-3 rounded-lg bg-gradient-subtle">
                 <HardDrive className="w-6 h-6 text-primary mx-auto mb-1" />
-                <p className="text-sm text-muted-foreground">Discovered</p>
-                <p className="font-semibold">{servers.filter(s => s.last_discovered).length}</p>
+                <p className="text-xs text-muted-foreground">Discovered</p>
+                <p className="font-bold text-lg">{servers.filter(s => s.last_discovered).length}</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-gradient-subtle">
+                <CheckCircle className="w-6 h-6 text-success mx-auto mb-1" />
+                <p className="text-xs text-muted-foreground">Healthy</p>
+                <p className="font-bold text-lg">{onlineServers}</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card className="card-enterprise">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <RefreshCw className="w-5 h-5" />
+            Quick Actions
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Button className="h-16 flex flex-col gap-2 bg-gradient-primary">
+              <Server className="w-5 h-5" />
+              <span>Discover Servers</span>
+            </Button>
+            <Button variant="outline" className="h-16 flex flex-col gap-2">
+              <Download className="w-5 h-5" />
+              <span>Schedule Commands</span>
+            </Button>
+            <Button variant="outline" className="h-16 flex flex-col gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              <span>View Alerts</span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

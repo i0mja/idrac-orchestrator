@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { IdmConfiguration } from "./IdmConfiguration";
+import { SecuritySettings } from "./SecuritySettings";
 import { 
   Settings, 
   Network, 
@@ -411,6 +412,13 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="idm" className="space-y-6">
+          <IdmConfiguration />
+        </TabsContent>
+
+        <TabsContent value="security" className="space-y-6">
+          <SecuritySettings />
+        </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
           <Card className="card-enterprise">
