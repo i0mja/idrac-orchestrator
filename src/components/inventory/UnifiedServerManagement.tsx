@@ -39,7 +39,7 @@ import { VCenterSyncManager } from "@/components/vcenter/VCenterSyncManager";
 
 export function UnifiedServerManagement() {
   const { servers, loading, discoverServers, updateServer, deleteServer, testConnection } = useServers();
-  const { createUpdateJob } = useUpdateJobs();
+  const { createRemoteCommand } = useUpdateJobs();
   const { packages } = useFirmwarePackages();
   const { duplicates, loading: duplicatesLoading, keepPrimary } = useServerDuplicates();
   const { toast } = useToast();
@@ -128,9 +128,9 @@ export function UnifiedServerManagement() {
     }
 
     try {
-      await createUpdateJob(
+      await createRemoteCommand(
         schedulingServer.id,
-        newJob.firmwarePackageId,
+        `firmware-update --package-id=${newJob.firmwarePackageId}`,
         newJob.scheduledAt || undefined
       );
       

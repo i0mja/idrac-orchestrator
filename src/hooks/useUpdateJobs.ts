@@ -58,38 +58,30 @@ export function useUpdateJobs() {
     }
   };
 
-  const createUpdateJob = async (serverId: string, firmwarePackageId: string, scheduledAt?: string) => {
+  const createRemoteCommand = async (serverId: string, command: string, scheduledAt?: string) => {
     try {
-      const { data, error } = await supabase
-        .from('update_jobs')
-        .insert([{
-          server_id: serverId,
-          firmware_package_id: firmwarePackageId,
-          scheduled_at: scheduledAt,
-          status: 'pending'
-        }])
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('execute-remote-command', {
+        body: { 
+          serverId,
+          command,
+          scheduledAt 
+        }
+      });
 
       if (error) throw error;
-      
-      // Trigger the update job via edge function
-      await supabase.functions.invoke('process-update-job', {
-        body: { jobId: data.id }
-      });
       
       await fetchJobs();
       toast({
         title: "Success",
-        description: "Update job created successfully",
+        description: "Remote command initiated successfully",
       });
       
       return data;
     } catch (error) {
-      console.error('Error creating update job:', error);
+      console.error('Error executing remote command:', error);
       toast({
         title: "Error",
-        description: "Failed to create update job",
+        description: "Failed to execute remote command",
         variant: "destructive",
       });
     }
@@ -133,7 +125,7 @@ export function useUpdateJobs() {
       if (error) throw error;
       
       // Trigger the retry via edge function
-      await supabase.functions.invoke('process-update-job', {
+      await supabase.functions.invoke('execute-remote-command', {
         body: { jobId }
       });
       
@@ -175,7 +167,7 @@ export function useUpdateJobs() {
     jobs,
     loading,
     fetchJobs,
-    createUpdateJob,
+    createRemoteCommand,
     cancelJob,
     retryJob,
   };

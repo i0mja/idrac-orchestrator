@@ -225,7 +225,7 @@ export function FleetOverview({ fleetStatus, onRefresh }: FleetOverviewProps) {
                           onClick={() => {
                             toast({
                               title: "Update Planned",
-                              description: "Use Update Orchestration tab to schedule firmware updates",
+                              description: "Use Command Control Center to schedule firmware updates",
                             });
                           }}
                         >
