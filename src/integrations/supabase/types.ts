@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -98,6 +98,45 @@ export type Database = {
         }
         Relationships: []
       }
+      datacenters: {
+        Row: {
+          contact_email: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          location: string | null
+          maintenance_window_end: string | null
+          maintenance_window_start: string | null
+          name: string
+          timezone: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          maintenance_window_end?: string | null
+          maintenance_window_start?: string | null
+          name: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          location?: string | null
+          maintenance_window_end?: string | null
+          maintenance_window_start?: string | null
+          name?: string
+          timezone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dell_update_packages: {
         Row: {
           checksum_md5: string | null
@@ -163,6 +202,53 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      eol_alerts: {
+        Row: {
+          acknowledged: boolean | null
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          recommendation: string | null
+          server_id: string | null
+          severity: string | null
+        }
+        Insert: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          recommendation?: string | null
+          server_id?: string | null
+          severity?: string | null
+        }
+        Update: {
+          acknowledged?: boolean | null
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          recommendation?: string | null
+          server_id?: string | null
+          severity?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eol_alerts_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       firmware_packages: {
         Row: {
@@ -254,6 +340,48 @@ export type Database = {
           updated_at?: string | null
           user_search_base?: string
           user_search_filter?: string | null
+        }
+        Relationships: []
+      }
+      os_compatibility: {
+        Row: {
+          created_at: string
+          eol_date: string | null
+          id: string
+          ism_compatible: boolean | null
+          operating_system: string
+          os_version: string
+          recommendations: string | null
+          risk_level: string | null
+          server_model: string | null
+          support_status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          eol_date?: string | null
+          id?: string
+          ism_compatible?: boolean | null
+          operating_system: string
+          os_version: string
+          recommendations?: string | null
+          risk_level?: string | null
+          server_model?: string | null
+          support_status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          eol_date?: string | null
+          id?: string
+          ism_compatible?: boolean | null
+          operating_system?: string
+          os_version?: string
+          recommendations?: string | null
+          risk_level?: string | null
+          server_model?: string | null
+          support_status?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -433,15 +561,22 @@ export type Database = {
           id: string
           idrac_version: string | null
           ip_address: unknown
+          ism_installed: boolean | null
           last_discovered: string | null
           last_updated: string | null
           memory_gb: number | null
           model: string | null
+          operating_system: string | null
+          os_eol_date: string | null
+          os_version: string | null
           purchase_date: string | null
           rack_location: string | null
+          security_risk_level: string | null
           service_tag: string | null
+          site_id: string | null
           status: Database["public"]["Enums"]["server_status"] | null
           storage_gb: number | null
+          timezone: string | null
           updated_at: string
           vcenter_id: string | null
           warranty_end_date: string | null
@@ -462,15 +597,22 @@ export type Database = {
           id?: string
           idrac_version?: string | null
           ip_address: unknown
+          ism_installed?: boolean | null
           last_discovered?: string | null
           last_updated?: string | null
           memory_gb?: number | null
           model?: string | null
+          operating_system?: string | null
+          os_eol_date?: string | null
+          os_version?: string | null
           purchase_date?: string | null
           rack_location?: string | null
+          security_risk_level?: string | null
           service_tag?: string | null
+          site_id?: string | null
           status?: Database["public"]["Enums"]["server_status"] | null
           storage_gb?: number | null
+          timezone?: string | null
           updated_at?: string
           vcenter_id?: string | null
           warranty_end_date?: string | null
@@ -491,15 +633,22 @@ export type Database = {
           id?: string
           idrac_version?: string | null
           ip_address?: unknown
+          ism_installed?: boolean | null
           last_discovered?: string | null
           last_updated?: string | null
           memory_gb?: number | null
           model?: string | null
+          operating_system?: string | null
+          os_eol_date?: string | null
+          os_version?: string | null
           purchase_date?: string | null
           rack_location?: string | null
+          security_risk_level?: string | null
           service_tag?: string | null
+          site_id?: string | null
           status?: Database["public"]["Enums"]["server_status"] | null
           storage_gb?: number | null
+          timezone?: string | null
           updated_at?: string
           vcenter_id?: string | null
           warranty_end_date?: string | null
