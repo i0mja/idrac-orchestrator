@@ -1005,7 +1005,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_os_eol_status: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       connection_method: "redfish" | "racadm" | "vcenter"

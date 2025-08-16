@@ -1,0 +1,937 @@
+// Enhanced: OS-agnostic command control with multi-datacenter orchestration
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { useEnhancedServers } from "@/hooks/useEnhancedServers";
+import { supabase } from "@/integrations/supabase/client";
+import { 
+  Terminal,
+  Play,
+  Pause,
+  Settings,
+  Calendar,
+  Users,
+  Building2,
+  Command,
+  Clock,
+  CheckCircle,
+  AlertTriangle,
+  Plus,
+  Send,
+  Monitor,
+  Shield,
+  Globe,
+  Zap,
+  HardDrive,
+  Cpu,
+  RefreshCw
+} from "lucide-react";
+
+interface EnhancedCommand {
+  id: string;
+  name: string;
+  target_type: 'datacenter' | 'cluster' | 'host_group' | 'individual' | 'os_type';
+  target_names: string[];
+  command_type: 'firmware_update' | 'bios_update' | 'idrac_update' | 'reboot' | 'maintenance_mode' | 'health_check' | 'os_patch';
+  target_components?: string[]; // Enhanced: Specific components (BIOS, iDRAC, NIC, Storage)
+  os_compatibility?: string[]; // Enhanced: OS restrictions
+  start_date?: string; // Enhanced: Specific start date
+  command_parameters: Record<string, any>;
+  status: 'pending' | 'executing' | 'completed' | 'failed' | 'cancelled';
+  scheduled_at?: string;
+  executed_at?: string;
+  created_by: string;
+  created_at: string;
+}
+
+interface EnhancedAutomationPolicy {
+  id: string;
+  name: string;
+  target_type: 'datacenter' | 'cluster' | 'host_group' | 'os_type';
+  target_groups: string[];
+  target_components: string[]; // Enhanced: What to update (BIOS, iDRAC, etc.)
+  rotation_interval_days: number;
+  start_date: string; // Enhanced: When to start
+  maintenance_window_start: string;
+  maintenance_window_end: string;
+  timezone: string; // Enhanced: Datacenter-specific timezone
+  command_template: Record<string, any>;
+  os_restrictions?: string[]; // Enhanced: OS compatibility
+  enabled: boolean;
+  last_executed?: string;
+  next_execution: string;
+}
+
+export function EnhancedCommandControl() {
+  const [commands, setCommands] = useState<EnhancedCommand[]>([]);
+  const [automationPolicies, setAutomationPolicies] = useState<EnhancedAutomationPolicy[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCommandDialogOpen, setIsCommandDialogOpen] = useState(false);
+  const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
+  
+  const { servers, datacenters, osCompatibility } = useEnhancedServers();
+  const { toast } = useToast();
+
+  const [newCommand, setNewCommand] = useState({
+    name: '',
+    target_type: 'datacenter' as const,
+    target_names: [] as string[],
+    command_type: 'firmware_update' as const,
+    target_components: [] as string[],
+    os_compatibility: [] as string[],
+    start_date: '',
+    command_parameters: {},
+    scheduled_at: ''
+  });
+
+  const [newPolicy, setNewPolicy] = useState({
+    name: '',
+    target_type: 'datacenter' as const,
+    target_groups: [] as string[],
+    target_components: ['BIOS', 'iDRAC'] as string[],
+    rotation_interval_days: 90,
+    start_date: '',
+    maintenance_window_start: '02:00',
+    maintenance_window_end: '06:00',
+    timezone: 'UTC',
+    command_template: { command_type: 'firmware_update', out_of_band_only: true },
+    os_restrictions: [] as string[],
+    enabled: true
+  });
+
+  // Enhanced: Component types for Dell servers
+  const componentTypes = [
+    'BIOS',
+    'iDRAC',
+    'NIC/LOM',
+    'Storage Controller',
+    'Power Supply',
+    'System CPLD',
+    'Lifecycle Controller'
+  ];
+
+  // Enhanced: Command types with OS-agnostic focus
+  const commandTypes = [
+    { value: 'firmware_update', label: 'Firmware Update (Out-of-band)', icon: Settings },
+    { value: 'bios_update', label: 'BIOS Update (iDRAC)', icon: Cpu },
+    { value: 'idrac_update', label: 'iDRAC Update', icon: Shield },
+    { value: 'reboot', label: 'System Reboot', icon: RefreshCw },
+    { value: 'maintenance_mode', label: 'Maintenance Mode', icon: Pause },
+    { value: 'health_check', label: 'Health Check', icon: CheckCircle },
+    { value: 'os_patch', label: 'OS Patching (In-band)', icon: Monitor }
+  ];
+
+  // Enhanced: OS types from compatibility matrix
+  const supportedOSTypes = [...new Set(osCompatibility.map(os => os.operating_system))];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      // Enhanced: Load sample data with new structure
+      setCommands([
+        {
+          id: '1',
+          name: 'DC1 BIOS & iDRAC Update',
+          target_type: 'datacenter',
+          target_names: ['DC1-East'],
+          command_type: 'firmware_update',
+          target_components: ['BIOS', 'iDRAC'],
+          os_compatibility: ['VMware ESXi', 'CentOS', 'RHEL'],
+          start_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+          command_parameters: { 
+            out_of_band_only: true, 
+            reboot_required: true,
+            max_simultaneous: 1 
+          },
+          status: 'pending',
+          scheduled_at: new Date(Date.now() + 86400000).toISOString(),
+          created_by: 'admin',
+          created_at: new Date().toISOString()
+        }
+      ]);
+
+      setAutomationPolicies([
+        {
+          id: '1',
+          name: 'Quarterly Multi-Site Firmware Rotation',
+          target_type: 'datacenter',
+          target_groups: ['DC1-East', 'DC2-West', 'DC3-Central'],
+          target_components: ['BIOS', 'iDRAC', 'NIC/LOM'],
+          rotation_interval_days: 90,
+          start_date: new Date(Date.now() + 2592000000).toISOString().split('T')[0],
+          maintenance_window_start: '02:00',
+          maintenance_window_end: '06:00',
+          timezone: 'America/New_York',
+          command_template: { 
+            command_type: 'firmware_update', 
+            out_of_band_only: true,
+            eol_priority: true 
+          },
+          os_restrictions: [],
+          enabled: true,
+          next_execution: new Date(Date.now() + 2592000000).toISOString()
+        }
+      ]);
+
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load command center data",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const sendEnhancedCommand = async () => {
+    if (!newCommand.name || !newCommand.target_names.length || !newCommand.target_components.length) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields including target components",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const command: EnhancedCommand = {
+        id: Date.now().toString(),
+        name: newCommand.name,
+        target_type: newCommand.target_type,
+        target_names: newCommand.target_names,
+        command_type: newCommand.command_type,
+        target_components: newCommand.target_components,
+        os_compatibility: newCommand.os_compatibility,
+        start_date: newCommand.start_date,
+        command_parameters: {
+          ...newCommand.command_parameters,
+          out_of_band_preferred: true,
+          eol_handling: 'force_out_of_band'
+        },
+        status: newCommand.scheduled_at ? 'pending' : 'executing',
+        scheduled_at: newCommand.scheduled_at || undefined,
+        created_by: 'current_user',
+        created_at: new Date().toISOString(),
+        executed_at: newCommand.scheduled_at ? undefined : new Date().toISOString()
+      };
+
+      // Enhanced: Call enhanced command execution
+      const { error } = await supabase.functions.invoke('execute-remote-command', {
+        body: {
+          command: command,
+          immediate_execution: !newCommand.scheduled_at,
+          enhanced_mode: true
+        }
+      });
+
+      if (error) throw error;
+
+      setCommands(prev => [...prev, command]);
+      setIsCommandDialogOpen(false);
+      
+      // Reset form
+      setNewCommand({
+        name: '',
+        target_type: 'datacenter',
+        target_names: [],
+        command_type: 'firmware_update',
+        target_components: [],
+        os_compatibility: [],
+        start_date: '',
+        command_parameters: {},
+        scheduled_at: ''
+      });
+
+      toast({
+        title: "Enhanced Command Sent",
+        description: `${command.target_components.join(', ')} update sent to ${command.target_names.join(', ')}`,
+      });
+
+    } catch (error) {
+      console.error('Error sending command:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send enhanced command",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const createEnhancedPolicy = async () => {
+    if (!newPolicy.name || !newPolicy.target_groups.length || !newPolicy.target_components.length || !newPolicy.start_date) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields including start date and components",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const policy: EnhancedAutomationPolicy = {
+        id: Date.now().toString(),
+        name: newPolicy.name,
+        target_type: newPolicy.target_type,
+        target_groups: newPolicy.target_groups,
+        target_components: newPolicy.target_components,
+        rotation_interval_days: newPolicy.rotation_interval_days,
+        start_date: newPolicy.start_date,
+        maintenance_window_start: newPolicy.maintenance_window_start,
+        maintenance_window_end: newPolicy.maintenance_window_end,
+        timezone: newPolicy.timezone,
+        command_template: newPolicy.command_template,
+        os_restrictions: newPolicy.os_restrictions,
+        enabled: newPolicy.enabled,
+        next_execution: new Date(new Date(newPolicy.start_date).getTime() + newPolicy.rotation_interval_days * 24 * 60 * 60 * 1000).toISOString()
+      };
+
+      setAutomationPolicies(prev => [...prev, policy]);
+      setIsPolicyDialogOpen(false);
+      
+      // Reset form
+      setNewPolicy({
+        name: '',
+        target_type: 'datacenter',
+        target_groups: [],
+        target_components: ['BIOS', 'iDRAC'],
+        rotation_interval_days: 90,
+        start_date: '',
+        maintenance_window_start: '02:00',
+        maintenance_window_end: '06:00',
+        timezone: 'UTC',
+        command_template: { command_type: 'firmware_update', out_of_band_only: true },
+        os_restrictions: [],
+        enabled: true
+      });
+
+      toast({
+        title: "Enhanced Policy Created",
+        description: "Multi-component rotation policy created successfully",
+      });
+
+    } catch (error) {
+      console.error('Error creating policy:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create enhanced policy",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending': return <Badge className="bg-blue-500">Pending</Badge>;
+      case 'executing': return <Badge className="bg-purple-500">Executing</Badge>;
+      case 'completed': return <Badge className="bg-green-500">Completed</Badge>;
+      case 'failed': return <Badge variant="destructive">Failed</Badge>;
+      case 'cancelled': return <Badge variant="outline">Cancelled</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getCommandTypeIcon = (type: string) => {
+    const commandType = commandTypes.find(ct => ct.value === type);
+    const Icon = commandType?.icon || Terminal;
+    return <Icon className="w-4 h-4" />;
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="h-8 bg-muted/20 rounded-lg" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-32 bg-muted/20 rounded-lg border" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Command className="w-6 h-6" />
+            Enhanced Command & Control Center
+          </h2>
+          <p className="text-muted-foreground">OS-agnostic orchestration with multi-datacenter support</p>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={() => setIsCommandDialogOpen(true)}>
+            <Send className="w-4 h-4 mr-2" />
+            Send Command
+          </Button>
+          <Button variant="outline" onClick={() => setIsPolicyDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Create Policy
+          </Button>
+        </div>
+      </div>
+
+      {/* Enhanced: Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="card-enterprise">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Datacenters</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{datacenters.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {servers.length} total servers
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-enterprise">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">OS Types</CardTitle>
+            <Monitor className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{supportedOSTypes.length}</div>
+            <p className="text-xs text-muted-foreground">Supported variants</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-enterprise">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Commands</CardTitle>
+            <Terminal className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {commands.filter(c => c.status === 'executing' || c.status === 'pending').length}
+            </div>
+            <p className="text-xs text-muted-foreground">In progress</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-enterprise">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Automation Policies</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {automationPolicies.filter(p => p.enabled).length}
+            </div>
+            <p className="text-xs text-muted-foreground">Active policies</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="commands" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="commands">Commands</TabsTrigger>
+          <TabsTrigger value="policies">Automation Policies</TabsTrigger>
+          <TabsTrigger value="targets">Target Management</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="commands" className="space-y-6">
+          {/* Enhanced: Command History */}
+          <Card className="card-enterprise">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Terminal className="w-5 h-5" />
+                Enhanced Command History
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Command</TableHead>
+                    <TableHead>Components</TableHead>
+                    <TableHead>Targets</TableHead>
+                    <TableHead>OS Compatibility</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {commands.map((command) => (
+                    <TableRow key={command.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          {getCommandTypeIcon(command.command_type)}
+                          <span>{command.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {command.target_components?.map((component) => (
+                            <Badge key={component} variant="outline" className="text-xs">
+                              {component}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {command.target_names.map((name) => (
+                            <Badge key={name} variant="outline" className="text-xs">
+                              {name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {command.os_compatibility?.slice(0, 2).map((os) => (
+                            <Badge key={os} variant="secondary" className="text-xs">
+                              {os}
+                            </Badge>
+                          ))}
+                          {command.os_compatibility && command.os_compatibility.length > 2 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{command.os_compatibility.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(command.status)}</TableCell>
+                      <TableCell>
+                        {command.start_date ? new Date(command.start_date).toLocaleDateString() : 
+                         command.executed_at ? new Date(command.executed_at).toLocaleDateString() : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="policies" className="space-y-6">
+          {/* Enhanced: Automation Policies */}
+          <Card className="card-enterprise">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Enhanced Automation Policies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Policy Name</TableHead>
+                    <TableHead>Components</TableHead>
+                    <TableHead>Target Groups</TableHead>
+                    <TableHead>Interval</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>Timezone</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {automationPolicies.map((policy) => (
+                    <TableRow key={policy.id}>
+                      <TableCell className="font-medium">{policy.name}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {policy.target_components.map((component) => (
+                            <Badge key={component} variant="outline" className="text-xs">
+                              {component}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {policy.target_groups.map((group) => (
+                            <Badge key={group} variant="outline" className="text-xs">
+                              {group}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>{policy.rotation_interval_days} days</TableCell>
+                      <TableCell>{new Date(policy.start_date).toLocaleDateString()}</TableCell>
+                      <TableCell>{policy.timezone}</TableCell>
+                      <TableCell>
+                        {policy.enabled ? (
+                          <Badge className="status-online">Enabled</Badge>
+                        ) : (
+                          <Badge variant="outline">Disabled</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="targets" className="space-y-6">
+          {/* Enhanced: Target Management */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="card-enterprise">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Datacenter Targets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {datacenters.map((dc) => (
+                    <div key={dc.id} className="flex items-center justify-between p-3 rounded-lg bg-gradient-subtle border border-border/50">
+                      <div>
+                        <div className="font-medium">{dc.name}</div>
+                        <div className="text-sm text-muted-foreground">{dc.location}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Window: {dc.maintenance_window_start} - {dc.maintenance_window_end} ({dc.timezone})
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-bold">
+                          {servers.filter(s => s.site_id === dc.id).length}
+                        </div>
+                        <div className="text-xs text-muted-foreground">servers</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-enterprise">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Monitor className="w-5 h-5" />
+                  OS Type Targets
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {supportedOSTypes.map((osType) => {
+                    const osServers = servers.filter(s => s.operating_system === osType);
+                    const eolRisk = osCompatibility.find(os => 
+                      os.operating_system === osType && os.support_status === 'eol'
+                    );
+                    
+                    return (
+                      <div key={osType} className="flex items-center justify-between p-3 rounded-lg bg-gradient-subtle border border-border/50">
+                        <div className="flex items-center gap-3">
+                          <div>
+                            <div className="font-medium">{osType}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {osServers.filter(s => s.ism_installed).length} with iSM
+                            </div>
+                          </div>
+                          {eolRisk && (
+                            <Badge variant="destructive" className="text-xs">EOL Risk</Badge>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold">{osServers.length}</div>
+                          <div className="text-xs text-muted-foreground">servers</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {/* Enhanced: Send Command Dialog */}
+      <Dialog open={isCommandDialogOpen} onOpenChange={setIsCommandDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Send Enhanced Command</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="command-name">Command Name</Label>
+              <Input
+                id="command-name"
+                value={newCommand.name}
+                onChange={(e) => setNewCommand(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Q1 2025 BIOS & iDRAC Update"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="target-type">Target Type</Label>
+                <Select 
+                  value={newCommand.target_type} 
+                  onValueChange={(value: any) => setNewCommand(prev => ({ ...prev, target_type: value, target_names: [] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select target type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="datacenter">Datacenter</SelectItem>
+                    <SelectItem value="cluster">Cluster</SelectItem>
+                    <SelectItem value="host_group">Host Group</SelectItem>
+                    <SelectItem value="os_type">OS Type</SelectItem>
+                    <SelectItem value="individual">Individual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="command-type">Command Type</Label>
+                <Select 
+                  value={newCommand.command_type} 
+                  onValueChange={(value: any) => setNewCommand(prev => ({ ...prev, command_type: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select command type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {commandTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label>Target Components</Label>
+              <div className="grid grid-cols-3 gap-2 mt-2">
+                {componentTypes.map((component) => (
+                  <div key={component} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`component-${component}`}
+                      checked={newCommand.target_components.includes(component)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewCommand(prev => ({
+                            ...prev,
+                            target_components: [...prev.target_components, component]
+                          }));
+                        } else {
+                          setNewCommand(prev => ({
+                            ...prev,
+                            target_components: prev.target_components.filter(c => c !== component)
+                          }));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`component-${component}`} className="text-sm">
+                      {component}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start-date">Start Date</Label>
+                <Input
+                  id="start-date"
+                  type="date"
+                  value={newCommand.start_date}
+                  onChange={(e) => setNewCommand(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="scheduled-at">Scheduled Time (Optional)</Label>
+                <Input
+                  id="scheduled-at"
+                  type="datetime-local"
+                  value={newCommand.scheduled_at}
+                  onChange={(e) => setNewCommand(prev => ({ ...prev, scheduled_at: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsCommandDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={sendEnhancedCommand}>
+                <Send className="w-4 h-4 mr-2" />
+                Send Command
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Enhanced: Create Policy Dialog */}
+      <Dialog open={isPolicyDialogOpen} onOpenChange={setIsPolicyDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Create Enhanced Automation Policy</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="policy-name">Policy Name</Label>
+              <Input
+                id="policy-name"
+                value={newPolicy.name}
+                onChange={(e) => setNewPolicy(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="e.g., Quarterly Multi-Site Firmware Rotation"
+              />
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="policy-target-type">Target Type</Label>
+                <Select 
+                  value={newPolicy.target_type} 
+                  onValueChange={(value: any) => setNewPolicy(prev => ({ ...prev, target_type: value, target_groups: [] }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select target type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="datacenter">Datacenter</SelectItem>
+                    <SelectItem value="cluster">Cluster</SelectItem>
+                    <SelectItem value="host_group">Host Group</SelectItem>
+                    <SelectItem value="os_type">OS Type</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="rotation-interval">Rotation Interval (Days)</Label>
+                <Input
+                  id="rotation-interval"
+                  type="number"
+                  value={newPolicy.rotation_interval_days}
+                  onChange={(e) => setNewPolicy(prev => ({ ...prev, rotation_interval_days: parseInt(e.target.value) || 90 }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="policy-start-date">Start Date</Label>
+                <Input
+                  id="policy-start-date"
+                  type="date"
+                  value={newPolicy.start_date}
+                  onChange={(e) => setNewPolicy(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Target Components</Label>
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {componentTypes.map((component) => (
+                  <div key={component} className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id={`policy-component-${component}`}
+                      checked={newPolicy.target_components.includes(component)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setNewPolicy(prev => ({
+                            ...prev,
+                            target_components: [...prev.target_components, component]
+                          }));
+                        } else {
+                          setNewPolicy(prev => ({
+                            ...prev,
+                            target_components: prev.target_components.filter(c => c !== component)
+                          }));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`policy-component-${component}`} className="text-sm">
+                      {component}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="window-start">Window Start</Label>
+                <Input
+                  id="window-start"
+                  type="time"
+                  value={newPolicy.maintenance_window_start}
+                  onChange={(e) => setNewPolicy(prev => ({ ...prev, maintenance_window_start: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="window-end">Window End</Label>
+                <Input
+                  id="window-end"
+                  type="time"
+                  value={newPolicy.maintenance_window_end}
+                  onChange={(e) => setNewPolicy(prev => ({ ...prev, maintenance_window_end: e.target.value }))}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="timezone">Timezone</Label>
+                <Select 
+                  value={newPolicy.timezone} 
+                  onValueChange={(value) => setNewPolicy(prev => ({ ...prev, timezone: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="UTC">UTC</SelectItem>
+                    <SelectItem value="America/New_York">America/New_York</SelectItem>
+                    <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
+                    <SelectItem value="America/Chicago">America/Chicago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="policy-enabled"
+                checked={newPolicy.enabled}
+                onCheckedChange={(checked) => setNewPolicy(prev => ({ ...prev, enabled: checked }))}
+              />
+              <Label htmlFor="policy-enabled">Enable Policy</Label>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsPolicyDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={createEnhancedPolicy}>
+                <Plus className="w-4 h-4 mr-2" />
+                Create Policy
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
