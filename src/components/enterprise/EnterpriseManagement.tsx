@@ -293,10 +293,9 @@ export function EnterpriseManagement() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="servers">Servers</TabsTrigger>
-          <TabsTrigger value="orchestration">Command Control</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -415,85 +414,6 @@ export function EnterpriseManagement() {
           </Card>
         </TabsContent>
 
-        {/* Command Control Tab */}
-        <TabsContent value="orchestration" className="space-y-6">
-          <Tabs defaultValue="automation" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="automation">Automation Policies</TabsTrigger>
-              <TabsTrigger value="commands">Command History</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="automation">
-              <UpdateSchedulingCenter />
-            </TabsContent>
-
-            <TabsContent value="commands">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Command History</CardTitle>
-                  <CardDescription>
-                    Track remote command execution across your infrastructure
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Plan Name</TableHead>
-                        <TableHead>Servers</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {orchestrationPlans.map((plan) => (
-                        <TableRow key={plan.id}>
-                          <TableCell className="font-medium">{plan.name}</TableCell>
-                          <TableCell>{plan.server_ids?.length || 0}</TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              plan.status === 'running' ? 'default' :
-                              plan.status === 'completed' ? 'secondary' :
-                              plan.status === 'failed' ? 'destructive' : 'outline'
-                            }>
-                              {plan.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress 
-                                value={plan.total_steps ? (plan.current_step / plan.total_steps) * 100 : 0} 
-                                className="w-20" 
-                              />
-                              <span className="text-xs text-muted-foreground">
-                                {plan.current_step}/{plan.total_steps || 0}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-2">
-                              {plan.status === 'planned' && (
-                                <Button size="sm">
-                                  <Play className="w-3 h-3" />
-                                </Button>
-                              )}
-                              {plan.status === 'running' && (
-                                <Button size="sm" variant="outline">
-                                  <Pause className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </TabsContent>
 
         {/* Analytics Tab */}
         <TabsContent value="analytics" className="space-y-6">

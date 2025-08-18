@@ -492,7 +492,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="target-type">Target Type</Label>
+                  <Label htmlFor="target-type">Policy Target Assignment</Label>
                   <Select 
                     value={newPolicy.target_type || 'cluster'} 
                     onValueChange={(value) => setNewPolicy(prev => ({ 
@@ -506,34 +506,43 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="cluster">Target Clusters</SelectItem>
-                      <SelectItem value="server">Target Individual Servers</SelectItem>
+                      <SelectItem value="cluster">Apply to ESXi Clusters - Includes cluster-aware safety checks and VM migration</SelectItem>
+                      <SelectItem value="server">Apply to Individual Servers - Direct server targeting without cluster coordination</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {(newPolicy.target_type || 'cluster') === 'cluster' 
+                      ? "🔧 Cluster targeting automatically handles ESXi maintenance mode, VM migration, and ensures cluster health during updates"
+                      : "⚡ Individual server targeting skips cluster safety checks - use for standalone servers or when you need direct control"
+                    }
+                  </p>
                 </div>
                 
                 {(!newPolicy.target_type || newPolicy.target_type === 'cluster') && (
                   <div>
-                    <Label htmlFor="cluster">Target Cluster</Label>
+                    <Label htmlFor="cluster">ESXi Cluster Selection</Label>
                     <Select value={newPolicy.cluster_name} onValueChange={(value) => setNewPolicy(prev => ({ ...prev, cluster_name: value }))}>
                       <SelectTrigger>
-                        <SelectValue placeholder="All clusters" />
+                        <SelectValue placeholder="All ESXi clusters" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All clusters</SelectItem>
+                        <SelectItem value="all">🌐 All ESXi Clusters - Policy applies to every discovered cluster</SelectItem>
                         {clusterNames.map((cluster) => (
                           <SelectItem key={cluster} value={cluster}>
-                            {cluster}
+                            🏢 {cluster} - Target this specific ESXi cluster only
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ESXi cluster targeting includes DRS coordination, HA verification, and rolling host updates to maintain cluster availability
+                    </p>
                   </div>
                 )}
 
                 {newPolicy.target_type === 'server' && (
                   <div>
-                    <Label htmlFor="servers">Target Servers</Label>
+                    <Label htmlFor="servers">Individual Server Selection</Label>
                     <Select 
                       value={newPolicy.server_ids?.[0] || ''} 
                       onValueChange={(value) => setNewPolicy(prev => ({ 
@@ -542,16 +551,19 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                       }))}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select servers..." />
+                        <SelectValue placeholder="Select specific servers..." />
                       </SelectTrigger>
                       <SelectContent>
                         {servers.map((server) => (
                           <SelectItem key={server.id} value={server.id}>
-                            {server.hostname} ({server.ip_address})
+                            🖥️ {server.hostname} ({server.ip_address}) - {server.environment} | {server.operating_system || 'Unknown OS'}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Individual targeting bypasses cluster safety checks - ideal for standalone servers, test systems, or when precise control is needed
+                    </p>
                   </div>
                 )}
               </div>
