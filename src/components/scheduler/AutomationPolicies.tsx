@@ -454,9 +454,23 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+              {/* Policy Purpose Explanation */}
+              <div className="bg-muted/50 p-4 rounded-lg mb-6">
+                <h4 className="font-medium text-foreground mb-2">🤖 What are Automation Policies?</h4>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Automation policies automatically manage Dell server firmware updates across your infrastructure. They:
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                  <li><strong>Check for updates:</strong> Scan Dell repositories for newer firmware versions</li>
+                  <li><strong>Schedule installations:</strong> Apply updates during maintenance windows</li>
+                  <li><strong>Ensure safety:</strong> Coordinate with ESXi clusters, migrate VMs, prevent outages</li>
+                  <li><strong>Target specific components:</strong> BIOS, iDRAC, storage controllers, network cards</li>
+                </ul>
+              </div>
+
               {/* Basic Info */}
               <div className="space-y-4">
-                <h4 className="font-medium">Basic Information</h4>
+                <h4 className="font-medium">1. Name Your Policy</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="policy-name">Policy Name</Label>
@@ -467,23 +481,29 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                       placeholder="Weekly Security Updates"
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="policy-type">Policy Type</Label>
-                    <Select value={newPolicy.policy_type} onValueChange={(value: any) => setNewPolicy(prev => ({ ...prev, policy_type: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="firmware_check">Firmware Check</SelectItem>
-                        <SelectItem value="security_update">Security Update</SelectItem>
-                        <SelectItem value="quarterly_update">Quarterly Update</SelectItem>
-                        <SelectItem value="emergency_patch">Emergency Patch</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                   <div>
+                     <Label htmlFor="policy-type">What type of updates?</Label>
+                     <Select value={newPolicy.policy_type} onValueChange={(value: any) => setNewPolicy(prev => ({ ...prev, policy_type: value }))}>
+                       <SelectTrigger>
+                         <SelectValue />
+                       </SelectTrigger>
+                       <SelectContent>
+                         <SelectItem value="firmware_check">🔍 Firmware Check - Scan only, no automatic installation</SelectItem>
+                         <SelectItem value="security_update">🔒 Security Update - Install critical security patches automatically</SelectItem>
+                         <SelectItem value="quarterly_update">📅 Quarterly Update - Full firmware refresh every 3 months</SelectItem>
+                         <SelectItem value="emergency_patch">⚡ Emergency Patch - Immediate critical fixes</SelectItem>
+                       </SelectContent>
+                     </Select>
+                     <p className="text-xs text-muted-foreground mt-1">
+                       {newPolicy.policy_type === 'firmware_check' && "Only scans for available updates without installing"}
+                       {newPolicy.policy_type === 'security_update' && "Automatically installs critical security firmware"}
+                       {newPolicy.policy_type === 'quarterly_update' && "Comprehensive firmware updates every quarter"}
+                       {newPolicy.policy_type === 'emergency_patch' && "High-priority patches installed immediately"}
+                     </p>
+                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description">Brief description of what this policy does</Label>
                   <Input
                     id="description"
                     value={newPolicy.description}
@@ -491,8 +511,13 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                     placeholder="Automated weekly check for critical security firmware updates"
                   />
                 </div>
+              </div>
+
+              {/* Target Assignment */}
+              <div className="space-y-4">
+                <h4 className="font-medium">2. Choose Your Targets</h4>
                 <div>
-                  <Label htmlFor="target-type">Policy Target Assignment</Label>
+                  <Label htmlFor="target-type">What infrastructure should this policy manage?</Label>
                   <Select 
                     value={newPolicy.target_type || 'cluster'} 
                     onValueChange={(value) => setNewPolicy(prev => ({ 
@@ -568,9 +593,50 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
                 )}
               </div>
 
+              {/* Components to Update */}
+              <div className="space-y-4">
+                <h4 className="font-medium">3. Select Components to Update</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'bios', name: 'BIOS/UEFI', icon: '🔧', desc: 'System firmware' },
+                    { id: 'idrac', name: 'iDRAC', icon: '🖥️', desc: 'Remote management' },
+                    { id: 'storage', name: 'Storage', icon: '💾', desc: 'RAID/SAS controllers' },
+                    { id: 'nic', name: 'Network', icon: '🌐', desc: 'Network adapters' }
+                  ].map((component) => (
+                    <div key={component.id} className="flex items-center space-x-2 p-2 border rounded">
+                      <input
+                        type="checkbox"
+                        id={component.id}
+                        checked={newPolicy.target_components.includes(component.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewPolicy(prev => ({ ...prev, target_components: [...prev.target_components, component.id] }));
+                          } else {
+                            setNewPolicy(prev => ({ ...prev, target_components: prev.target_components.filter(c => c !== component.id) }));
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <label htmlFor={component.id} className="flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <span>{component.icon}</span>
+                          <div>
+                            <div className="font-medium text-sm">{component.name}</div>
+                            <div className="text-xs text-muted-foreground">{component.desc}</div>
+                          </div>
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select which firmware components this policy should manage. BIOS and iDRAC are recommended for most policies.
+                </p>
+              </div>
+
               {/* Schedule */}
               <div className="space-y-4">
-                <h4 className="font-medium">Schedule</h4>
+                <h4 className="font-medium">4. Set Update Schedule</h4>
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="frequency">Frequency</Label>
@@ -632,7 +698,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
 
               {/* Update Strategy */}
               <div className="space-y-4">
-                <h4 className="font-medium">Update Strategy</h4>
+                <h4 className="font-medium">5. Configure Update Strategy</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="strategy-type">Strategy</Label>
@@ -662,7 +728,7 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
 
               {/* Safety Checks */}
               <div className="space-y-4">
-                <h4 className="font-medium">Safety Checks</h4>
+                <h4 className="font-medium">6. Configure Safety Measures</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="min-healthy">Min Healthy Hosts</Label>
