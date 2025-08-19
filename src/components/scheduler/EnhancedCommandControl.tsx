@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { AutomationPolicies } from "@/components/scheduler/AutomationPolicies";
+import { TaskSchedulerDialog } from "@/components/scheduler/TaskSchedulerDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Terminal,
@@ -161,11 +162,11 @@ export function EnhancedCommandControl() {
     }
   };
 
-  const sendEnhancedCommand = async () => {
-    if (!newCommand.name || !newCommand.target_names.length || !newCommand.target_components.length) {
+  const sendEnhancedCommand = async (taskData: any) => {
+    if (!taskData.name || !taskData.target_names.length) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all required fields including target components",
+        description: "Please fill in all required fields",
         variant: "destructive"
       });
       return;
@@ -174,23 +175,23 @@ export function EnhancedCommandControl() {
     try {
       const command: EnhancedCommand = {
         id: Date.now().toString(),
-        name: newCommand.name,
-        target_type: newCommand.target_type,
-        target_names: newCommand.target_names,
-        command_type: newCommand.command_type,
-        target_components: newCommand.target_components,
-        os_compatibility: newCommand.os_compatibility,
-        start_date: newCommand.start_date,
+        name: taskData.name,
+        target_type: taskData.target_type,
+        target_names: taskData.target_names,
+        command_type: taskData.command_type,
+        target_components: taskData.target_components || [],
+        os_compatibility: taskData.os_compatibility || [],
+        start_date: taskData.start_date,
         command_parameters: {
-          ...newCommand.command_parameters,
+          ...taskData.command_parameters,
           out_of_band_preferred: true,
           eol_handling: 'force_out_of_band'
         },
-        status: newCommand.scheduled_at ? 'pending' : 'executing',
-        scheduled_at: newCommand.scheduled_at || undefined,
+        status: taskData.scheduled_at ? 'pending' : 'executing',
+        scheduled_at: taskData.scheduled_at || undefined,
         created_by: 'current_user',
         created_at: new Date().toISOString(),
-        executed_at: newCommand.scheduled_at ? undefined : new Date().toISOString()
+        executed_at: taskData.scheduled_at ? undefined : new Date().toISOString()
       };
 
       // Enhanced: Call enhanced command execution
@@ -277,8 +278,8 @@ export function EnhancedCommandControl() {
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setIsCommandDialogOpen(true)}>
-            <Send className="w-4 h-4 mr-2" />
-            Send Command
+            <Calendar className="w-4 h-4 mr-2" />
+            Create Task
           </Button>
         </div>
       </div>
@@ -496,128 +497,15 @@ export function EnhancedCommandControl() {
         </TabsContent>
       </Tabs>
 
-      {/* Enhanced: Send Command Dialog */}
-      <Dialog open={isCommandDialogOpen} onOpenChange={setIsCommandDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Send Enhanced Command</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="command-name">Command Name</Label>
-              <Input
-                id="command-name"
-                value={newCommand.name}
-                onChange={(e) => setNewCommand(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Q1 2025 BIOS & iDRAC Update"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="target-type">Target Type</Label>
-                <Select 
-                  value={newCommand.target_type} 
-                  onValueChange={(value: any) => setNewCommand(prev => ({ ...prev, target_type: value, target_names: [] }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="datacenter">Datacenter</SelectItem>
-                    <SelectItem value="cluster">Cluster</SelectItem>
-                    <SelectItem value="host_group">Host Group</SelectItem>
-                    <SelectItem value="os_type">OS Type</SelectItem>
-                    <SelectItem value="individual">Individual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="command-type">Command Type</Label>
-                <Select 
-                  value={newCommand.command_type} 
-                  onValueChange={(value: any) => setNewCommand(prev => ({ ...prev, command_type: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select command type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {commandTypes.map((type) => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label>Target Components</Label>
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                {componentTypes.map((component) => (
-                  <div key={component} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`component-${component}`}
-                      checked={newCommand.target_components.includes(component)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setNewCommand(prev => ({
-                            ...prev,
-                            target_components: [...prev.target_components, component]
-                          }));
-                        } else {
-                          setNewCommand(prev => ({
-                            ...prev,
-                            target_components: prev.target_components.filter(c => c !== component)
-                          }));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`component-${component}`} className="text-sm">
-                      {component}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="start-date">Start Date</Label>
-                <Input
-                  id="start-date"
-                  type="date"
-                  value={newCommand.start_date}
-                  onChange={(e) => setNewCommand(prev => ({ ...prev, start_date: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="scheduled-at">Scheduled Time (Optional)</Label>
-                <Input
-                  id="scheduled-at"
-                  type="datetime-local"
-                  value={newCommand.scheduled_at}
-                  onChange={(e) => setNewCommand(prev => ({ ...prev, scheduled_at: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsCommandDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={sendEnhancedCommand}>
-                <Send className="w-4 h-4 mr-2" />
-                Send Command
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Task Scheduler Dialog */}
+      <TaskSchedulerDialog
+        isOpen={isCommandDialogOpen}
+        onClose={() => setIsCommandDialogOpen(false)}
+        onSubmit={sendEnhancedCommand}
+        servers={servers}
+        datacenters={datacenters}
+        supportedOSTypes={supportedOSTypes}
+      />
     </div>
   );
 }
