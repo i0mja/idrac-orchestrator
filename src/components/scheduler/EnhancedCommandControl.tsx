@@ -14,6 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
+import { AutomationPolicies } from "@/components/scheduler/AutomationPolicies";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Terminal,
@@ -75,10 +76,8 @@ interface EnhancedAutomationPolicy {
 
 export function EnhancedCommandControl() {
   const [commands, setCommands] = useState<EnhancedCommand[]>([]);
-  const [automationPolicies, setAutomationPolicies] = useState<EnhancedAutomationPolicy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCommandDialogOpen, setIsCommandDialogOpen] = useState(false);
-  const [isPolicyDialogOpen, setIsPolicyDialogOpen] = useState(false);
   
   const { servers, datacenters, osCompatibility } = useEnhancedServers();
   const { toast } = useToast();
@@ -93,21 +92,6 @@ export function EnhancedCommandControl() {
     start_date: '',
     command_parameters: {},
     scheduled_at: ''
-  });
-
-  const [newPolicy, setNewPolicy] = useState({
-    name: '',
-    target_type: 'datacenter' as const,
-    target_groups: [] as string[],
-    target_components: ['BIOS', 'iDRAC'] as string[],
-    rotation_interval_days: 90,
-    start_date: '',
-    maintenance_window_start: '02:00',
-    maintenance_window_end: '06:00',
-    timezone: 'UTC',
-    command_template: { command_type: 'firmware_update', out_of_band_only: true },
-    os_restrictions: [] as string[],
-    enabled: true
   });
 
   // Enhanced: Component types for Dell servers
@@ -162,29 +146,6 @@ export function EnhancedCommandControl() {
           scheduled_at: new Date(Date.now() + 86400000).toISOString(),
           created_by: 'admin',
           created_at: new Date().toISOString()
-        }
-      ]);
-
-      setAutomationPolicies([
-        {
-          id: '1',
-          name: 'Quarterly Multi-Site Firmware Rotation',
-          target_type: 'datacenter',
-          target_groups: ['DC1-East', 'DC2-West', 'DC3-Central'],
-          target_components: ['BIOS', 'iDRAC', 'NIC/LOM'],
-          rotation_interval_days: 90,
-          start_date: new Date(Date.now() + 2592000000).toISOString().split('T')[0],
-          maintenance_window_start: '02:00',
-          maintenance_window_end: '06:00',
-          timezone: 'America/New_York',
-          command_template: { 
-            command_type: 'firmware_update', 
-            out_of_band_only: true,
-            eol_priority: true 
-          },
-          os_restrictions: [],
-          enabled: true,
-          next_execution: new Date(Date.now() + 2592000000).toISOString()
         }
       ]);
 
@@ -274,68 +235,6 @@ export function EnhancedCommandControl() {
     }
   };
 
-  const createEnhancedPolicy = async () => {
-    if (!newPolicy.name || !newPolicy.target_groups.length || !newPolicy.target_components.length || !newPolicy.start_date) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields including start date and components",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const policy: EnhancedAutomationPolicy = {
-        id: Date.now().toString(),
-        name: newPolicy.name,
-        target_type: newPolicy.target_type,
-        target_groups: newPolicy.target_groups,
-        target_components: newPolicy.target_components,
-        rotation_interval_days: newPolicy.rotation_interval_days,
-        start_date: newPolicy.start_date,
-        maintenance_window_start: newPolicy.maintenance_window_start,
-        maintenance_window_end: newPolicy.maintenance_window_end,
-        timezone: newPolicy.timezone,
-        command_template: newPolicy.command_template,
-        os_restrictions: newPolicy.os_restrictions,
-        enabled: newPolicy.enabled,
-        next_execution: new Date(new Date(newPolicy.start_date).getTime() + newPolicy.rotation_interval_days * 24 * 60 * 60 * 1000).toISOString()
-      };
-
-      setAutomationPolicies(prev => [...prev, policy]);
-      setIsPolicyDialogOpen(false);
-      
-      // Reset form
-      setNewPolicy({
-        name: '',
-        target_type: 'datacenter',
-        target_groups: [],
-        target_components: ['BIOS', 'iDRAC'],
-        rotation_interval_days: 90,
-        start_date: '',
-        maintenance_window_start: '02:00',
-        maintenance_window_end: '06:00',
-        timezone: 'UTC',
-        command_template: { command_type: 'firmware_update', out_of_band_only: true },
-        os_restrictions: [],
-        enabled: true
-      });
-
-      toast({
-        title: "Enhanced Policy Created",
-        description: "Multi-component rotation policy created successfully",
-      });
-
-    } catch (error) {
-      console.error('Error creating policy:', error);
-      toast({
-        title: "Error",
-        description: "Failed to create enhanced policy",
-        variant: "destructive"
-      });
-    }
-  };
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending': return <Badge className="bg-blue-500">Pending</Badge>;
@@ -380,10 +279,6 @@ export function EnhancedCommandControl() {
           <Button onClick={() => setIsCommandDialogOpen(true)}>
             <Send className="w-4 h-4 mr-2" />
             Send Command
-          </Button>
-          <Button variant="outline" onClick={() => setIsPolicyDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Policy
           </Button>
         </div>
       </div>
@@ -433,9 +328,7 @@ export function EnhancedCommandControl() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {automationPolicies.filter(p => p.enabled).length}
-            </div>
+            <div className="text-2xl font-bold">3</div>
             <p className="text-xs text-muted-foreground">Active policies</p>
           </CardContent>
         </Card>
@@ -524,65 +417,8 @@ export function EnhancedCommandControl() {
         </TabsContent>
 
         <TabsContent value="policies" className="space-y-6">
-          {/* Enhanced: Automation Policies */}
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Enhanced Automation Policies
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Policy Name</TableHead>
-                    <TableHead>Components</TableHead>
-                    <TableHead>Target Groups</TableHead>
-                    <TableHead>Interval</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>Timezone</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {automationPolicies.map((policy) => (
-                    <TableRow key={policy.id}>
-                      <TableCell className="font-medium">{policy.name}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {policy.target_components.map((component) => (
-                            <Badge key={component} variant="outline" className="text-xs">
-                              {component}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {policy.target_groups.map((group) => (
-                            <Badge key={group} variant="outline" className="text-xs">
-                              {group}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>{policy.rotation_interval_days} days</TableCell>
-                      <TableCell>{new Date(policy.start_date).toLocaleDateString()}</TableCell>
-                      <TableCell>{policy.timezone}</TableCell>
-                      <TableCell>
-                        {policy.enabled ? (
-                          <Badge className="status-online">Enabled</Badge>
-                        ) : (
-                          <Badge variant="outline">Disabled</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+          {/* Use the proper AutomationPolicies component with clear explanations */}
+          <AutomationPolicies servers={servers} />
         </TabsContent>
 
         <TabsContent value="targets" className="space-y-6">
@@ -777,156 +613,6 @@ export function EnhancedCommandControl() {
               <Button onClick={sendEnhancedCommand}>
                 <Send className="w-4 h-4 mr-2" />
                 Send Command
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Enhanced: Create Policy Dialog */}
-      <Dialog open={isPolicyDialogOpen} onOpenChange={setIsPolicyDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Create Enhanced Automation Policy</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="policy-name">Policy Name</Label>
-              <Input
-                id="policy-name"
-                value={newPolicy.name}
-                onChange={(e) => setNewPolicy(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Quarterly Multi-Site Firmware Rotation"
-              />
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="policy-target-type">Target Type</Label>
-                <Select 
-                  value={newPolicy.target_type} 
-                  onValueChange={(value: any) => setNewPolicy(prev => ({ ...prev, target_type: value, target_groups: [] }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select target type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="datacenter">Datacenter</SelectItem>
-                    <SelectItem value="cluster">Cluster</SelectItem>
-                    <SelectItem value="host_group">Host Group</SelectItem>
-                    <SelectItem value="os_type">OS Type</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="rotation-interval">Rotation Interval (Days)</Label>
-                <Input
-                  id="rotation-interval"
-                  type="number"
-                  value={newPolicy.rotation_interval_days}
-                  onChange={(e) => setNewPolicy(prev => ({ ...prev, rotation_interval_days: parseInt(e.target.value) || 90 }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="policy-start-date">Start Date</Label>
-                <Input
-                  id="policy-start-date"
-                  type="date"
-                  value={newPolicy.start_date}
-                  onChange={(e) => setNewPolicy(prev => ({ ...prev, start_date: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Target Components</Label>
-              <div className="grid grid-cols-4 gap-2 mt-2">
-                {componentTypes.map((component) => (
-                  <div key={component} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`policy-component-${component}`}
-                      checked={newPolicy.target_components.includes(component)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setNewPolicy(prev => ({
-                            ...prev,
-                            target_components: [...prev.target_components, component]
-                          }));
-                        } else {
-                          setNewPolicy(prev => ({
-                            ...prev,
-                            target_components: prev.target_components.filter(c => c !== component)
-                          }));
-                        }
-                      }}
-                    />
-                    <Label htmlFor={`policy-component-${component}`} className="text-sm">
-                      {component}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="window-start">Window Start</Label>
-                <Input
-                  id="window-start"
-                  type="time"
-                  value={newPolicy.maintenance_window_start}
-                  onChange={(e) => setNewPolicy(prev => ({ ...prev, maintenance_window_start: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="window-end">Window End</Label>
-                <Input
-                  id="window-end"
-                  type="time"
-                  value={newPolicy.maintenance_window_end}
-                  onChange={(e) => setNewPolicy(prev => ({ ...prev, maintenance_window_end: e.target.value }))}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select 
-                  value={newPolicy.timezone} 
-                  onValueChange={(value) => setNewPolicy(prev => ({ ...prev, timezone: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC">UTC</SelectItem>
-                    <SelectItem value="America/New_York">America/New_York</SelectItem>
-                    <SelectItem value="America/Los_Angeles">America/Los_Angeles</SelectItem>
-                    <SelectItem value="America/Chicago">America/Chicago</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="policy-enabled"
-                checked={newPolicy.enabled}
-                onCheckedChange={(checked) => setNewPolicy(prev => ({ ...prev, enabled: checked }))}
-              />
-              <Label htmlFor="policy-enabled">Enable Policy</Label>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setIsPolicyDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={createEnhancedPolicy}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Policy
               </Button>
             </div>
           </div>
