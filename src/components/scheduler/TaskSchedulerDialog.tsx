@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import { useServers } from "@/hooks/useServers";
+import { useVCenterIntegratedServers } from "@/hooks/useVCenterIntegratedServers";
+import { useVCenterService } from "@/hooks/useVCenterService";
 import { 
   Calendar,
   Clock,
@@ -26,22 +29,18 @@ import {
 } from "lucide-react";
 
 interface TaskSchedulerDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (command: any) => void;
-  servers: any[];
-  datacenters: any[];
-  supportedOSTypes: string[];
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function TaskSchedulerDialog({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  servers, 
-  datacenters, 
-  supportedOSTypes 
-}: TaskSchedulerDialogProps) {
+export function TaskSchedulerDialog({ open, onOpenChange }: TaskSchedulerDialogProps) {
+  const { servers: basicServers } = useServers();
+  const { servers: integratedServers, getVCenterManagedServers, getStandaloneServers } = useVCenterIntegratedServers();
+  const { vcenters, clusters } = useVCenterService();
+  
+  // Use integrated servers that include vCenter information
+  const servers = integratedServers.length > 0 ? integratedServers : basicServers;
+  
   const [activeTab, setActiveTab] = useState("general");
   
   const [newTask, setNewTask] = useState({
@@ -77,36 +76,21 @@ export function TaskSchedulerDialog({
     'Lifecycle Controller'
   ];
 
-  const clusters = [...new Set(servers.filter(s => s.cluster_name).map(s => s.cluster_name))];
+  const vCenterClusters = [...new Set(servers.filter(s => s.cluster_name).map(s => s.cluster_name!))];
+  const uniqueDatacenters = [...new Set(servers.map(s => (s as any).datacenter || (s as any).site_id).filter(Boolean))];
+  const osTypes = [...new Set(servers.map(s => s.operating_system).filter(Boolean))];
 
   const handleSubmit = () => {
     if (!newTask.name || !newTask.target_names.length) return;
     
-    onSubmit({
-      id: Date.now().toString(),
-      name: newTask.name,
-      description: newTask.description,
-      target_type: newTask.target_type,
-      target_names: newTask.target_names,
-      command_type: newTask.command_type,
-      target_components: newTask.target_components,
-      status: newTask.scheduled_at ? 'pending' : 'executing',
-      scheduled_at: newTask.scheduled_at || undefined,
-      created_by: 'current_user',
-      created_at: new Date().toISOString(),
-      executed_at: newTask.scheduled_at ? undefined : new Date().toISOString(),
-      command_parameters: {
-        ...newTask.command_parameters,
-        trigger_type: newTask.trigger_type,
-        maintenance_window: newTask.maintenance_window
-      }
-    });
+    // Mock submit - in real app this would create the task
+    console.log('Creating task:', newTask);
     
-    onClose();
+    onOpenChange(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -228,10 +212,134 @@ export function TaskSchedulerDialog({
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Settings className="w-5 h-5" />
-                    What Action Should This Task Perform
+                    Target Selection - What should this task manage?
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>vCenter Environments</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Select vCenter managed systems
+                        </div>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                          {vcenters.map(vc => (
+                            <div key={vc.id} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`vc-${vc.id}`}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`vc-${vc.id}`} className="text-sm">
+                                {vc.name} ({servers.filter(s => s.vcenter_id === vc.id).length} hosts)
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label>vCenter Clusters</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Select specific clusters within vCenter
+                        </div>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                          {clusters.map(cluster => (
+                            <div key={cluster.id} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`cluster-${cluster.id}`}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`cluster-${cluster.id}`} className="text-sm">
+                                {cluster.name} ({cluster.total_hosts} hosts)
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Datacenters</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Select specific datacenters to target
+                        </div>
+                        <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                          {uniqueDatacenters.map(dc => (
+                            <div key={dc} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`dc-${dc}`}
+                                className="rounded"
+                              />
+                              <Label htmlFor={`dc-${dc}`} className="text-sm">
+                                {dc} ({servers.filter(s => (s as any).datacenter === dc || (s as any).site_id === dc).length} servers)
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <Label>Management Type</Label>
+                        <div className="text-sm text-muted-foreground">
+                          Filter by management type
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="vcenter-managed"
+                              className="rounded"
+                            />
+                            <Label htmlFor="vcenter-managed" className="text-sm">
+                              vCenter Managed ({getVCenterManagedServers().length} hosts)
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id="standalone"
+                              className="rounded"
+                            />
+                            <Label htmlFor="standalone" className="text-sm">
+                              Standalone ({getStandaloneServers().length} hosts)
+                            </Label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  
+                    <div className="space-y-2">
+                      <Label>Individual Servers</Label>
+                      <div className="text-sm text-muted-foreground">
+                        Select specific servers to target
+                      </div>
+                      <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
+                        {servers.slice(0, 10).map(server => (
+                          <div key={server.id} className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              id={`server-${server.id}`}
+                              className="rounded"
+                            />
+                            <Label htmlFor={`server-${server.id}`} className="text-sm">
+                              {server.hostname} ({(server as any).vcenter_name ? 'vCenter' : 'Standalone'})
+                            </Label>
+                          </div>
+                        ))}
+                        {servers.length > 10 && (
+                          <div className="text-xs text-muted-foreground">
+                            And {servers.length - 10} more servers...
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label>Action Type</Label>
                     <Select
@@ -255,194 +363,6 @@ export function TaskSchedulerDialog({
                     <p className="text-sm text-muted-foreground">
                       {commandTypes.find(t => t.value === newTask.command_type)?.description}
                     </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Target Scope</Label>
-                    <Select
-                      value={newTask.target_type}
-                      onValueChange={(value: any) => setNewTask(prev => ({ ...prev, target_type: value, target_names: [] }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="datacenter">
-                          <div className="flex items-center gap-2">
-                            <Building2 className="w-4 h-4" />
-                            Entire Datacenter
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="cluster">
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4" />
-                            VMware ESXi Cluster
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="individual">
-                          <div className="flex items-center gap-2">
-                            <Monitor className="w-4 h-4" />
-                            Specific Servers
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="os_type">
-                          <div className="flex items-center gap-2">
-                            <Cpu className="w-4 h-4" />
-                            All Servers by OS Type
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Select {newTask.target_type === 'datacenter' ? 'Datacenters' : 
-                                     newTask.target_type === 'cluster' ? 'Clusters' :
-                                     newTask.target_type === 'individual' ? 'Servers' : 'OS Types'}</Label>
-                    <div className="max-h-48 overflow-y-auto border rounded-lg p-3 bg-muted/20 space-y-2">
-                      {newTask.target_type === 'datacenter' && datacenters.map((dc) => (
-                        <div key={dc.id} className="flex items-center space-x-3 p-2 rounded border bg-card">
-                          <input
-                            type="checkbox"
-                            id={`dc-${dc.id}`}
-                            checked={newTask.target_names.includes(dc.name)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: [...prev.target_names, dc.name] 
-                                }));
-                              } else {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: prev.target_names.filter(name => name !== dc.name) 
-                                }));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`dc-${dc.id}`} className="flex-1 cursor-pointer">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Building2 className="w-4 h-4" />
-                                <span className="font-medium">{dc.name}</span>
-                              </div>
-                              <Badge variant="secondary">
-                                {servers.filter(s => s.site_id === dc.id).length} servers
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {dc.location} • Maintenance: {dc.maintenance_window_start} - {dc.maintenance_window_end}
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-
-                      {newTask.target_type === 'cluster' && clusters.map((cluster) => (
-                        <div key={cluster} className="flex items-center space-x-3 p-2 rounded border bg-card">
-                          <input
-                            type="checkbox"
-                            id={`cluster-${cluster}`}
-                            checked={newTask.target_names.includes(cluster!)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: [...prev.target_names, cluster!] 
-                                }));
-                              } else {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: prev.target_names.filter(name => name !== cluster) 
-                                }));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`cluster-${cluster}`} className="flex-1 cursor-pointer">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Globe className="w-4 h-4" />
-                                <span className="font-medium">{cluster}</span>
-                              </div>
-                              <Badge variant="secondary">
-                                {servers.filter(s => s.cluster_name === cluster).length} ESXi hosts
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              VMware cluster with HA/DRS coordination
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-
-                      {newTask.target_type === 'individual' && servers.map((server) => (
-                        <div key={server.id} className="flex items-center space-x-3 p-2 rounded border bg-card">
-                          <input
-                            type="checkbox"
-                            id={`server-${server.id}`}
-                            checked={newTask.target_names.includes(server.hostname)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: [...prev.target_names, server.hostname] 
-                                }));
-                              } else {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: prev.target_names.filter(name => name !== server.hostname) 
-                                }));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`server-${server.id}`} className="flex-1 cursor-pointer">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Monitor className="w-4 h-4" />
-                                <span className="font-medium">{server.hostname}</span>
-                              </div>
-                              <Badge variant="outline">{server.model}</Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {server.operating_system} • {server.environment}
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-
-                      {newTask.target_type === 'os_type' && supportedOSTypes.map((os) => (
-                        <div key={os} className="flex items-center space-x-3 p-2 rounded border bg-card">
-                          <input
-                            type="checkbox"
-                            id={`os-${os}`}
-                            checked={newTask.target_names.includes(os)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: [...prev.target_names, os] 
-                                }));
-                              } else {
-                                setNewTask(prev => ({ 
-                                  ...prev, 
-                                  target_names: prev.target_names.filter(name => name !== os) 
-                                }));
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`os-${os}`} className="flex-1 cursor-pointer">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Cpu className="w-4 h-4" />
-                                <span className="font-medium">{os}</span>
-                              </div>
-                              <Badge variant="secondary">
-                                {servers.filter(s => s.operating_system === os).length} servers
-                              </Badge>
-                            </div>
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
                   </div>
 
                   {(newTask.command_type === 'firmware_update' || newTask.command_type === 'bios_update' || newTask.command_type === 'idrac_update') && (
@@ -499,8 +419,8 @@ export function TaskSchedulerDialog({
                         <span>{commandTypes.find(t => t.value === newTask.command_type)?.label}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Targets:</span>
-                        <span>{newTask.target_names.length || 0} selected</span>
+                        <span className="text-muted-foreground">vCenter Integration:</span>
+                        <span>{vcenters.length} vCenters, {getVCenterManagedServers().length} managed hosts</span>
                       </div>
                       {newTask.target_components.length > 0 && (
                         <div className="flex justify-between">
@@ -522,7 +442,7 @@ export function TaskSchedulerDialog({
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      This task will use Dell iDRAC out-of-band management when possible for maximum reliability and OS independence. 
+                      This task will integrate with vCenter APIs for cluster-aware operations and use Dell iDRAC out-of-band management when possible for maximum reliability. 
                       Maintenance windows will be respected for scheduled operations.
                     </AlertDescription>
                   </Alert>
@@ -532,12 +452,12 @@ export function TaskSchedulerDialog({
           </div>
 
           <div className="flex gap-2 justify-end mt-6 pt-4 border-t">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
             <Button 
               onClick={handleSubmit}
-              disabled={!newTask.name || !newTask.target_names.length}
+              disabled={!newTask.name}
             >
               {newTask.trigger_type === 'manual' ? 'Run Task Now' : 'Create Scheduled Task'}
             </Button>

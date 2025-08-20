@@ -499,12 +499,8 @@ export function EnhancedCommandControl() {
 
       {/* Task Scheduler Dialog */}
       <TaskSchedulerDialog
-        isOpen={isCommandDialogOpen}
-        onClose={() => setIsCommandDialogOpen(false)}
-        onSubmit={sendEnhancedCommand}
-        servers={servers}
-        datacenters={datacenters}
-        supportedOSTypes={supportedOSTypes}
+        open={isCommandDialogOpen}
+        onOpenChange={setIsCommandDialogOpen}
       />
     </div>
   );

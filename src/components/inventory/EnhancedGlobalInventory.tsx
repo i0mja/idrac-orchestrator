@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
+import { useVCenterIntegratedServers } from "@/hooks/useVCenterIntegratedServers";
+import { useVCenterService } from "@/hooks/useVCenterService";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -41,11 +43,11 @@ import {
 
 export function EnhancedGlobalInventory() {
   const { 
-    servers, 
+    servers: enhancedServers, 
     datacenters, 
     osCompatibility, 
     eolAlerts,
-    loading,
+    loading: enhancedLoading,
     detectServerOS,
     updateServerOS,
     acknowledgeEOLAlert,
@@ -54,6 +56,20 @@ export function EnhancedGlobalInventory() {
     getEOLRiskServers,
     getExpiringServers
   } = useEnhancedServers();
+  
+  const { 
+    servers: integratedServers, 
+    loading: vCenterLoading,
+    getServerStats,
+    getVCenterManagedServers,
+    getStandaloneServers 
+  } = useVCenterIntegratedServers();
+  
+  const { vcenters, syncHosts } = useVCenterService();
+  
+  // Use integrated servers that include vCenter information
+  const servers = integratedServers.length > 0 ? integratedServers : enhancedServers;
+  const loading = enhancedLoading || vCenterLoading;
   
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -73,7 +89,9 @@ export function EnhancedGlobalInventory() {
                            server.operating_system?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesEnvironment = filterEnvironment === "all" || server.environment === filterEnvironment;
-      const matchesDatacenter = filterDatacenter === "all" || server.site_id === filterDatacenter;
+      const matchesDatacenter = filterDatacenter === "all" || 
+        (server as any).site_id === filterDatacenter || 
+        (server as any).datacenter === filterDatacenter;
       const matchesOS = filterOS === "all" || server.operating_system === filterOS;
       
       let matchesEOLRisk = true;
@@ -351,6 +369,7 @@ export function EnhancedGlobalInventory() {
             <TableHeader>
               <TableRow>
                 <TableHead>Hostname</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Datacenter</TableHead>
                 <TableHead>Operating System</TableHead>
                 <TableHead>EOL Status</TableHead>
@@ -370,8 +389,26 @@ export function EnhancedGlobalInventory() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
+                      {server.vcenter_id ? (
+                        <>
+                          <Network className="w-4 h-4 text-blue-500" />
+                          <div>
+                            <div className="font-medium text-blue-600">vCenter</div>
+                            <div className="text-xs text-muted-foreground">{(server as any).vcenter_name}</div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <Server className="w-4 h-4 text-muted-foreground" />
+                          <span>Standalone</span>
+                        </>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
                       <Building className="w-4 h-4 text-muted-foreground" />
-                      <span>{getDatacenterName(server.site_id)}</span>
+                      <span>{getDatacenterName((server as any).site_id || (server as any).datacenter)}</span>
                     </div>
                   </TableCell>
                   <TableCell>

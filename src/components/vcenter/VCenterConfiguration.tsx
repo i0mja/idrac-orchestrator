@@ -30,7 +30,7 @@ interface VCenterConfig {
 }
 
 export function VCenterConfiguration() {
-  const { vcenters, loadVCenters } = useVCenterService();
+  const { vcenters, loadVCenters, refresh } = useVCenterService();
   const { toast } = useToast();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -108,6 +108,7 @@ export function VCenterConfiguration() {
       }
 
       await loadVCenters();
+      await refresh(); // Refresh all vCenter data
       setIsDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -153,6 +154,7 @@ export function VCenterConfiguration() {
       });
 
       await loadVCenters();
+      await refresh(); // Refresh all vCenter data
     } catch (error: any) {
       console.error('Failed to delete vCenter:', error);
       toast({
@@ -314,8 +316,45 @@ export function VCenterConfiguration() {
         ))}
       </div>
 
-      {/* Synchronization Manager */}
-      <VCenterSyncManager showAllVCenters={true} />
+      {/* Synchronization Manager - Integrated with the app */}
+      <div className="mb-6">
+        <VCenterSyncManager showAllVCenters={true} />
+      </div>
+
+      {/* Quick Integration Status */}
+      <Card className="card-enterprise mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Network className="w-5 h-5" />
+            vCenter Integration Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-2xl font-bold text-primary">
+                {vcenters.length}
+              </div>
+              <div className="text-sm text-muted-foreground">Connected vCenters</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-success">
+                {vcenters.filter(vc => 
+                  new Date().getTime() - new Date(vc.updated_at).getTime() < 3600000
+                ).length}
+              </div>
+              <div className="text-sm text-muted-foreground">Recently Synced</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold text-blue-600">
+                {/* This would show managed hosts from integrated servers */}
+                TBD
+              </div>
+              <div className="text-sm text-muted-foreground">Managed Hosts</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
