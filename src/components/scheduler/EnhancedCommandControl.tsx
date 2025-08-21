@@ -5,8 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
+import { CampaignCreationDialog } from "./CampaignCreationDialog";
+import { MaintenanceSchedulingDialog } from "./MaintenanceSchedulingDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings,
   Calendar,
@@ -22,7 +26,9 @@ import {
   PauseCircle,
   Layers,
   Plus,
-  Zap
+  Zap,
+  ExternalLink,
+  Eye
 } from "lucide-react";
 
 interface UpdateCampaign {
@@ -56,8 +62,11 @@ interface MaintenanceWindow {
 
 export function EnhancedCommandControl() {
   const [campaigns, setCampaigns] = useState<UpdateCampaign[]>([]);
+  const [orchestrationPlans, setOrchestrationPlans] = useState<any[]>([]);
   const [maintenanceWindows, setMaintenanceWindows] = useState<MaintenanceWindow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false);
+  const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
   
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
@@ -69,56 +78,73 @@ export function EnhancedCommandControl() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Sample update campaigns
-      setCampaigns([
-        {
-          id: '1',
-          name: 'Q1 Security Update Campaign',
-          target_datacenters: ['DC1-East', 'DC2-West'],
-          update_type: 'security_patch',
-          components: ['BIOS', 'iDRAC', 'NIC'],
-          rollout_strategy: 'sequential',
-          status: 'in_progress',
-          progress: 35,
-          total_servers: 120,
-          completed_servers: 42,
-          start_date: new Date().toISOString(),
-          estimated_completion: new Date(Date.now() + 86400000 * 3).toISOString(),
-          created_by: 'admin',
-          priority: 'high'
-        },
-        {
-          id: '2',
-          name: 'ESXi 8.0 U3 Firmware Compatibility',
-          target_datacenters: ['DC1-East'],
-          update_type: 'firmware',
-          components: ['BIOS', 'Storage Controller'],
-          rollout_strategy: 'canary',
-          status: 'scheduled',
-          progress: 0,
-          total_servers: 45,
-          completed_servers: 0,
-          start_date: new Date(Date.now() + 86400000 * 7).toISOString(),
-          estimated_completion: new Date(Date.now() + 86400000 * 10).toISOString(),
-          created_by: 'admin',
-          priority: 'medium'
-        }
-      ]);
+      // Load actual orchestration plans from database
+      const { data: plans, error: plansError } = await supabase
+        .from('update_orchestration_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-      // Sample maintenance windows
-      setMaintenanceWindows([
-        {
-          id: '1',
-          name: 'Weekend Maintenance - DC1',
-          datacenter_id: 'dc1',
-          start_time: '02:00',
-          end_time: '06:00',
-          timezone: 'EST',
-          max_concurrent_updates: 3,
-          status: 'upcoming',
-          campaigns_scheduled: 2
+      if (plansError) throw plansError;
+
+      setOrchestrationPlans(plans || []);
+
+      // Transform orchestration plans to campaigns format
+      const transformedCampaigns: UpdateCampaign[] = (plans || []).map(plan => {
+        const updateSequence = plan.update_sequence as any;
+        
+        // Map database status to campaign status
+        let campaignStatus: UpdateCampaign['status'];
+        switch (plan.status) {
+          case 'planned':
+            campaignStatus = 'scheduled';
+            break;
+          case 'in_progress':
+            campaignStatus = 'in_progress';
+            break;
+          case 'paused':
+            campaignStatus = 'paused';
+            break;
+          case 'completed':
+            campaignStatus = 'completed';
+            break;
+          default:
+            campaignStatus = 'draft';
         }
-      ]);
+
+        return {
+          id: plan.id,
+          name: plan.name,
+          target_datacenters: [], // Will be filled from server data
+          update_type: updateSequence?.update_type || 'firmware',
+          components: updateSequence?.components || [],
+          rollout_strategy: updateSequence?.rollout_strategy || 'sequential',
+          status: campaignStatus,
+          progress: Math.floor((plan.current_step / (plan.total_steps || 1)) * 100),
+          total_servers: plan.server_ids?.length || 0,
+          completed_servers: plan.current_step || 0,
+          start_date: plan.started_at || plan.next_execution_date || plan.created_at,
+          estimated_completion: plan.completed_at || new Date(Date.now() + 86400000 * 3).toISOString(),
+          created_by: plan.created_by || 'system',
+          priority: updateSequence?.priority || 'medium'
+        };
+      });
+
+      setCampaigns(transformedCampaigns);
+
+      // Create maintenance windows from datacenters
+      const maintenanceWindowsData: MaintenanceWindow[] = datacenters.map(dc => ({
+        id: dc.id,
+        name: `${dc.name} Maintenance Window`,
+        datacenter_id: dc.id,
+        start_time: dc.maintenance_window_start?.slice(0, 5) || '02:00',
+        end_time: dc.maintenance_window_end?.slice(0, 5) || '06:00',
+        timezone: dc.timezone || 'UTC',
+        max_concurrent_updates: 3,
+        status: 'upcoming' as const,
+        campaigns_scheduled: transformedCampaigns.filter(c => c.status === 'scheduled').length
+      }));
+
+      setMaintenanceWindows(maintenanceWindowsData);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -129,6 +155,155 @@ export function EnhancedCommandControl() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCampaignAction = async (campaignId: string, action: 'pause' | 'resume' | 'monitor') => {
+    try {
+      const campaign = orchestrationPlans.find(p => p.id === campaignId);
+      if (!campaign) return;
+
+      switch (action) {
+        case 'pause':
+          await supabase
+            .from('update_orchestration_plans')
+            .update({ status: 'paused' })
+            .eq('id', campaignId);
+
+          await supabase
+            .from('system_events')
+            .insert({
+              title: `Campaign Paused: ${campaign.name}`,
+              description: 'Update campaign has been paused by user',
+              event_type: 'campaign_paused',
+              severity: 'warning'
+            });
+
+          toast({
+            title: "Campaign Paused",
+            description: `${campaign.name} has been paused`,
+          });
+          break;
+
+        case 'resume':
+          await supabase
+            .from('update_orchestration_plans')
+            .update({ status: 'in_progress' })
+            .eq('id', campaignId);
+
+          // Trigger auto-orchestration
+          await supabase.functions.invoke('auto-orchestration', {
+            body: { plan_id: campaignId, action: 'resume' }
+          });
+
+          await supabase
+            .from('system_events')
+            .insert({
+              title: `Campaign Resumed: ${campaign.name}`,
+              description: 'Update campaign has been resumed',
+              event_type: 'campaign_resumed',
+              severity: 'info'
+            });
+
+          toast({
+            title: "Campaign Resumed",
+            description: `${campaign.name} has been resumed`,
+          });
+          break;
+
+        case 'monitor':
+          // Open monitoring in new tab (would be a detailed view)
+          toast({
+            title: "Opening Monitor",
+            description: `Opening detailed monitoring for ${campaign.name}`,
+          });
+          break;
+      }
+
+      loadData(); // Refresh data
+    } catch (error) {
+      console.error('Error handling campaign action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to execute campaign action",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleEmergencyAction = async (actionType: 'security_patch' | 'idrac_update') => {
+    try {
+      const actionName = actionType === 'security_patch' ? 'Emergency Security Patch' : 'Emergency iDRAC Update';
+      
+      // Create emergency campaign
+      const { data: plan, error } = await supabase
+        .from('update_orchestration_plans')
+        .insert({
+          name: `${actionName} - ${new Date().toISOString().split('T')[0]}`,
+          server_ids: [], // Would be populated based on selection
+          update_sequence: {
+            update_type: actionType,
+            components: actionType === 'security_patch' ? ['BIOS', 'iDRAC', 'System CPLD'] : ['iDRAC'],
+            rollout_strategy: 'parallel',
+            priority: 'critical'
+          },
+          safety_checks: {
+            requires_approval: false,
+            max_concurrent_updates: 10,
+            emergency_mode: true
+          },
+          status: 'in_progress',
+          total_steps: 1
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Execute emergency action
+      await supabase.functions.invoke('execute-remote-command', {
+        body: {
+          command: {
+            name: actionName,
+            target_type: 'datacenter',
+            target_names: datacenters.map(dc => dc.name),
+            command_type: actionType === 'security_patch' ? 'security_patch' : 'idrac_update',
+            command_parameters: {
+              emergency_mode: true,
+              priority: 'critical'
+            }
+          },
+          immediate_execution: true,
+          enhanced_mode: true
+        }
+      });
+
+      await supabase
+        .from('system_events')
+        .insert({
+          title: `Emergency Action Initiated: ${actionName}`,
+          description: `Critical ${actionType} deployment started across all datacenters`,
+          event_type: 'emergency_action',
+          severity: 'critical',
+          metadata: {
+            plan_id: plan.id,
+            action_type: actionType
+          }
+        });
+
+      toast({
+        title: "Emergency Action Initiated",
+        description: `${actionName} deployment has started across all datacenters`,
+      });
+
+      loadData();
+    } catch (error) {
+      console.error('Error executing emergency action:', error);
+      toast({
+        title: "Error",
+        description: "Failed to execute emergency action",
+        variant: "destructive"
+      });
     }
   };
 
@@ -184,11 +359,11 @@ export function EnhancedCommandControl() {
           <p className="text-muted-foreground">Enterprise Dell server update campaigns and maintenance orchestration</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => setIsMaintenanceDialogOpen(true)}>
             <Calendar className="w-4 h-4 mr-2" />
             Schedule Maintenance
           </Button>
-          <Button>
+          <Button onClick={() => setIsCampaignDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Campaign
           </Button>
@@ -305,16 +480,28 @@ export function EnhancedCommandControl() {
                       <TableCell>
                         <div className="flex gap-1">
                           {campaign.status === 'in_progress' && (
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleCampaignAction(campaign.id, 'pause')}
+                            >
                               <PauseCircle className="w-3 h-3" />
                             </Button>
                           )}
                           {campaign.status === 'paused' && (
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleCampaignAction(campaign.id, 'resume')}
+                            >
                               <PlayCircle className="w-3 h-3" />
                             </Button>
                           )}
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleCampaignAction(campaign.id, 'monitor')}
+                          >
                             <Monitor className="w-3 h-3" />
                           </Button>
                         </div>
@@ -365,14 +552,22 @@ export function EnhancedCommandControl() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button variant="destructive" className="h-auto p-4">
+                <Button 
+                  variant="destructive" 
+                  className="h-auto p-4"
+                  onClick={() => handleEmergencyAction('security_patch')}
+                >
                   <div className="text-center">
                     <AlertTriangle className="w-6 h-6 mx-auto mb-2" />
                     <div className="font-medium">Emergency Security Patch</div>
                     <div className="text-xs opacity-90">Critical vulnerability patching</div>
                   </div>
                 </Button>
-                <Button variant="outline" className="h-auto p-4">
+                <Button 
+                  variant="outline" 
+                  className="h-auto p-4"
+                  onClick={() => handleEmergencyAction('idrac_update')}
+                >
                   <div className="text-center">
                     <Shield className="w-6 h-6 mx-auto mb-2" />
                     <div className="font-medium">Emergency iDRAC Update</div>
@@ -384,6 +579,21 @@ export function EnhancedCommandControl() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialogs */}
+      <CampaignCreationDialog
+        open={isCampaignDialogOpen}
+        onOpenChange={setIsCampaignDialogOpen}
+        datacenters={datacenters}
+        onCampaignCreated={loadData}
+      />
+
+      <MaintenanceSchedulingDialog
+        open={isMaintenanceDialogOpen}
+        onOpenChange={setIsMaintenanceDialogOpen}
+        datacenters={datacenters}
+        onWindowCreated={loadData}
+      />
     </div>
   );
 }
