@@ -584,7 +584,14 @@ export function EnhancedCommandControl() {
       <CampaignCreationDialog
         open={isCampaignDialogOpen}
         onOpenChange={setIsCampaignDialogOpen}
-        datacenters={datacenters}
+        datacenters={datacenters.map(dc => ({
+          ...dc,
+          location: dc.location || null,
+          timezone: dc.timezone || 'UTC',
+          maintenance_window_start: dc.maintenance_window_start || '02:00:00',
+          maintenance_window_end: dc.maintenance_window_end || '06:00:00',
+          is_active: dc.is_active ?? true
+        }))}
         onCampaignCreated={loadData}
       />
 

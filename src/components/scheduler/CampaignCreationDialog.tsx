@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,14 +7,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Calendar, Clock, Building2, Shield, Cpu, HardDrive } from "lucide-react";
+import { Calendar, Clock, Building2, Shield, Cpu, HardDrive, AlertTriangle, Info } from "lucide-react";
+
+interface Datacenter {
+  id: string;
+  name: string;
+  location: string | null;
+  timezone: string;
+  maintenance_window_start: string;
+  maintenance_window_end: string;
+  is_active: boolean;
+}
 
 interface CampaignCreationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  datacenters: any[];
+  datacenters: Datacenter[];
   onCampaignCreated: () => void;
 }
 
@@ -39,6 +50,7 @@ export function CampaignCreationDialog({
     requires_approval: true
   });
 
+  const [scheduleWarnings, setScheduleWarnings] = useState<string[]>([]);
   const { toast } = useToast();
 
   const updateTypes = [
@@ -64,6 +76,42 @@ export function CampaignCreationDialog({
     { value: 'parallel', label: 'Parallel (All DCs simultaneously)' },
     { value: 'canary', label: 'Canary (Test group first)' }
   ];
+
+  const validateScheduleAgainstDatacenters = () => {
+    const warnings: string[] = [];
+    const scheduleStart = formData.maintenance_window_start;
+    const scheduleEnd = formData.maintenance_window_end;
+
+    const selectedDatacenters = datacenters.filter(dc => formData.target_datacenters.includes(dc.id));
+
+    selectedDatacenters.forEach(dc => {
+      const dcStart = dc.maintenance_window_start.slice(0, 5); // Remove seconds
+      const dcEnd = dc.maintenance_window_end.slice(0, 5);
+
+      // Convert times to minutes for comparison
+      const scheduleStartMinutes = parseInt(scheduleStart.split(':')[0]) * 60 + parseInt(scheduleStart.split(':')[1]);
+      const scheduleEndMinutes = parseInt(scheduleEnd.split(':')[0]) * 60 + parseInt(scheduleEnd.split(':')[1]);
+      const dcStartMinutes = parseInt(dcStart.split(':')[0]) * 60 + parseInt(dcStart.split(':')[1]);
+      const dcEndMinutes = parseInt(dcEnd.split(':')[0]) * 60 + parseInt(dcEnd.split(':')[1]);
+
+      // Check if campaign window falls outside datacenter window
+      if (scheduleStartMinutes < dcStartMinutes || scheduleEndMinutes > dcEndMinutes) {
+        warnings.push(
+          `${dc.name}: Campaign window (${scheduleStart}-${scheduleEnd}) is outside preferred maintenance window (${dcStart}-${dcEnd})`
+        );
+      }
+    });
+
+    setScheduleWarnings(warnings);
+  };
+
+  useEffect(() => {
+    if (formData.target_datacenters.length > 0 && formData.maintenance_window_start && formData.maintenance_window_end) {
+      validateScheduleAgainstDatacenters();
+    } else {
+      setScheduleWarnings([]);
+    }
+  }, [formData.target_datacenters, formData.maintenance_window_start, formData.maintenance_window_end, datacenters]);
 
   const handleDatacenterToggle = (datacenterId: string) => {
     setFormData(prev => ({
@@ -293,8 +341,13 @@ export function CampaignCreationDialog({
                         <div className="text-xs text-muted-foreground">{dc.location}</div>
                       </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {dc.maintenance_window_start} - {dc.maintenance_window_end}
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground">
+                        {dc.maintenance_window_start.slice(0, 5)} - {dc.maintenance_window_end.slice(0, 5)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {dc.timezone}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -322,36 +375,62 @@ export function CampaignCreationDialog({
           </div>
 
           {/* Scheduling */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="start_date">Start Date</Label>
-              <Input
-                id="start_date"
-                type="date"
-                value={formData.start_date}
-                onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
-              />
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="start_date">Start Date</Label>
+                <Input
+                  id="start_date"
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_date: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="window_start">Campaign Window Start</Label>
+                <Input
+                  id="window_start"
+                  type="time"
+                  value={formData.maintenance_window_start}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maintenance_window_start: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="window_end">Campaign Window End</Label>
+                <Input
+                  id="window_end"
+                  type="time"
+                  value={formData.maintenance_window_end}
+                  onChange={(e) => setFormData(prev => ({ ...prev, maintenance_window_end: e.target.value }))}
+                />
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="window_start">Maintenance Window Start</Label>
-              <Input
-                id="window_start"
-                type="time"
-                value={formData.maintenance_window_start}
-                onChange={(e) => setFormData(prev => ({ ...prev, maintenance_window_start: e.target.value }))}
-              />
-            </div>
+            {/* Schedule Validation Warnings */}
+            {scheduleWarnings.length > 0 && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-1">
+                    <div className="font-medium">Schedule Conflicts Detected:</div>
+                    {scheduleWarnings.map((warning, index) => (
+                      <div key={index} className="text-sm">{warning}</div>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="window_end">Maintenance Window End</Label>
-              <Input
-                id="window_end"
-                type="time"
-                value={formData.maintenance_window_end}
-                onChange={(e) => setFormData(prev => ({ ...prev, maintenance_window_end: e.target.value }))}
-              />
-            </div>
+            {formData.target_datacenters.length > 0 && scheduleWarnings.length === 0 && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Campaign schedule aligns with all selected datacenter maintenance windows.
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <div className="flex items-center justify-between">
