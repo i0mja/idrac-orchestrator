@@ -11,6 +11,7 @@ import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import { DatacenterSettings } from "@/components/settings/DatacenterSettings";
+import { NetworkDiscovery } from "@/components/discovery/NetworkDiscovery";
 
 export function AppRoutes() {
   return (
@@ -18,6 +19,7 @@ export function AppRoutes() {
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/inventory" element={<EnhancedGlobalInventory />} />
+      <Route path="/discovery" element={<NetworkDiscovery />} />
       <Route path="/scheduler" element={<EnhancedCommandControl />} />
       <Route path="/alerts" element={<AlertsEventsPage />} />
       <Route path="/vcenter" element={<VCenterManagement />} />

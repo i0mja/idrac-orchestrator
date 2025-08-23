@@ -13,8 +13,9 @@ import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import VCenterManagement from "@/pages/VCenterManagement";
+import { NetworkDiscovery } from "@/components/discovery/NetworkDiscovery";
 
-type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler";
+type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery";
 
 const Index = () => {
   // Enhanced: Multi-user role support for enterprise environments
@@ -42,6 +43,8 @@ const Index = () => {
         return <EnhancedDashboard />;
       case "global-inventory":
         return <EnhancedGlobalInventory />;
+      case "discovery":
+        return <NetworkDiscovery />;
       case "scheduler":
         return <EnhancedCommandControl />;
       case "enterprise":
