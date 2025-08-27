@@ -1,91 +1,61 @@
-import { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  DollarSign,
+  Server,
   Building2,
   Shield,
-  TrendingUp,
   AlertTriangle,
   CheckCircle,
-  Target,
-  Clock,
-  FileText,
-  Award,
-  Zap,
+  Activity,
+  Settings,
+  Search,
   Calendar,
-  MapPin,
-  BarChart3,
+  Network,
   RefreshCw,
-  Download,
-  PieChart,
-  Users,
-  Globe,
-  Network
+  ArrowRight,
+  Zap,
+  Clock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-interface EnterpriseMetrics {
-  totalServers: number;
-  totalDatacenters: number;
-  complianceScore: number;
-  securityScore: number;
-  costThisMonth: number;
-  warrantyExpiringCount: number;
-  eolSystemsCount: number;
-  updateComplianceScore: number;
-}
-
-interface DatacenterHealth {
-  id: string;
-  name: string;
-  location: string;
+interface DashboardMetrics {
   totalServers: number;
   onlineServers: number;
+  criticalAlerts: number;
+  warrantyExpiring: number;
   healthScore: number;
-  lastIncident: string | null;
-  powerUsage: number;
-  capacity: number;
-}
-
-interface ComplianceItem {
-  id: string;
-  category: string;
-  title: string;
-  status: 'compliant' | 'warning' | 'critical';
-  description: string;
-  dueDate?: string;
-  affectedSystems: number;
+  lastDiscovery: string;
+  datacenters: Array<{
+    name: string;
+    location: string;
+    servers: number;
+    status: 'healthy' | 'warning' | 'critical';
+  }>;
 }
 
 export function EnterpriseManagement() {
-  const [activeTab, setActiveTab] = useState("executive");
   const [loading, setLoading] = useState(true);
-  const [enterpriseMetrics, setEnterpriseMetrics] = useState<EnterpriseMetrics>({
+  const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalServers: 0,
-    totalDatacenters: 0,
-    complianceScore: 0,
-    securityScore: 0,
-    costThisMonth: 0,
-    warrantyExpiringCount: 0,
-    eolSystemsCount: 0,
-    updateComplianceScore: 0
+    onlineServers: 0,
+    criticalAlerts: 0,
+    warrantyExpiring: 0,
+    healthScore: 0,
+    lastDiscovery: 'Never',
+    datacenters: []
   });
-  const [datacenterHealth, setDatacenterHealth] = useState<DatacenterHealth[]>([]);
-  const [complianceItems, setComplianceItems] = useState<ComplianceItem[]>([]);
   
   const { toast } = useToast();
 
-  const fetchEnterpriseData = async () => {
+  const fetchDashboardData = async () => {
     try {
       setLoading(true);
       
-      const [serversResult, datacentersResult, eolAlertsResult] = await Promise.allSettled([
+      const [serversResult, datacentersResult, alertsResult] = await Promise.allSettled([
         supabase.from('servers').select('*'),
         supabase.from('datacenters').select('*'),
         supabase.from('eol_alerts').select('*').eq('acknowledged', false)
@@ -102,78 +72,40 @@ export function EnterpriseManagement() {
           return endDate <= threeMonthsFromNow;
         }).length;
 
-        // Calculate enterprise metrics
-        setEnterpriseMetrics({
-          totalServers: servers.length,
-          totalDatacenters: datacentersResult.status === 'fulfilled' ? (datacentersResult.value.data?.length || 0) : 0,
-          complianceScore: servers.length > 0 ? Math.round((onlineServers / servers.length) * 100) : 0,
-          securityScore: Math.round(Math.random() * 20 + 80), // Mock security score
-          costThisMonth: Math.round(servers.length * 125.5 + Math.random() * 1000), // Mock cost calculation
-          warrantyExpiringCount: warrantyExpiring,
-          eolSystemsCount: eolAlertsResult.status === 'fulfilled' ? (eolAlertsResult.value.data?.length || 0) : 0,
-          updateComplianceScore: Math.round(Math.random() * 15 + 85) // Mock update compliance
+        const datacenters = datacentersResult.status === 'fulfilled' ? (datacentersResult.value.data || []) : [];
+        const dcMetrics = datacenters.map(dc => {
+          const dcServers = servers.filter(s => s.datacenter === dc.name);
+          const dcOnline = dcServers.filter(s => s.status === 'online').length;
+          const healthScore = dcServers.length > 0 ? Math.round((dcOnline / dcServers.length) * 100) : 100;
+          
+          return {
+            name: dc.name,
+            location: dc.location || 'Unknown',
+            servers: dcServers.length,
+            status: healthScore >= 90 ? 'healthy' as const : healthScore >= 70 ? 'warning' as const : 'critical' as const
+          };
         });
 
-        // Generate datacenter health data
-        const datacenters = datacentersResult.status === 'fulfilled' ? (datacentersResult.value.data || []) : [];
-        const dcHealth = datacenters.map(dc => ({
-          id: dc.id,
-          name: dc.name,
-          location: dc.location || 'Unknown',
-          totalServers: servers.filter(s => s.datacenter === dc.name).length,
-          onlineServers: servers.filter(s => s.datacenter === dc.name && s.status === 'online').length,
-          healthScore: Math.round(Math.random() * 20 + 80),
-          lastIncident: Math.random() > 0.7 ? `${Math.floor(Math.random() * 30)} days ago` : null,
-          powerUsage: Math.round(Math.random() * 30 + 60),
-          capacity: Math.round(Math.random() * 20 + 70)
-        }));
-        setDatacenterHealth(dcHealth);
-      }
+        const overallHealth = servers.length > 0 ? Math.round((onlineServers / servers.length) * 100) : 100;
+        const criticalAlerts = (alertsResult.status === 'fulfilled' ? (alertsResult.value.data?.length || 0) : 0) + 
+                              (warrantyExpiring > 5 ? 1 : 0);
 
-      // Generate compliance items
-      setComplianceItems([
-        {
-          id: '1',
-          category: 'Security',
-          title: 'Security Patch Compliance',
-          status: 'warning',
-          description: '12 servers missing critical security patches',
-          dueDate: '2024-09-15',
-          affectedSystems: 12
-        },
-        {
-          id: '2',
-          category: 'Warranty',
-          title: 'Hardware Warranty Management',
-          status: 'critical',
-          description: '8 servers with warranty expiring within 30 days',
-          dueDate: '2024-09-01',
-          affectedSystems: 8
-        },
-        {
-          id: '3',
-          category: 'Firmware',
-          title: 'Firmware Update Compliance',
-          status: 'compliant',
-          description: 'All systems running approved firmware versions',
-          affectedSystems: 0
-        },
-        {
-          id: '4',
-          category: 'Backup',
-          title: 'Backup Policy Compliance',
-          status: 'warning',
-          description: '3 servers with backup failures in last 7 days',
-          dueDate: '2024-08-25',
-          affectedSystems: 3
-        }
-      ]);
+        setMetrics({
+          totalServers: servers.length,
+          onlineServers,
+          criticalAlerts,
+          warrantyExpiring,
+          healthScore: overallHealth,
+          lastDiscovery: servers.length > 0 ? '2 hours ago' : 'Never',
+          datacenters: dcMetrics
+        });
+      }
       
     } catch (error) {
-      console.error('Error fetching enterprise data:', error);
+      console.error('Error fetching dashboard data:', error);
       toast({
         title: "Error",
-        description: "Failed to load enterprise data",
+        description: "Failed to load infrastructure data",
         variant: "destructive"
       });
     } finally {
@@ -182,45 +114,45 @@ export function EnterpriseManagement() {
   };
 
   useEffect(() => {
-    fetchEnterpriseData();
+    fetchDashboardData();
   }, []);
 
   const handleRefresh = async () => {
-    await fetchEnterpriseData();
+    await fetchDashboardData();
     toast({
       title: "Refreshed",
-      description: "Enterprise data has been updated"
+      description: "Infrastructure data updated"
     });
   };
 
-  const getComplianceColor = (score: number) => {
+  const getHealthColor = (score: number) => {
     if (score >= 90) return "text-green-600";
     if (score >= 70) return "text-yellow-600";
     return "text-red-600";
   };
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'compliant': return 'default';
-      case 'warning': return 'secondary';
-      case 'critical': return 'destructive';
-      default: return 'outline';
+      case 'healthy': return 'text-green-600';
+      case 'warning': return 'text-yellow-600';
+      case 'critical': return 'text-red-600';
+      default: return 'text-muted-foreground';
     }
   };
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-6">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg" />
+          <div className="w-10 h-10 bg-gradient-primary rounded-lg animate-pulse" />
           <div>
-            <h1 className="text-3xl font-bold text-gradient">Enterprise Management</h1>
-            <p className="text-muted-foreground">Loading enterprise analytics...</p>
+            <h1 className="text-3xl font-bold">Infrastructure & Operations</h1>
+            <p className="text-muted-foreground">Loading dashboard...</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="h-32 bg-muted/20 rounded-lg border animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-24 bg-muted/20 rounded-lg animate-pulse" />
           ))}
         </div>
       </div>
@@ -228,438 +160,227 @@ export function EnterpriseManagement() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-primary rounded-lg flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <Activity className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gradient">Infrastructure & Operations</h1>
-            <p className="text-muted-foreground">
-              Executive insights, datacenter management, compliance monitoring, and governance oversight
-            </p>
+            <h1 className="text-4xl font-bold text-gradient">Infrastructure Dashboard</h1>
+            <p className="text-muted-foreground text-lg">Real-time monitoring and management</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button onClick={handleRefresh} variant="outline" size="sm">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export Report
-          </Button>
-        </div>
+        <Button onClick={handleRefresh} variant="outline" className="gap-2">
+          <RefreshCw className="w-4 h-4" />
+          Refresh
+        </Button>
       </div>
 
-      {/* Executive KPI Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="card-enterprise">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Infrastructure Scale</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{enterpriseMetrics.totalServers}</div>
-            <p className="text-xs text-muted-foreground">
-              Servers across {enterpriseMetrics.totalDatacenters} datacenters
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-enterprise">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly IT Spend</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${enterpriseMetrics.costThisMonth.toLocaleString()}</div>
-            <p className="text-xs text-green-600">
-              ↓ 8% vs last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="card-enterprise">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Compliance Score</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getComplianceColor(enterpriseMetrics.complianceScore)}`}>
-              {enterpriseMetrics.complianceScore}%
-            </div>
-            <div className="w-full bg-secondary rounded-full h-2 mt-2">
-              <div 
-                className="bg-gradient-primary h-2 rounded-full transition-all duration-300" 
-                style={{ width: `${enterpriseMetrics.complianceScore}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-enterprise">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${getComplianceColor(enterpriseMetrics.securityScore)}`}>
-              {enterpriseMetrics.securityScore}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Risk assessment score
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Risk Alerts */}
-      {(enterpriseMetrics.warrantyExpiringCount > 0 || enterpriseMetrics.eolSystemsCount > 0) && (
+      {/* Critical Alerts */}
+      {metrics.criticalAlerts > 0 && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-1">
-              {enterpriseMetrics.warrantyExpiringCount > 0 && (
-                <div>{enterpriseMetrics.warrantyExpiringCount} systems have warranty expiring within 90 days</div>
-              )}
-              {enterpriseMetrics.eolSystemsCount > 0 && (
-                <div>{enterpriseMetrics.eolSystemsCount} systems are at end-of-life and require attention</div>
-              )}
-            </div>
+          <AlertDescription className="text-base">
+            <strong>{metrics.criticalAlerts} critical alert{metrics.criticalAlerts > 1 ? 's' : ''} require immediate attention</strong>
+            {metrics.warrantyExpiring > 0 && (
+              <div className="mt-1">{metrics.warrantyExpiring} systems have warranties expiring soon</div>
+            )}
           </AlertDescription>
         </Alert>
       )}
 
-        {/* Main Content Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="executive">Executive</TabsTrigger>
-            <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
-            <TabsTrigger value="compliance">Compliance</TabsTrigger>
-            <TabsTrigger value="datacenters">Datacenters</TabsTrigger>
-            <TabsTrigger value="financial">Financial</TabsTrigger>
-          </TabsList>
-
-        {/* Executive Dashboard */}
-        <TabsContent value="executive" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Key Performance Indicators
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">System Availability</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">99.7%</span>
-                    <Progress value={99.7} className="w-20" />
-                  </div>
+      {/* Main Dashboard Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Infrastructure Overview */}
+        <Card className="col-span-1 md:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-xl">
+              <Server className="w-5 h-5" />
+              Infrastructure Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-primary">{metrics.totalServers}</div>
+                <div className="text-sm text-muted-foreground">Total Servers</div>
+                <div className="text-xs text-green-600 mt-1">
+                  {metrics.onlineServers} online
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Update Compliance</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{enterpriseMetrics.updateComplianceScore}%</span>
-                    <Progress value={enterpriseMetrics.updateComplianceScore} className="w-20" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Mean Time to Resolution</span>
-                  <span className="text-sm font-medium">2.4 hours</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Change Success Rate</span>
-                  <span className="text-sm font-medium">96.2%</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Business Impact Metrics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Cost per Server/Month</span>
-                  <span className="text-sm font-medium">$125</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Energy Efficiency</span>
-                  <span className="text-sm font-medium text-green-600">+12%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Automation Rate</span>
-                  <span className="text-sm font-medium">78%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Planned vs Unplanned Downtime</span>
-                  <span className="text-sm font-medium">85:15</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Infrastructure Management */}
-        <TabsContent value="infrastructure" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Datacenter Management
-                </CardTitle>
-                <CardDescription>
-                  Configure datacenters and maintenance windows
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Datacenter Configuration</h4>
-                      <p className="text-sm text-muted-foreground">Manage datacenter locations and maintenance schedules</p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.location.href = '/settings/datacenters'}
-                    >
-                      Configure
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <h4 className="font-medium">Network Discovery</h4>
-                      <p className="text-sm text-muted-foreground">Scan for Dell servers and infrastructure</p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => window.location.href = '/discovery'}
-                    >
-                      Scan Network
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Network className="h-5 w-5" />
-                  Infrastructure Health
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Total Infrastructure</span>
-                  <span className="text-sm font-medium">{enterpriseMetrics.totalServers} servers</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Datacenters</span>
-                  <span className="text-sm font-medium">{enterpriseMetrics.totalDatacenters} locations</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Overall Health</span>
-                  <div className="flex items-center gap-2">
-                    <span className={`text-sm font-medium ${getComplianceColor(enterpriseMetrics.complianceScore)}`}>
-                      {enterpriseMetrics.complianceScore}%
-                    </span>
-                    <Progress value={enterpriseMetrics.complianceScore} className="w-16" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Risk Assessment</span>
-                  <span className={`text-sm font-medium ${getComplianceColor(enterpriseMetrics.securityScore)}`}>
-                    {enterpriseMetrics.securityScore}%
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        {/* Compliance & Governance */}
-        <TabsContent value="compliance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5" />
-                Compliance Status
-              </CardTitle>
-              <CardDescription>
-                Monitor regulatory and policy compliance across your infrastructure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {complianceItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 rounded-lg border">
-                    <div className="flex items-center gap-3">
-                      {item.status === 'compliant' ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : item.status === 'warning' ? (
-                        <Clock className="w-5 h-5 text-yellow-600" />
-                      ) : (
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <Badge variant={getStatusBadgeVariant(item.status)}>
-                            {item.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{item.description}</p>
-                        {item.dueDate && (
-                          <p className="text-xs text-muted-foreground">Due: {item.dueDate}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-medium">{item.affectedSystems}</div>
-                      <div className="text-xs text-muted-foreground">systems</div>
-                    </div>
-                  </div>
-                ))}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              <div className="text-center">
+                <div className={`text-3xl font-bold ${getHealthColor(metrics.healthScore)}`}>
+                  {metrics.healthScore}%
+                </div>
+                <div className="text-sm text-muted-foreground">Health Score</div>
+                <Progress value={metrics.healthScore} className="mt-2" />
+              </div>
+            </div>
+            
+            <div className="pt-4 border-t">
+              <div className="flex items-center justify-between text-sm">
+                <span>Last Discovery:</span>
+                <span className="font-medium">{metrics.lastDiscovery}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Datacenter Health */}
-        <TabsContent value="datacenters" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-            {datacenterHealth.map((dc) => (
-              <Card key={dc.id}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4" />
-                    {dc.name}
-                  </CardTitle>
-                  <CardDescription>{dc.location}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Health Score</span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-medium ${getComplianceColor(dc.healthScore)}`}>
-                        {dc.healthScore}%
-                      </span>
-                      <Progress value={dc.healthScore} className="w-16" />
-                    </div>
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="w-5 h-5" />
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.location.href = '/discovery'}
+            >
+              <div className="flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Network Discovery
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.location.href = '/scheduler'}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Schedule Updates
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full justify-between"
+              onClick={() => window.location.href = '/settings/datacenters'}
+            >
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" />
+                Configure Datacenters
+              </div>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Datacenters Status */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="w-5 h-5" />
+            Datacenter Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {metrics.datacenters.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No datacenters configured</p>
+              <p className="mb-4">Configure your first datacenter to start monitoring</p>
+              <Button onClick={() => window.location.href = '/settings/datacenters'}>
+                Configure Datacenters
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {metrics.datacenters.map((dc, index) => (
+                <div key={index} className="p-4 border rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">{dc.name}</h3>
+                    <div className={`w-3 h-3 rounded-full ${
+                      dc.status === 'healthy' ? 'bg-green-500' : 
+                      dc.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                    }`} />
                   </div>
+                  <p className="text-sm text-muted-foreground mb-3">{dc.location}</p>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Servers</span>
-                    <span className="text-sm font-medium">
-                      {dc.onlineServers}/{dc.totalServers} online
+                    <span className="text-sm">Servers:</span>
+                    <span className="font-medium">{dc.servers}</span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-sm">Status:</span>
+                    <span className={`text-sm font-medium capitalize ${getStatusColor(dc.status)}`}>
+                      {dc.status}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Power Usage</span>
-                    <span className="text-sm font-medium">{dc.powerUsage}%</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Capacity</span>
-                    <span className="text-sm font-medium">{dc.capacity}%</span>
-                  </div>
-                  {dc.lastIncident && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm">Last Incident</span>
-                      <span className="text-sm text-yellow-600">{dc.lastIncident}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        {/* Financial Overview */}
-        <TabsContent value="financial" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Cost Breakdown
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Hardware Costs</span>
-                  <span className="text-sm font-medium">$65,400</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Maintenance & Support</span>
-                  <span className="text-sm font-medium">$18,200</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Power & Cooling</span>
-                  <span className="text-sm font-medium">$12,800</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Software Licensing</span>
-                  <span className="text-sm font-medium">$8,600</span>
-                </div>
-                <div className="border-t pt-2">
-                  <div className="flex items-center justify-between font-medium">
-                    <span>Total Monthly</span>
-                    <span>${enterpriseMetrics.costThisMonth.toLocaleString()}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* System Health Indicators */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{metrics.onlineServers}</div>
+                <div className="text-sm text-muted-foreground">Online Systems</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Warranty & Support Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Active Warranties</span>
-                  <span className="text-sm font-medium">
-                    {enterpriseMetrics.totalServers - enterpriseMetrics.warrantyExpiringCount - 5}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Expiring Soon</span>
-                  <span className="text-sm font-medium text-yellow-600">
-                    {enterpriseMetrics.warrantyExpiringCount}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Expired</span>
-                  <span className="text-sm font-medium text-red-600">5</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Support Contracts</span>
-                  <span className="text-sm font-medium">
-                    {Math.floor(enterpriseMetrics.totalServers * 0.85)}
-                  </span>
-                </div>
-                <Button className="w-full mt-4" size="sm">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Warranty Report
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                <Shield className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{100 - metrics.criticalAlerts}</div>
+                <div className="text-sm text-muted-foreground">Security Score</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{metrics.warrantyExpiring}</div>
+                <div className="text-sm text-muted-foreground">Warranty Expiring</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">{metrics.criticalAlerts}</div>
+                <div className="text-sm text-muted-foreground">Critical Alerts</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
