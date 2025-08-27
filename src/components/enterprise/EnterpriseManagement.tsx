@@ -24,7 +24,8 @@ import {
   Download,
   PieChart,
   Users,
-  Globe
+  Globe,
+  Network
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -235,9 +236,9 @@ export function EnterpriseManagement() {
             <Building2 className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-gradient">Enterprise Management</h1>
+            <h1 className="text-3xl font-bold text-gradient">Infrastructure & Operations</h1>
             <p className="text-muted-foreground">
-              Executive insights, compliance monitoring, and governance oversight
+              Executive insights, datacenter management, compliance monitoring, and governance oversight
             </p>
           </div>
         </div>
@@ -332,14 +333,15 @@ export function EnterpriseManagement() {
         </Alert>
       )}
 
-      {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="executive">Executive</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="datacenters">Datacenters</TabsTrigger>
-          <TabsTrigger value="financial">Financial</TabsTrigger>
-        </TabsList>
+        {/* Main Content Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="executive">Executive</TabsTrigger>
+            <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
+            <TabsTrigger value="compliance">Compliance</TabsTrigger>
+            <TabsTrigger value="datacenters">Datacenters</TabsTrigger>
+            <TabsTrigger value="financial">Financial</TabsTrigger>
+          </TabsList>
 
         {/* Executive Dashboard */}
         <TabsContent value="executive" className="space-y-6">
@@ -400,6 +402,87 @@ export function EnterpriseManagement() {
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Planned vs Unplanned Downtime</span>
                   <span className="text-sm font-medium">85:15</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Infrastructure Management */}
+        <TabsContent value="infrastructure" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Datacenter Management
+                </CardTitle>
+                <CardDescription>
+                  Configure datacenters and maintenance windows
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">Datacenter Configuration</h4>
+                      <p className="text-sm text-muted-foreground">Manage datacenter locations and maintenance schedules</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.location.href = '/settings/datacenters'}
+                    >
+                      Configure
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
+                      <h4 className="font-medium">Network Discovery</h4>
+                      <p className="text-sm text-muted-foreground">Scan for Dell servers and infrastructure</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => window.location.href = '/discovery'}
+                    >
+                      Scan Network
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Network className="h-5 w-5" />
+                  Infrastructure Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Total Infrastructure</span>
+                  <span className="text-sm font-medium">{enterpriseMetrics.totalServers} servers</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Datacenters</span>
+                  <span className="text-sm font-medium">{enterpriseMetrics.totalDatacenters} locations</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Overall Health</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${getComplianceColor(enterpriseMetrics.complianceScore)}`}>
+                      {enterpriseMetrics.complianceScore}%
+                    </span>
+                    <Progress value={enterpriseMetrics.complianceScore} className="w-16" />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Risk Assessment</span>
+                  <span className={`text-sm font-medium ${getComplianceColor(enterpriseMetrics.securityScore)}`}>
+                    {enterpriseMetrics.securityScore}%
+                  </span>
                 </div>
               </CardContent>
             </Card>

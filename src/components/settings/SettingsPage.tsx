@@ -364,31 +364,6 @@ export function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <HardDrive className="w-5 h-5" />
-                Infrastructure Management
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">Datacenter Management</h4>
-                    <p className="text-sm text-muted-foreground">Configure datacenters and maintenance windows</p>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.location.href = '/settings/datacenters'}
-                  >
-                    Manage
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           <Card className="card-enterprise">
             <CardHeader>
