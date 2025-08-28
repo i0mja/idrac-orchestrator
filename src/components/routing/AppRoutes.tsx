@@ -10,7 +10,7 @@ import VCenterManagement from "@/pages/VCenterManagement";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
-import { DatacenterSettings } from "@/components/settings/DatacenterSettings";
+
 import { NetworkDiscovery } from "@/components/discovery/NetworkDiscovery";
 import { EnterpriseManagement } from "@/components/enterprise/EnterpriseManagement";
 
@@ -29,7 +29,6 @@ export function AppRoutes() {
         <Route path="health" element={<HealthChecks />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="settings" element={<SettingsPage />} />
-        <Route path="settings/datacenters" element={<DatacenterSettings />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>

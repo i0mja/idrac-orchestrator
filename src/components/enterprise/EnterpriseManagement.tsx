@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DatacenterManagement } from "@/components/datacenter/DatacenterManagement";
 import {
   Server,
   Building2,
@@ -39,6 +41,7 @@ interface DashboardMetrics {
 
 export function EnterpriseManagement() {
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("overview");
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalServers: 0,
     onlineServers: 0,
@@ -168,7 +171,7 @@ export function EnterpriseManagement() {
             <Activity className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-gradient">Infrastructure Dashboard</h1>
+            <h1 className="text-4xl font-bold text-gradient">Infrastructure & Operations</h1>
             <p className="text-muted-foreground text-lg">Real-time monitoring and management</p>
           </div>
         </div>
@@ -178,209 +181,222 @@ export function EnterpriseManagement() {
         </Button>
       </div>
 
-      {/* Critical Alerts */}
-      {metrics.criticalAlerts > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="text-base">
-            <strong>{metrics.criticalAlerts} critical alert{metrics.criticalAlerts > 1 ? 's' : ''} require immediate attention</strong>
-            {metrics.warrantyExpiring > 0 && (
-              <div className="mt-1">{metrics.warrantyExpiring} systems have warranties expiring soon</div>
-            )}
-          </AlertDescription>
-        </Alert>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
+        </TabsList>
 
-      {/* Main Dashboard Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Infrastructure Overview */}
-        <Card className="col-span-1 md:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <Server className="w-5 h-5" />
-              Infrastructure Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-primary">{metrics.totalServers}</div>
-                <div className="text-sm text-muted-foreground">Total Servers</div>
-                <div className="text-xs text-green-600 mt-1">
-                  {metrics.onlineServers} online
-                </div>
-              </div>
-              <div className="text-center">
-                <div className={`text-3xl font-bold ${getHealthColor(metrics.healthScore)}`}>
-                  {metrics.healthScore}%
-                </div>
-                <div className="text-sm text-muted-foreground">Health Score</div>
-                <Progress value={metrics.healthScore} className="mt-2" />
-              </div>
-            </div>
-            
-            <div className="pt-4 border-t">
-              <div className="flex items-center justify-between text-sm">
-                <span>Last Discovery:</span>
-                <span className="font-medium">{metrics.lastDiscovery}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button 
-              variant="outline" 
-              className="w-full justify-between"
-              onClick={() => window.location.href = '/discovery'}
-            >
-              <div className="flex items-center gap-2">
-                <Search className="w-4 h-4" />
-                Network Discovery
-              </div>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="w-full justify-between"
-              onClick={() => window.location.href = '/scheduler'}
-            >
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Schedule Updates
-              </div>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            
-            <Button 
-              variant="outline" 
-              className="w-full justify-between"
-              onClick={() => window.location.href = '/settings/datacenters'}
-            >
-              <div className="flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                Configure Datacenters
-              </div>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Datacenters Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            Datacenter Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {metrics.datacenters.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">No datacenters configured</p>
-              <p className="mb-4">Configure your first datacenter to start monitoring</p>
-              <Button onClick={() => window.location.href = '/settings/datacenters'}>
-                Configure Datacenters
-              </Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {metrics.datacenters.map((dc, index) => (
-                <div key={index} className="p-4 border rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold">{dc.name}</h3>
-                    <div className={`w-3 h-3 rounded-full ${
-                      dc.status === 'healthy' ? 'bg-green-500' : 
-                      dc.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
-                    }`} />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-3">{dc.location}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Servers:</span>
-                    <span className="font-medium">{dc.servers}</span>
-                  </div>
-                  <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm">Status:</span>
-                    <span className={`text-sm font-medium capitalize ${getStatusColor(dc.status)}`}>
-                      {dc.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <TabsContent value="overview" className="space-y-6">
+          {/* Critical Alerts */}
+          {metrics.criticalAlerts > 0 && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription className="text-base">
+                <strong>{metrics.criticalAlerts} critical alert{metrics.criticalAlerts > 1 ? 's' : ''} require immediate attention</strong>
+                {metrics.warrantyExpiring > 0 && (
+                  <div className="mt-1">{metrics.warrantyExpiring} systems have warranties expiring soon</div>
+                )}
+              </AlertDescription>
+            </Alert>
           )}
-        </CardContent>
-      </Card>
 
-      {/* System Health Indicators */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{metrics.onlineServers}</div>
-                <div className="text-sm text-muted-foreground">Online Systems</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Main Dashboard Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Infrastructure Overview */}
+            <Card className="col-span-1 md:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <Server className="w-5 h-5" />
+                  Infrastructure Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-primary">{metrics.totalServers}</div>
+                    <div className="text-sm text-muted-foreground">Total Servers</div>
+                    <div className="text-xs text-green-600 mt-1">
+                      {metrics.onlineServers} online
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className={`text-3xl font-bold ${getHealthColor(metrics.healthScore)}`}>
+                      {metrics.healthScore}%
+                    </div>
+                    <div className="text-sm text-muted-foreground">Health Score</div>
+                    <Progress value={metrics.healthScore} className="mt-2" />
+                  </div>
+                </div>
+                
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Last Discovery:</span>
+                    <span className="font-medium">{metrics.lastDiscovery}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
-                <Shield className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{100 - metrics.criticalAlerts}</div>
-                <div className="text-sm text-muted-foreground">Security Score</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Quick Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="w-5 h-5" />
+                  Quick Actions
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  onClick={() => window.location.href = '/discovery'}
+                >
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4" />
+                    Network Discovery
+                  </div>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  onClick={() => window.location.href = '/scheduler'}
+                >
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Schedule Updates
+                  </div>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-between"
+                  onClick={() => setActiveTab("infrastructure")}
+                >
+                  <div className="flex items-center gap-2">
+                    <Settings className="w-4 h-4" />
+                    Configure Datacenters
+                  </div>
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{metrics.warrantyExpiring}</div>
-                <div className="text-sm text-muted-foreground">Warranty Expiring</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+          {/* Datacenters Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5" />
+                Datacenter Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {metrics.datacenters.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No datacenters configured</p>
+                  <p className="mb-4">Configure your first datacenter to start monitoring</p>
+                  <Button onClick={() => setActiveTab("infrastructure")}>
+                    Configure Datacenters
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {metrics.datacenters.map((dc, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-semibold">{dc.name}</h3>
+                        <div className={`w-3 h-3 rounded-full ${
+                          dc.status === 'healthy' ? 'bg-green-500' : 
+                          dc.status === 'warning' ? 'bg-yellow-500' : 'bg-red-500'
+                        }`} />
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-3">{dc.location}</p>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Servers:</span>
+                        <span className="font-medium">{dc.servers}</span>
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-sm">Status:</span>
+                        <span className={`text-sm font-medium capitalize ${getStatusColor(dc.status)}`}>
+                          {dc.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <div className="text-2xl font-bold">{metrics.criticalAlerts}</div>
-                <div className="text-sm text-muted-foreground">Critical Alerts</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* System Health Indicators */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{metrics.onlineServers}</div>
+                    <div className="text-sm text-muted-foreground">Online Systems</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{100 - metrics.criticalAlerts}</div>
+                    <div className="text-sm text-muted-foreground">Security Score</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{metrics.warrantyExpiring}</div>
+                    <div className="text-sm text-muted-foreground">Warranty Expiring</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-red-100 dark:bg-red-900/20 rounded-lg flex items-center justify-center">
+                    <AlertTriangle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{metrics.criticalAlerts}</div>
+                    <div className="text-sm text-muted-foreground">Critical Alerts</div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="infrastructure" className="space-y-6">
+          <DatacenterManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
