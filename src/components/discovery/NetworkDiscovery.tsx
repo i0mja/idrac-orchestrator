@@ -110,7 +110,8 @@ export function NetworkDiscovery() {
         body: {
           ipRange: scanConfig.ipRange,
           credentials: credentials,
-          datacenterId: scanConfig.datacenterId
+          datacenterId: scanConfig.datacenterId,
+          useCredentialProfiles: true // Enable credential profile system
         }
       });
 
@@ -286,10 +287,10 @@ export function NetworkDiscovery() {
             <div className="bg-muted/50 p-3 rounded-lg text-sm">
               <div className="flex items-center gap-2 text-amber-600 mb-2">
                 <Settings className="w-4 h-4" />
-                <span className="font-medium">Default Dell iDRAC Credentials</span>
+                <span className="font-medium">Credential Management</span>
               </div>
               <p className="text-muted-foreground">
-                Username: root, Password: calvin (change after discovery for security)
+                Uses credential profiles with IP range assignments and fallback mechanisms. Fallback: root/calvin if no profiles match.
               </p>
             </div>
 

@@ -98,6 +98,105 @@ export type Database = {
         }
         Relationships: []
       }
+      credential_assignments: {
+        Row: {
+          created_at: string
+          credential_profile_id: string
+          datacenter_id: string | null
+          id: string
+          ip_range_cidr: unknown | null
+          ip_range_end: unknown | null
+          ip_range_start: unknown | null
+          is_active: boolean | null
+          priority_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credential_profile_id: string
+          datacenter_id?: string | null
+          id?: string
+          ip_range_cidr?: unknown | null
+          ip_range_end?: unknown | null
+          ip_range_start?: unknown | null
+          is_active?: boolean | null
+          priority_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credential_profile_id?: string
+          datacenter_id?: string | null
+          id?: string
+          ip_range_cidr?: unknown | null
+          ip_range_end?: unknown | null
+          ip_range_start?: unknown | null
+          is_active?: boolean | null
+          priority_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_assignments_credential_profile_id_fkey"
+            columns: ["credential_profile_id"]
+            isOneToOne: false
+            referencedRelation: "credential_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credential_assignments_datacenter_id_fkey"
+            columns: ["datacenter_id"]
+            isOneToOne: false
+            referencedRelation: "datacenters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credential_profiles: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          password_encrypted: string
+          port: number | null
+          priority_order: number | null
+          protocol: string | null
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          password_encrypted: string
+          port?: number | null
+          priority_order?: number | null
+          protocol?: string | null
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          password_encrypted?: string
+          port?: number | null
+          priority_order?: number | null
+          protocol?: string | null
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
       datacenters: {
         Row: {
           contact_email: string | null
@@ -300,6 +399,48 @@ export type Database = {
           version?: string
         }
         Relationships: []
+      }
+      host_credential_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          credential_profile_id: string
+          id: string
+          ip_address: unknown
+          server_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          credential_profile_id: string
+          id?: string
+          ip_address: unknown
+          server_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          credential_profile_id?: string
+          id?: string
+          ip_address?: unknown
+          server_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "host_credential_overrides_credential_profile_id_fkey"
+            columns: ["credential_profile_id"]
+            isOneToOne: false
+            referencedRelation: "credential_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "host_credential_overrides_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: true
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ldap_config: {
         Row: {
@@ -1011,6 +1152,19 @@ export type Database = {
       check_os_eol_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_credentials_for_ip: {
+        Args: { target_ip: unknown }
+        Returns: {
+          assignment_type: string
+          credential_profile_id: string
+          name: string
+          password_encrypted: string
+          port: number
+          priority_order: number
+          protocol: string
+          username: string
+        }[]
       }
       get_datacenter_for_ip: {
         Args: { ip_addr: unknown }
