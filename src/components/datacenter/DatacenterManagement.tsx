@@ -16,8 +16,17 @@ import {
   Mail, 
   Globe,
   Settings,
-  AlertCircle
+  AlertCircle,
+  Network,
+  Trash2,
+  Info
 } from "lucide-react";
+
+interface IpScope {
+  subnet: string;
+  vlan?: number;
+  description?: string;
+}
 
 interface Datacenter {
   id: string;
@@ -28,6 +37,7 @@ interface Datacenter {
   maintenance_window_start: string;
   maintenance_window_end: string;
   is_active: boolean;
+  ip_scopes: IpScope[];
   created_at: string;
 }
 
@@ -46,7 +56,8 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
     contact_email: '',
     maintenance_window_start: '02:00:00',
     maintenance_window_end: '06:00:00',
-    is_active: true
+    is_active: true,
+    ip_scopes: [] as IpScope[]
   });
 
   const { toast } = useToast();
@@ -60,7 +71,8 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
         contact_email: datacenter.contact_email || '',
         maintenance_window_start: datacenter.maintenance_window_start,
         maintenance_window_end: datacenter.maintenance_window_end,
-        is_active: datacenter.is_active
+        is_active: datacenter.is_active,
+        ip_scopes: datacenter.ip_scopes || []
       });
     } else {
       setFormData({
@@ -70,7 +82,8 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
         contact_email: '',
         maintenance_window_start: '02:00:00',
         maintenance_window_end: '06:00:00',
-        is_active: true
+        is_active: true,
+        ip_scopes: []
       });
     }
   }, [datacenter, open]);
@@ -135,7 +148,8 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
         ...formData,
         name: formData.name.trim(),
         location: formData.location.trim() || null,
-        contact_email: formData.contact_email.trim() || null
+        contact_email: formData.contact_email.trim() || null,
+        ip_scopes: formData.ip_scopes as any
       };
 
       if (datacenter) {
@@ -173,6 +187,29 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
         variant: "destructive"
       });
     }
+  };
+
+  const addIpScope = () => {
+    setFormData(prev => ({
+      ...prev,
+      ip_scopes: [...prev.ip_scopes, { subnet: '', vlan: undefined, description: '' }]
+    }));
+  };
+
+  const updateIpScope = (index: number, field: keyof IpScope, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      ip_scopes: prev.ip_scopes.map((scope, i) => 
+        i === index ? { ...scope, [field]: value } : scope
+      )
+    }));
+  };
+
+  const removeIpScope = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      ip_scopes: prev.ip_scopes.filter((_, i) => i !== index)
+    }));
   };
 
   const timezones = [
@@ -238,6 +275,70 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
                 onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
                 placeholder="admin@company.com"
               />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Network className="w-4 h-4" />
+              <Label className="text-base font-medium">IP Scopes & Network Ranges</Label>
+            </div>
+            <div className="bg-muted/50 p-4 rounded-lg space-y-3">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Info className="w-4 h-4" />
+                <span>Define IP ranges that belong to this datacenter for auto-discovery</span>
+              </div>
+              
+              {formData.ip_scopes.map((scope, index) => (
+                <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                  <div className="col-span-5 space-y-1">
+                    <Label className="text-xs">Subnet (CIDR)</Label>
+                    <Input
+                      placeholder="192.168.1.0/24"
+                      value={scope.subnet}
+                      onChange={(e) => updateIpScope(index, 'subnet', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 space-y-1">
+                    <Label className="text-xs">VLAN</Label>
+                    <Input
+                      type="number"
+                      placeholder="100"
+                      value={scope.vlan || ''}
+                      onChange={(e) => updateIpScope(index, 'vlan', parseInt(e.target.value) || undefined)}
+                    />
+                  </div>
+                  <div className="col-span-4 space-y-1">
+                    <Label className="text-xs">Description</Label>
+                    <Input
+                      placeholder="Production Network"
+                      value={scope.description || ''}
+                      onChange={(e) => updateIpScope(index, 'description', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeIpScope(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addIpScope}
+                className="w-full"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add IP Scope
+              </Button>
             </div>
           </div>
 
@@ -338,7 +439,10 @@ export function DatacenterManagement() {
         .order('name');
 
       if (error) throw error;
-      setDatacenters(data || []);
+      setDatacenters((data || []).map(dc => ({
+        ...dc,
+        ip_scopes: (dc.ip_scopes as any) || []
+      })));
     } catch (error) {
       console.error('Error fetching datacenters:', error);
       toast({
@@ -435,6 +539,34 @@ export function DatacenterManagement() {
                 </div>
               )}
               
+              {datacenter.ip_scopes && datacenter.ip_scopes.length > 0 && (
+                <div className="bg-muted/50 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <Network className="w-4 h-4" />
+                    Network Scopes ({datacenter.ip_scopes.length})
+                  </div>
+                  <div className="space-y-2">
+                    {datacenter.ip_scopes.map((scope, index) => (
+                      <div key={index} className="text-sm text-muted-foreground">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono">{scope.subnet}</span>
+                          {scope.vlan && (
+                            <Badge variant="outline" className="text-xs">
+                              VLAN {scope.vlan}
+                            </Badge>
+                          )}
+                        </div>
+                        {scope.description && (
+                          <div className="text-xs text-muted-foreground/80">
+                            {scope.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="bg-muted/50 p-3 rounded-lg">
                 <div className="flex items-center gap-2 text-sm font-medium mb-2">
                   <Clock className="w-4 h-4" />

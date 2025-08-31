@@ -12,6 +12,7 @@ interface DiscoveryRequest {
     username: string;
     password: string;
   };
+  datacenterId?: string;
 }
 
 serve(async (req) => {
@@ -26,63 +27,90 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { ipRange, credentials }: DiscoveryRequest = await req.json();
+    const { ipRange, credentials, datacenterId }: DiscoveryRequest = await req.json();
     
-    console.log(`Starting server discovery for IP range: ${ipRange}`);
+    console.log(`Starting server discovery for IP range: ${ipRange}, datacenterId: ${datacenterId}`);
     
-    // Parse IP range (e.g., "192.168.1.1-50" or "192.168.1.100")
-    const baseIp = ipRange.includes('-') ? ipRange.split('-')[0] : ipRange;
-    const [network, endRange] = ipRange.includes('-') ? 
-      [baseIp.substring(0, baseIp.lastIndexOf('.')), 
-       parseInt(ipRange.split('-')[1])] : 
-      [baseIp.substring(0, baseIp.lastIndexOf('.')), 
-       parseInt(baseIp.substring(baseIp.lastIndexOf('.') + 1))];
+    // Get IP ranges from datacenter if specified
+    let ipRangesToScan: string[] = [];
     
-    const startRange = ipRange.includes('-') ? 
-      parseInt(baseIp.substring(baseIp.lastIndexOf('.') + 1)) : endRange;
+    if (datacenterId && !ipRange) {
+      // Get datacenter scopes
+      const { data: datacenter, error: dcError } = await supabase
+        .from('datacenters')
+        .select('ip_scopes')
+        .eq('id', datacenterId)
+        .single();
+        
+      if (dcError) {
+        throw new Error(`Failed to fetch datacenter: ${dcError.message}`);
+      }
+      
+      // Convert datacenter scopes to IP ranges
+      if (datacenter?.ip_scopes && Array.isArray(datacenter.ip_scopes)) {
+        ipRangesToScan = datacenter.ip_scopes.map((scope: any) => {
+          // Convert CIDR to range format for scanning
+          const subnet = scope.subnet;
+          if (subnet.includes('/24')) {
+            const base = subnet.replace('/24', '');
+            const baseIP = base.substring(0, base.lastIndexOf('.'));
+            return `${baseIP}.1-254`;
+          }
+          return subnet;
+        });
+      }
+    } else if (ipRange) {
+      ipRangesToScan = [ipRange];
+    }
+    
+    if (ipRangesToScan.length === 0) {
+      throw new Error('No IP ranges to scan');
+    }
     
     const discoveredServers = [];
     
-    // Discover servers in the IP range
-    for (let i = startRange; i <= endRange; i++) {
-      const currentIp = `${network}.${i}`;
+    // Process each IP range
+    for (const currentRange of ipRangesToScan) {
+      console.log('Processing IP range:', currentRange);
       
-      try {
-        console.log(`Checking server at ${currentIp}`);
+      // Parse IP range
+      const [startIP, endRange] = currentRange.includes('-') 
+        ? [currentRange.split('-')[0].trim(), parseInt(currentRange.split('-')[1].trim())]
+        : [currentRange, parseInt(currentRange.split('.')[3])];
+      
+      const baseParts = startIP.split('.');
+      const baseNetwork = `${baseParts[0]}.${baseParts[1]}.${baseParts[2]}`;
+      const startHost = parseInt(baseParts[3]);
+      const endHost = currentRange.includes('-') ? endRange : startHost;
+    
+      // Discover servers in the IP range
+      for (let i = startHost; i <= endHost; i++) {
+        const currentIp = `${baseNetwork}.${i}`;
         
-        // Try to connect to iDRAC via Redfish API
-        const redfishUrl = `https://${currentIp}/redfish/v1/Systems`;
-        
-        const response = await fetch(redfishUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
-            'Content-Type': 'application/json',
-          },
-          // Ignore SSL certificate errors for self-signed certificates
-          signal: AbortSignal.timeout(10000), // 10 second timeout
-        }).catch(() => null);
-        
-        if (response && response.ok) {
-          const systemData = await response.json();
+        try {
+          console.log(`Checking server at ${currentIp}`);
           
-          // Get system info from Redfish
-          const systemMembers = systemData.Members || [];
-          if (systemMembers.length > 0) {
-            const systemUrl = `https://${currentIp}${systemMembers[0]['@odata.id']}`;
-            const systemResponse = await fetch(systemUrl, {
-              headers: {
-                'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
-                'Content-Type': 'application/json',
-              },
-              signal: AbortSignal.timeout(10000),
-            }).catch(() => null);
+          // Try to connect to iDRAC via Redfish API
+          const redfishUrl = `https://${currentIp}/redfish/v1/Systems`;
+          
+          const response = await fetch(redfishUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
+              'Content-Type': 'application/json',
+            },
+            // Ignore SSL certificate errors for self-signed certificates
+            signal: AbortSignal.timeout(10000), // 10 second timeout
+          }).catch(() => null);
+          
+          if (response && response.ok) {
+            const systemData = await response.json();
             
-            if (systemResponse && systemResponse.ok) {
-              const systemInfo = await systemResponse.json();
-              
-              // Get manager info for iDRAC version
-              const managersResponse = await fetch(`https://${currentIp}/redfish/v1/Managers`, {
+            // Get system info from Redfish
+            const systemMembers = systemData.Members || [];
+            if (systemMembers.length > 0) {
+              const systemUrl = `https://${currentIp}${systemMembers[0]['@odata.id']}`;
+              const systemResponse = await fetch(systemUrl, {
                 headers: {
                   'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
                   'Content-Type': 'application/json',
@@ -90,46 +118,72 @@ serve(async (req) => {
                 signal: AbortSignal.timeout(10000),
               }).catch(() => null);
               
-              let idracVersion = '';
-              if (managersResponse && managersResponse.ok) {
-                const managersData = await managersResponse.json();
-                if (managersData.Members && managersData.Members.length > 0) {
-                  const managerUrl = `https://${currentIp}${managersData.Members[0]['@odata.id']}`;
-                  const managerResponse = await fetch(managerUrl, {
-                    headers: {
-                      'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
-                      'Content-Type': 'application/json',
-                    },
-                    signal: AbortSignal.timeout(10000),
-                  }).catch(() => null);
-                  
-                  if (managerResponse && managerResponse.ok) {
-                    const managerInfo = await managerResponse.json();
-                    idracVersion = managerInfo.FirmwareVersion || '';
+              if (systemResponse && systemResponse.ok) {
+                const systemInfo = await systemResponse.json();
+                
+                // Get manager info for iDRAC version
+                const managersResponse = await fetch(`https://${currentIp}/redfish/v1/Managers`, {
+                  headers: {
+                    'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
+                    'Content-Type': 'application/json',
+                  },
+                  signal: AbortSignal.timeout(10000),
+                }).catch(() => null);
+                
+                let idracVersion = '';
+                if (managersResponse && managersResponse.ok) {
+                  const managersData = await managersResponse.json();
+                  if (managersData.Members && managersData.Members.length > 0) {
+                    const managerUrl = `https://${currentIp}${managersData.Members[0]['@odata.id']}`;
+                    const managerResponse = await fetch(managerUrl, {
+                      headers: {
+                        'Authorization': `Basic ${btoa(`${credentials.username}:${credentials.password}`)}`,
+                        'Content-Type': 'application/json',
+                      },
+                      signal: AbortSignal.timeout(10000),
+                    }).catch(() => null);
+                    
+                    if (managerResponse && managerResponse.ok) {
+                      const managerInfo = await managerResponse.json();
+                      idracVersion = managerInfo.FirmwareVersion || '';
+                    }
                   }
                 }
+                
+                // Auto-assign datacenter if specified
+                let datacenterName = null;
+                if (datacenterId) {
+                  const { data: datacenter } = await supabase
+                    .from('datacenters')
+                    .select('name')
+                    .eq('id', datacenterId)
+                    .single();
+                  datacenterName = datacenter?.name;
+                }
+                
+                const serverData = {
+                  hostname: systemInfo.HostName || `server-${currentIp.replace(/\./g, '-')}`,
+                  ip_address: currentIp,
+                  model: systemInfo.Model || 'Unknown',
+                  service_tag: systemInfo.SKU || '',
+                  idrac_version: idracVersion,
+                  bios_version: systemInfo.BiosVersion || '',
+                  status: systemInfo.PowerState === 'On' ? 'online' : 'offline',
+                  environment: 'production',
+                  datacenter: datacenterName,
+                  discovery_source: 'network_scan',
+                  last_discovered: new Date().toISOString(),
+                };
+                
+                discoveredServers.push(serverData);
+                console.log(`Discovered server: ${serverData.hostname} at ${currentIp}`);
               }
-              
-              const serverData = {
-                hostname: systemInfo.HostName || `server-${currentIp.replace(/\./g, '-')}`,
-                ip_address: currentIp,
-                model: systemInfo.Model || 'Unknown',
-                service_tag: systemInfo.SKU || '',
-                idrac_version: idracVersion,
-                bios_version: systemInfo.BiosVersion || '',
-                status: systemInfo.PowerState === 'On' ? 'online' : 'offline',
-                environment: 'production',
-                last_discovered: new Date().toISOString(),
-              };
-              
-              discoveredServers.push(serverData);
-              console.log(`Discovered server: ${serverData.hostname} at ${currentIp}`);
             }
           }
+        } catch (error) {
+          console.log(`Failed to connect to ${currentIp}: ${error.message}`);
+          // Continue to next IP
         }
-      } catch (error) {
-        console.log(`Failed to connect to ${currentIp}: ${error.message}`);
-        // Continue to next IP
       }
     }
     

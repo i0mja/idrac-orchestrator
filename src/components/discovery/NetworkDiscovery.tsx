@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,10 +39,39 @@ export function NetworkDiscovery() {
   });
   const [scanConfig, setScanConfig] = useState({
     ipRange: '192.168.1.1-50',
-    timeout: 10
+    timeout: 10,
+    datacenterId: null as string | null
   });
 
+  const [datacenters, setDatacenters] = useState<Array<{
+    id: string;
+    name: string;
+    ip_scopes: Array<{ subnet: string; vlan?: number; description?: string }>;
+  }>>([]);
+
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchDatacenters = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('datacenters')
+          .select('id, name, ip_scopes')
+          .eq('is_active', true)
+          .order('name');
+
+        if (error) throw error;
+        setDatacenters((data || []).map(dc => ({
+          ...dc,
+          ip_scopes: (dc.ip_scopes as any) || []
+        })));
+      } catch (error) {
+        console.error('Error fetching datacenters:', error);
+      }
+    };
+
+    fetchDatacenters();
+  }, []);
 
   const startNetworkScan = async () => {
     if (!scanConfig.ipRange.trim()) {
@@ -80,7 +109,8 @@ export function NetworkDiscovery() {
       const { data, error } = await supabase.functions.invoke('discover-servers', {
         body: {
           ipRange: scanConfig.ipRange,
-          credentials: credentials
+          credentials: credentials,
+          datacenterId: scanConfig.datacenterId
         }
       });
 
@@ -189,6 +219,24 @@ export function NetworkDiscovery() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="datacenter">Datacenter (Optional)</Label>
+              <select
+                id="datacenter"
+                value={scanConfig.datacenterId || ''}
+                onChange={(e) => setScanConfig(prev => ({ ...prev, datacenterId: e.target.value || null }))}
+                className="w-full p-2 border rounded-md"
+                disabled={isScanning}
+              >
+                <option value="">Select datacenter or use custom range</option>
+                {datacenters.map(dc => (
+                  <option key={dc.id} value={dc.id}>
+                    {dc.name} ({dc.ip_scopes.length} scopes)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="ipRange">IP Range</Label>
               <Input
                 id="ipRange"
@@ -198,8 +246,19 @@ export function NetworkDiscovery() {
                 disabled={isScanning}
               />
               <p className="text-xs text-muted-foreground">
-                Formats: 192.168.1.1-50 (range) or 192.168.1.100 (single IP)
+                {scanConfig.datacenterId 
+                  ? "Leave blank to use all datacenter scopes, or specify custom range"
+                  : "Formats: 192.168.1.1-50 (range) or 192.168.1.100 (single IP)"
+                }
               </p>
+              {scanConfig.datacenterId && (
+                <div className="bg-muted/50 p-2 rounded text-xs">
+                  <span className="font-medium">Selected datacenter scopes:</span>
+                  {datacenters.find(dc => dc.id === scanConfig.datacenterId)?.ip_scopes.map((scope, i) => (
+                    <div key={i} className="ml-2">{scope.subnet}</div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">

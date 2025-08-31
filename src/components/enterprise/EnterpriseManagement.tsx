@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DatacenterManagement } from "@/components/datacenter/DatacenterManagement";
+import { DatacenterManagement } from "../datacenter/DatacenterManagement";
+import { NetworkDiscovery } from "../discovery/NetworkDiscovery";
+import { HealthChecks } from "../health/HealthChecks";
+import { EnhancedServerManagement } from "../servers/EnhancedServerManagement";
 import {
   Server,
   Building2,
@@ -182,8 +185,9 @@ export function EnterpriseManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="servers">Servers</TabsTrigger>
           <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
         </TabsList>
 
@@ -391,6 +395,10 @@ export function EnterpriseManagement() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="servers" className="space-y-6">
+          <EnhancedServerManagement />
         </TabsContent>
 
         <TabsContent value="infrastructure" className="space-y-6">
