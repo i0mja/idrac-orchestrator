@@ -103,6 +103,7 @@ export type Database = {
           contact_email: string | null
           created_at: string
           id: string
+          ip_scopes: Json | null
           is_active: boolean | null
           location: string | null
           maintenance_window_end: string | null
@@ -115,6 +116,7 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           id?: string
+          ip_scopes?: Json | null
           is_active?: boolean | null
           location?: string | null
           maintenance_window_end?: string | null
@@ -127,6 +129,7 @@ export type Database = {
           contact_email?: string | null
           created_at?: string
           id?: string
+          ip_scopes?: Json | null
           is_active?: boolean | null
           location?: string | null
           maintenance_window_end?: string | null
@@ -1008,6 +1011,14 @@ export type Database = {
       check_os_eol_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      get_datacenter_for_ip: {
+        Args: { ip_addr: unknown }
+        Returns: string
+      }
+      ip_in_datacenter_scope: {
+        Args: { datacenter_id: string; ip_addr: unknown }
+        Returns: boolean
       }
     }
     Enums: {
