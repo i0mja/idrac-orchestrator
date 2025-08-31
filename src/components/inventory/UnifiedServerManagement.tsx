@@ -13,6 +13,7 @@ import { useServers } from "@/hooks/useServers";
 import { useUpdateJobs } from "@/hooks/useUpdateJobs";
 import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { useServerDuplicates } from "@/hooks/useServerDuplicates";
+import { useDatacenterScopes } from "@/hooks/useDatacenterScopes";
 import { 
   Server, 
   Edit, 
@@ -33,15 +34,20 @@ import {
   Eye,
   Settings,
   TestTube,
-  Wifi
+  Wifi,
+  MapPin,
+  Building2,
+  Network
 } from "lucide-react";
 import { VCenterSyncManager } from "@/components/vcenter/VCenterSyncManager";
+import { supabase } from "@/integrations/supabase/client";
 
 export function UnifiedServerManagement() {
   const { servers, loading, discoverServers, updateServer, deleteServer, testConnection } = useServers();
   const { createRemoteCommand } = useUpdateJobs();
   const { packages } = useFirmwarePackages();
   const { duplicates, loading: duplicatesLoading, keepPrimary } = useServerDuplicates();
+  const { datacenters, getDatacenterForIP, checkIPInScope } = useDatacenterScopes();
   const { toast } = useToast();
 
   const [editingServer, setEditingServer] = useState<any>(null);
@@ -54,13 +60,15 @@ export function UnifiedServerManagement() {
     search: '',
     environment: 'all',
     status: 'all',
-    hostType: 'all'
+    hostType: 'all',
+    datacenter: 'all'
   });
 
   const [discoveryForm, setDiscoveryForm] = useState({
     ipRange: '',
     username: '',
-    password: ''
+    password: '',
+    datacenterId: null as string | null
   });
 
   const [newJob, setNewJob] = useState({
@@ -78,6 +86,7 @@ export function UnifiedServerManagement() {
     if (filters.environment !== 'all' && server.environment !== filters.environment) return false;
     if (filters.status !== 'all' && server.status !== filters.status) return false;
     if (filters.hostType !== 'all' && server.host_type !== filters.hostType) return false;
+    if (filters.datacenter !== 'all' && server.datacenter !== filters.datacenter) return false;
     return true;
   });
 
@@ -86,11 +95,60 @@ export function UnifiedServerManagement() {
     server.service_tag?.match(/^[A-Z0-9]{7}$/)
   );
 
+  const autoAssignDatacenters = async () => {
+    try {
+      let assignedCount = 0;
+      const updates = [];
+
+      for (const server of servers) {
+        if (!server.datacenter && server.ip_address) {
+          const datacenterId = await getDatacenterForIP(String(server.ip_address));
+          if (datacenterId) {
+            const datacenter = datacenters.find(dc => dc.id === datacenterId);
+            if (datacenter) {
+              updates.push({
+                id: server.id,
+                datacenter: datacenter.name
+              });
+              assignedCount++;
+            }
+          }
+        }
+      }
+
+      if (updates.length > 0) {
+        for (const update of updates) {
+          await updateServer(update.id, { datacenter: update.datacenter });
+        }
+
+        toast({
+          title: "Auto-Assignment Complete",
+          description: `Assigned ${assignedCount} servers to datacenters based on IP scopes`
+        });
+      } else {
+        toast({
+          title: "No Assignments Made",
+          description: "All servers are already assigned or no matching IP scopes found"
+        });
+      }
+    } catch (error) {
+      console.error('Error auto-assigning datacenters:', error);
+      toast({
+        title: "Assignment Failed",
+        description: "Failed to auto-assign datacenters",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const unmappedServersCount = servers.filter(s => !s.datacenter).length;
+  const uniqueDatacenters = Array.from(new Set(servers.map(s => s.datacenter).filter(Boolean)));
+
   const handleDiscover = async () => {
-    if (!discoveryForm.ipRange || !discoveryForm.username || !discoveryForm.password) {
+    if ((!discoveryForm.ipRange && !discoveryForm.datacenterId) || !discoveryForm.username || !discoveryForm.password) {
       toast({
         title: "Missing Information",
-        description: "Please fill in all discovery fields",
+        description: "Please fill in discovery fields and select IP range or datacenter",
         variant: "destructive",
       });
       return;
@@ -98,11 +156,35 @@ export function UnifiedServerManagement() {
 
     setIsDiscovering(true);
     try {
-      await discoverServers(discoveryForm.ipRange, {
-        username: discoveryForm.username,
-        password: discoveryForm.password
+      // Use the enhanced discovery with datacenter support
+      const { data, error } = await supabase.functions.invoke('discover-servers', {
+        body: {
+          ipRange: discoveryForm.ipRange,
+          credentials: {
+            username: discoveryForm.username,
+            password: discoveryForm.password
+          },
+          datacenterId: discoveryForm.datacenterId
+        }
       });
-      setDiscoveryForm({ ipRange: '', username: '', password: '' });
+
+      if (error) throw error;
+
+      toast({
+        title: "Discovery Complete",
+        description: `Discovered ${data.discovered || 0} servers`,
+      });
+
+      setDiscoveryForm({ ipRange: '', username: '', password: '', datacenterId: null });
+      // Refresh servers list
+      window.location.reload();
+    } catch (error) {
+      console.error('Discovery error:', error);
+      toast({
+        title: "Discovery Failed",
+        description: error.message || "Failed to complete server discovery",
+        variant: "destructive"
+      });
     } finally {
       setIsDiscovering(false);
     }
@@ -202,6 +284,12 @@ export function UnifiedServerManagement() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
+          {unmappedServersCount > 0 && (
+            <Button variant="outline" onClick={autoAssignDatacenters}>
+              <Building2 className="w-4 h-4 mr-2" />
+              Auto-Assign ({unmappedServersCount})
+            </Button>
+          )}
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="default">
@@ -218,6 +306,22 @@ export function UnifiedServerManagement() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
+                  <Label htmlFor="datacenter">Datacenter (Optional)</Label>
+                  <Select value={discoveryForm.datacenterId || ''} onValueChange={(value) => setDiscoveryForm(prev => ({ ...prev, datacenterId: value || null }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select datacenter or use custom range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Custom IP Range</SelectItem>
+                      {datacenters.map(dc => (
+                        <SelectItem key={dc.id} value={dc.id}>
+                          {dc.name} ({dc.ip_scopes.length} scopes)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label htmlFor="ipRange">IP Range (e.g., 192.168.1.1-50)</Label>
                   <Input
                     id="ipRange"
@@ -225,6 +329,11 @@ export function UnifiedServerManagement() {
                     onChange={(e) => setDiscoveryForm(prev => ({ ...prev, ipRange: e.target.value }))}
                     placeholder="192.168.1.1-50"
                   />
+                  {discoveryForm.datacenterId && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave blank to scan all datacenter IP scopes
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="username">iDRAC Username</Label>
@@ -306,10 +415,10 @@ export function UnifiedServerManagement() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Issues</p>
-                <p className="text-2xl font-bold text-red-600">{criticalServers}</p>
+                <p className="text-sm text-muted-foreground">Unmapped</p>
+                <p className="text-2xl font-bold text-amber-600">{unmappedServersCount}</p>
               </div>
-              <AlertTriangle className="h-8 w-8 text-red-600" />
+              <MapPin className="h-8 w-8 text-amber-600" />
             </div>
           </CardContent>
         </Card>
@@ -385,10 +494,25 @@ export function UnifiedServerManagement() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div>
+                  <Label>Datacenter</Label>
+                  <Select value={filters.datacenter} onValueChange={(value) => setFilters(prev => ({ ...prev, datacenter: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Datacenters</SelectItem>
+                      {uniqueDatacenters.map(dc => (
+                        <SelectItem key={dc} value={dc}>{dc}</SelectItem>
+                      ))}
+                      <SelectItem value="unmapped">Unmapped</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-end">
                   <Button 
                     variant="outline" 
-                    onClick={() => setFilters({ search: '', environment: 'all', status: 'all', hostType: 'all' })}
+                    onClick={() => setFilters({ search: '', environment: 'all', status: 'all', hostType: 'all', datacenter: 'all' })}
                     className="w-full"
                   >
                     <Filter className="w-4 h-4 mr-2" />
@@ -414,6 +538,7 @@ export function UnifiedServerManagement() {
                     <TableHead>Hostname</TableHead>
                     <TableHead>IP Address</TableHead>
                     <TableHead>Model</TableHead>
+                    <TableHead>Datacenter</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Environment</TableHead>
                     <TableHead>Host Type</TableHead>
@@ -426,6 +551,21 @@ export function UnifiedServerManagement() {
                       <TableCell className="font-medium">{server.hostname}</TableCell>
                       <TableCell>{String(server.ip_address)}</TableCell>
                       <TableCell>{server.model || "Unknown"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {server.datacenter ? (
+                            <>
+                              <Building2 className="w-4 h-4 text-green-600" />
+                              <span className="text-green-600 font-medium">{server.datacenter}</span>
+                            </>
+                          ) : (
+                            <>
+                              <MapPin className="w-4 h-4 text-amber-600" />
+                              <span className="text-amber-600">Unmapped</span>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>{getStatusBadge(server.status)}</TableCell>
                       <TableCell>{server.environment || 'Unknown'}</TableCell>
                       <TableCell>{server.host_type}</TableCell>
