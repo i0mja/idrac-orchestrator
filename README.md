@@ -2,6 +2,30 @@
 
 A comprehensive enterprise-grade solution for orchestrating firmware updates across Dell server infrastructure with VMware vCenter integration. This system ensures zero-downtime rolling updates while maintaining cluster availability and respecting maintenance windows.
 
+## 🚀 Quick Start (5 Minutes)
+
+Get up and running instantly with our one-click installation:
+
+### Option 1: Docker (Recommended)
+```bash
+curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+```
+**✅ Complete setup in 5 minutes • ✅ Auto-configures everything • ✅ Production ready**
+
+### Option 2: Windows Server
+Download and run: [iDRAC-Orchestrator-Setup.msi](https://releases.idrac-orchestrator.com/latest/windows)
+
+### Option 3: Try Demo Mode  
+```bash
+npx idrac-orchestrator-demo
+```
+**✅ No installation • ✅ Sample data included • ✅ Ready in 1 minute**
+
+### Option 4: Advanced Setup
+See [QUICK_START.md](QUICK_START.md) for detailed options or [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment.
+
+---
+
 ## 🚀 Features
 
 ### Core Capabilities
@@ -55,65 +79,108 @@ A comprehensive enterprise-grade solution for orchestrating firmware updates acr
 
 ## 📋 Prerequisites
 
+**For One-Click Installation:**
+- Docker Desktop or Docker Engine (recommended)
+- OR Windows Server 2016+ / Linux Ubuntu 18.04+
+- 4GB RAM, 20GB disk space
+- Network access to Dell servers and VMware vCenter
+
+**For Manual Setup:**
 - Node.js 18+ and npm/yarn
-- Supabase account and project
+- PostgreSQL 15+ database server
 - VMware vCenter access with API credentials
 - Dell servers with iDRAC access
 - Network connectivity between orchestrator and target infrastructure
 
 ## 🛠️ Installation & Setup
 
-### 1. Clone and Install Dependencies
+### Quick Start (Recommended)
 
+**1. Run One-Click Installer**
 ```bash
-git clone <repository-url>
-cd idrac-updater-orchestrator
-npm install
+# Docker (works everywhere)
+curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+
+# Linux native
+curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
 ```
 
-### 2. Configure Environment
-
-The application uses Supabase for backend services. Update your Supabase configuration:
-
-```bash
-# Update src/integrations/supabase/client.ts with your project details
-SUPABASE_URL=your-supabase-url
-SUPABASE_ANON_KEY=your-supabase-anon-key
+**2. Access Web Interface**
+```
+http://localhost:3000
+Default login: admin@localhost (password generated during setup)
 ```
 
-### 3. Database Setup
+**3. Complete 2-Minute Setup Wizard**
+- Configure VMware vCenter connections
+- Set up Dell server credential profiles  
+- Define datacenters and maintenance windows
+- Test connectivity and start managing servers
 
-Run the included migrations to set up the database schema:
+### Alternative Installation Methods
 
-```sql
--- Core tables for servers, credentials, firmware packages
--- VMware integration tables (vcenters, vcenter_clusters)  
--- Orchestration tables (update_orchestration_plans, update_jobs)
--- Monitoring tables (system_events, eol_alerts)
-```
+| Method | Time | Best For |
+|--------|------|----------|
+| **[One-Click Docker](QUICK_START.md#option-1-docker-recommended)** | 5 min | Everyone (recommended) |
+| **[Windows Installer](QUICK_START.md#option-3-windows-installer)** | 10 min | Windows Server environments |
+| **[Linux Native](QUICK_START.md#option-4-linux-native)** | 8 min | Direct Linux installation |
+| **[Demo Mode](QUICK_START.md#option-2-demo-mode)** | 1 min | Testing and evaluation |
+| **[Cloud Deployment](DEPLOYMENT.md#option-3-kubernetes-deployment)** | 15 min | AWS, Azure, GCP |
+| **[Manual Setup](INSTALLATION.md)** | 30 min | Custom configurations |
 
-### 4. Configure Credentials
+### Legacy/Manual Installation
 
-Set up credential profiles for your infrastructure:
+For custom deployments or development environments, see the detailed guides:
+- **[INSTALLATION.md](INSTALLATION.md)** - Detailed manual installation
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[Docker Compose](docker-compose.prod.yml)** - Self-hosted containers
 
-1. Navigate to Settings → Credential Management
-2. Create credential profiles for iDRAC access
-3. Assign profiles to IP ranges or specific servers
-4. Configure vCenter connections
+## 📚 Documentation
 
-### 5. Discovery and Initial Sync
+| Guide | Purpose |
+|-------|---------|
+| **[QUICK_START.md](QUICK_START.md)** | 5-minute installation options |
+| **[INSTALLATION.md](INSTALLATION.md)** | Detailed manual setup |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production deployment |
+| **[agents.md](agents.md)** | Technical architecture |
 
-1. Configure your vCenter connections in Settings
-2. Run initial discovery to populate server inventory
-3. Verify connectivity and credential assignments
-4. Configure datacenters and maintenance windows
+## 🎯 Post-Installation
 
-## 🎯 Usage Guide
+After installation, complete the setup wizard:
+**1. Complete Setup Wizard** (2 minutes)
+- Organization settings and timezone
+- VMware vCenter connections  
+- Dell server credential profiles
+- Network discovery and datacenters
 
-### Dashboard Overview
+**2. Verify Connectivity**
+- Test vCenter API access
+- Validate iDRAC credentials
+- Run server discovery
+- Check health status
 
-The main dashboard provides:
-- **Fleet Health Status** - Real-time server health indicators
+**3. Upload Firmware Packages**
+- Download Dell firmware from support site
+- Or use built-in Dell firmware downloader
+- Validate compatibility matrices
+- Organize by server models
+
+**4. Configure Maintenance Windows**
+- Define datacenter maintenance schedules
+- Set timezone-aware windows
+- Configure approval workflows
+- Test emergency override procedures
+
+**5. Schedule First Update**
+- Start with non-production servers
+- Create rolling update plan
+- Review orchestration settings
+- Monitor progress in real-time
+
+### Main Interface Areas
+
+**Dashboard Overview**
+- Fleet health status indicators
 - **Active Operations** - Currently running update jobs and orchestrations  
 - **Maintenance Windows** - Upcoming scheduled maintenance
 - **Recent Events** - System activity and alerts
@@ -204,28 +271,30 @@ Cluster Policies:
   - Rollback triggers
 ```
 
-## 🔍 API Reference
+## 📋 System Requirements
 
-### Edge Functions
+### Minimum Requirements
+- **CPU**: 2 cores
+- **RAM**: 4GB  
+- **Storage**: 20GB
+- **OS**: Linux, Windows Server, or macOS with Docker
 
-| Function | Purpose | Authentication |
-|----------|---------|----------------|
-| `orchestrator-start-rolling-update` | Initiate cluster-aware rolling updates | Required |
-| `health-check` | Comprehensive server health validation | Required |
-| `firmware-management` | Firmware upload/download/compatibility | Required |
-| `orchestration-control` | Control running orchestrations | Required |
-| `process-update-job` | Execute individual firmware updates | Internal |
-| `sync-vcenter-hosts` | Synchronize vCenter inventory | Required |
+### Recommended Production
+- **CPU**: 4+ cores
+- **RAM**: 8GB+
+- **Storage**: 100GB SSD
+- **OS**: Linux Ubuntu 20.04+ or Windows Server 2019+
+- **Network**: Gigabit connectivity to server management networks
 
-### Database Schema
-
-Key tables and relationships:
-- `servers` - Server inventory and metadata
-- `credential_profiles` - Authentication credentials  
-- `firmware_packages` - Firmware library
-- `update_orchestration_plans` - Orchestration definitions
-- `update_jobs` - Individual update tasks
-- `system_events` - Audit and monitoring events
+### Supported Platforms
+| Platform | Installation Method | Status |
+|----------|-------------------|---------|
+| **Docker** | One-click script | ✅ Recommended |
+| **Ubuntu 20.04+** | Native install | ✅ Supported |
+| **RHEL/CentOS 8+** | Native install | ✅ Supported |  
+| **Windows Server 2019+** | MSI installer | ✅ Supported |
+| **AWS/Azure/GCP** | Cloud templates | ✅ Supported |
+| **Kubernetes** | Helm charts | ✅ Supported |
 
 ## 🛡️ Security
 
@@ -305,14 +374,28 @@ Access detailed logs through:
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🆘 Getting Help
 
-For technical support and questions:
-- Review the troubleshooting guide above
-- Check existing GitHub issues
-- Create a new issue with detailed information
-- Contact your system administrator for infrastructure access
+### Quick Support Options
+- 📖 **[Quick Start Guide](QUICK_START.md)** - Get running in 5 minutes
+- 🔧 **[Installation Guide](INSTALLATION.md)** - Detailed setup instructions  
+- 🚀 **[Deployment Guide](DEPLOYMENT.md)** - Production deployment
+- 🏗️ **[Architecture Guide](agents.md)** - Technical deep-dive
+
+### Community & Support  
+- 💬 [Discussion Forum](https://github.com/your-org/idrac-orchestrator/discussions)
+- 🐛 [Report Issues](https://github.com/your-org/idrac-orchestrator/issues)
+- 📧 [Enterprise Support](mailto:support@idrac-orchestrator.com)
+- 📚 [Documentation](https://docs.idrac-orchestrator.com)
+
+### Common Solutions
+| Issue | Quick Fix |
+|-------|-----------|
+| **Port 3000 busy** | `docker stop $(docker ps -q)` or use different port |
+| **Database connection failed** | Run `docker-compose restart postgres` |  
+| **vCenter SSL errors** | Enable "Ignore SSL" in vCenter settings |
+| **Permission denied** | Run installer as administrator/root |
 
 ---
 
-**⚠️ Important**: This system manages critical infrastructure components. Always test updates in non-production environments and follow your organization's change management procedures.
+**⚠️ Important**: This system manages critical infrastructure. Always test in non-production environments first and follow your organization's change management procedures.

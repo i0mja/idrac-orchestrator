@@ -2,6 +2,17 @@
 
 This document details the various agents, services, and automated processes that power the iDRAC Updater Orchestrator system.
 
+## 🚀 Quick Deployment Note
+
+**New to the system?** Start with our [Quick Start Guide](QUICK_START.md) for one-click installation, then return here for technical details.
+
+```bash
+# Get running in 5 minutes:
+curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+```
+
+---
+
 ## 🤖 Overview
 
 The orchestrator employs multiple specialized agents and services working in concert to provide safe, reliable, and efficient firmware update orchestration across enterprise Dell server infrastructure.
