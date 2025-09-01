@@ -7,7 +7,9 @@ const corsHeaders = {
 }
 
 interface UpdateJobRequest {
-  jobId: string;
+  jobId?: string;
+  server_id?: string;
+  firmware_package_id?: string;
 }
 
 serve(async (req) => {
@@ -22,27 +24,37 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { jobId }: UpdateJobRequest = await req.json();
+    const { jobId, server_id, firmware_package_id }: UpdateJobRequest = await req.json();
     
-    console.log(`Processing update job: ${jobId}`);
-    
-    // Get job details with server and firmware package info
-    const { data: job, error: jobError } = await supabase
+    let query = supabase
       .from('update_jobs')
       .select(`
         *,
         server:servers(*),
         firmware_package:firmware_packages(*)
       `)
-      .eq('id', jobId)
-      .single();
+
+    if (jobId) {
+      query = query.eq('id', jobId)
+      console.log(`Processing update job: ${jobId}`);
+    } else if (server_id && firmware_package_id) {
+      query = query
+        .eq('server_id', server_id)
+        .eq('firmware_package_id', firmware_package_id)
+        .eq('status', 'pending')
+      console.log(`Processing job for server/firmware: ${server_id}/${firmware_package_id}`);
+    } else {
+      throw new Error('Must provide either jobId or server_id + firmware_package_id')
+    }
+
+    const { data: job, error: jobError } = await query.single();
     
     if (jobError || !job) {
       throw new Error(`Job not found: ${jobError?.message}`);
     }
     
     if (job.status !== 'pending') {
-      console.log(`Job ${jobId} is not in pending status: ${job.status}`);
+      console.log(`Job ${job.id} is not in pending status: ${job.status}`);
       return new Response(
         JSON.stringify({ success: true, message: 'Job already processed' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -55,19 +67,16 @@ serve(async (req) => {
       .update({ 
         status: 'running',
         started_at: new Date().toISOString(),
-        progress: 0
+        progress: 0,
+        logs: `[${new Date().toISOString()}] Job started\n`
       })
-      .eq('id', jobId);
+      .eq('id', job.id);
     
     console.log(`Starting firmware update for server ${job.server.hostname}`);
     
-    // Get server credentials
+    // Get server credentials using RPC function
     const { data: credentials } = await supabase
-      .from('server_credentials')
-      .select('*')
-      .eq('server_id', job.server_id)
-      .eq('connection_method', 'redfish')
-      .single();
+      .rpc('get_credentials_for_ip', { target_ip: job.server.ip_address })
     
     if (!credentials) {
       await supabase
