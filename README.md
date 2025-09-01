@@ -399,8 +399,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🏗️ **[Architecture Guide](agents.md)** - Technical deep-dive
 
 ### Community & Support  
-- 💬 [Discussion Forum](https://github.com/your-org/idrac-orchestrator/discussions)
-- 🐛 [Report Issues](https://github.com/your-org/idrac-orchestrator/issues)
+- 💬 [Discussion Forum](https://github.com/i0mja/idrac-orchestrator/discussions)
+- 🐛 [Report Issues](https://github.com/i0mja/idrac-orchestrator/issues)
 - 📧 [Enterprise Support](mailto:support@idrac-orchestrator.com)
 - 📚 [Documentation](https://docs.idrac-orchestrator.com)
 

@@ -158,7 +158,7 @@ The installer automatically detects your environment. If something isn't detecte
 
 ### Get Support
 - 📖 [Full Documentation](DEPLOYMENT.md)
-- 🐛 [Report Issues](https://github.com/your-org/idrac-orchestrator/issues)
+- 🐛 [Report Issues](https://github.com/i0mja/idrac-orchestrator/issues)
 - 💬 [Community Forum](https://community.idrac-orchestrator.com)
 - 📧 [Enterprise Support](mailto:support@idrac-orchestrator.com)
 
