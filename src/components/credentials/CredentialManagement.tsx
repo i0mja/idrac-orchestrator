@@ -341,13 +341,13 @@ export function CredentialManagement() {
                     <Label htmlFor="datacenter">Datacenter (Optional)</Label>
                     <Select
                       value={assignmentForm.datacenter_id}
-                      onValueChange={(value) => setAssignmentForm(prev => ({ ...prev, datacenter_id: value }))}
+                      onValueChange={(value) => setAssignmentForm(prev => ({ ...prev, datacenter_id: value === "custom" ? "" : value }))}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select datacenter or use custom IP range" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Custom IP Range</SelectItem>
+                        <SelectItem value="custom">Custom IP Range</SelectItem>
                         {datacenters.map((dc) => (
                           <SelectItem key={dc.id} value={dc.id}>
                             {dc.name}

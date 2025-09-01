@@ -307,12 +307,12 @@ export function UnifiedServerManagement() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="datacenter">Datacenter (Optional)</Label>
-                  <Select value={discoveryForm.datacenterId || ''} onValueChange={(value) => setDiscoveryForm(prev => ({ ...prev, datacenterId: value || null }))}>
+                  <Select value={discoveryForm.datacenterId || 'custom'} onValueChange={(value) => setDiscoveryForm(prev => ({ ...prev, datacenterId: value === 'custom' ? null : value }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select datacenter or use custom range" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Custom IP Range</SelectItem>
+                      <SelectItem value="custom">Custom IP Range</SelectItem>
                       {datacenters.map(dc => (
                         <SelectItem key={dc.id} value={dc.id}>
                           {dc.name} ({dc.ip_scopes.length} scopes)
