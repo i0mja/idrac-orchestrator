@@ -1,0 +1,60 @@
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Dependencies
+node_modules/
+.pnp.*
+
+# Environment files
+.env*
+
+# Cache
+.cache/
+.parcel-cache/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Package manager files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+
+# Generated files
+*.min.js
+*.min.css
+
+# Documentation builds
+docs/dist/
+storybook-static/
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+
+# Database
+*.db
+*.sqlite
+*.sql
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Supabase
+supabase/.temp/
+supabase/functions/**/*.js
+supabase/functions/**/*.map

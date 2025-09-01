@@ -188,6 +188,7 @@ docker run -p 3000:3000 idrac-orchestrator
 | **[QUICK_START.md](QUICK_START.md)** | 5-minute installation options |
 | **[INSTALLATION.md](INSTALLATION.md)** | Detailed manual setup |
 | **[DEPLOYMENT.md](DEPLOYMENT.md)** | Production deployment |
+| **[CODE_STYLE.md](CODE_STYLE.md)** | Development standards and conventions |
 | **[agents.md](agents.md)** | Technical architecture |
 
 ## 🎯 Post-Installation
