@@ -1,22 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useVCenterService } from "@/hooks/useVCenterService";
-import { VCenterSyncManager } from "./VCenterSyncManager";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
 import { 
   Plus, 
-  Settings, 
+  Edit2, 
   Trash2, 
-  Edit2,
-  Server,
-  Shield,
-  Network
+  Server, 
+  Shield, 
+  CheckCircle, 
+  XCircle,
+  RefreshCw,
+  PlayCircle,
+  AlertCircle
 } from "lucide-react";
 
 interface VCenterConfig {
@@ -29,12 +33,14 @@ interface VCenterConfig {
   ignore_ssl: boolean;
 }
 
-export function VCenterConfiguration() {
-  const { vcenters, loadVCenters, refresh } = useVCenterService();
+export function VCenterConnections() {
+  const { vcenters, loadVCenters, testConnection } = useVCenterService();
   const { toast } = useToast();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingVCenter, setEditingVCenter] = useState<VCenterConfig | null>(null);
+  const [testingConnections, setTestingConnections] = useState<Set<string>>(new Set());
+  const [connectionStatus, setConnectionStatus] = useState<Record<string, 'success' | 'error' | null>>({});
   const [formData, setFormData] = useState<VCenterConfig>({
     name: '',
     hostname: '',
@@ -57,7 +63,7 @@ export function VCenterConfiguration() {
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.hostname || !formData.username) {
+    if (!formData.name || !formData.hostname || !formData.username || !formData.password) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -67,18 +73,20 @@ export function VCenterConfiguration() {
     }
 
     try {
+      const vCenterData = {
+        name: formData.name,
+        hostname: formData.hostname,
+        username: formData.username,
+        password: formData.password,
+        port: formData.port,
+        ignore_ssl: formData.ignore_ssl,
+        updated_at: new Date().toISOString()
+      };
+
       if (editingVCenter?.id) {
-        // Update existing
         const { error } = await supabase
           .from('vcenters')
-          .update({
-            name: formData.name,
-            hostname: formData.hostname,
-            username: formData.username,
-            port: formData.port,
-            ignore_ssl: formData.ignore_ssl,
-            updated_at: new Date().toISOString()
-          })
+          .update(vCenterData)
           .eq('id', editingVCenter.id);
 
         if (error) throw error;
@@ -88,16 +96,9 @@ export function VCenterConfiguration() {
           description: "Configuration has been updated successfully",
         });
       } else {
-        // Create new
         const { error } = await supabase
           .from('vcenters')
-          .insert({
-            name: formData.name,
-            hostname: formData.hostname,
-            username: formData.username,
-            port: formData.port,
-            ignore_ssl: formData.ignore_ssl
-          });
+          .insert(vCenterData);
 
         if (error) throw error;
 
@@ -108,7 +109,6 @@ export function VCenterConfiguration() {
       }
 
       await loadVCenters();
-      await refresh(); // Refresh all vCenter data
       setIsDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -128,7 +128,7 @@ export function VCenterConfiguration() {
       name: vcenter.name,
       hostname: vcenter.hostname,
       username: vcenter.username,
-      password: '', // Don't populate password for security
+      password: '',
       port: vcenter.port,
       ignore_ssl: vcenter.ignore_ssl
     });
@@ -154,7 +154,11 @@ export function VCenterConfiguration() {
       });
 
       await loadVCenters();
-      await refresh(); // Refresh all vCenter data
+      setConnectionStatus(prev => {
+        const updated = { ...prev };
+        delete updated[vcenterId];
+        return updated;
+      });
     } catch (error: any) {
       console.error('Failed to delete vCenter:', error);
       toast({
@@ -165,14 +169,82 @@ export function VCenterConfiguration() {
     }
   };
 
+  const handleTestConnection = async (vcenterId: string) => {
+    setTestingConnections(prev => new Set([...prev, vcenterId]));
+    
+    try {
+      const result = await testConnection(vcenterId);
+      setConnectionStatus(prev => ({
+        ...prev,
+        [vcenterId]: result ? 'success' : 'error'
+      }));
+      
+      toast({
+        title: result ? "Connection Successful" : "Connection Failed",
+        description: result 
+          ? "vCenter connection is working properly" 
+          : "Failed to connect to vCenter server",
+        variant: result ? "default" : "destructive",
+      });
+    } catch (error) {
+      setConnectionStatus(prev => ({
+        ...prev,
+        [vcenterId]: 'error'
+      }));
+    } finally {
+      setTestingConnections(prev => {
+        const updated = new Set([...prev]);
+        updated.delete(vcenterId);
+        return updated;
+      });
+    }
+  };
+
+  const getConnectionStatusBadge = (vcenterId: string) => {
+    const status = connectionStatus[vcenterId];
+    if (testingConnections.has(vcenterId)) {
+      return (
+        <Badge variant="secondary" className="animate-pulse">
+          <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+          Testing
+        </Badge>
+      );
+    }
+    
+    if (status === 'success') {
+      return (
+        <Badge className="bg-green-100 text-green-800 border-green-300">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Connected
+        </Badge>
+      );
+    }
+    
+    if (status === 'error') {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="w-3 h-3 mr-1" />
+          Failed
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge variant="outline">
+        <AlertCircle className="w-3 h-3 mr-1" />
+        Untested
+      </Badge>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">vCenter Management</h2>
+          <h2 className="text-xl font-semibold">vCenter Connections</h2>
           <p className="text-muted-foreground">
-            Centralized configuration and synchronization for all vCenter connections
+            Manage your vCenter server connections and test connectivity
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -185,7 +257,7 @@ export function VCenterConfiguration() {
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>
-                {editingVCenter ? 'Edit vCenter' : 'Add vCenter'}
+                {editingVCenter ? 'Edit vCenter Connection' : 'Add vCenter Connection'}
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
@@ -199,7 +271,7 @@ export function VCenterConfiguration() {
                 />
               </div>
               <div>
-                <Label htmlFor="hostname">Hostname/IP</Label>
+                <Label htmlFor="hostname">Hostname/IP Address</Label>
                 <Input
                   id="hostname"
                   value={formData.hostname}
@@ -223,7 +295,7 @@ export function VCenterConfiguration() {
                     id="port"
                     type="number"
                     value={formData.port}
-                    onChange={(e) => setFormData(prev => ({ ...prev, port: parseInt(e.target.value) }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, port: parseInt(e.target.value) || 443 }))}
                   />
                 </div>
               </div>
@@ -258,103 +330,92 @@ export function VCenterConfiguration() {
         </Dialog>
       </div>
 
-      {/* Configuration Cards */}
+      {/* vCenter Cards */}
       <div className="grid gap-4">
-        {vcenters.map((vcenter) => (
-          <Card key={vcenter.id} className="card-enterprise">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Server className="w-5 h-5 text-primary" />
+        {vcenters.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-12">
+              <Server className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No vCenter Connections</h3>
+              <p className="text-muted-foreground mb-4">
+                Add your first vCenter server to start managing your virtual infrastructure
+              </p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add vCenter
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          vcenters.map((vcenter) => (
+            <Card key={vcenter.id}>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Server className="w-5 h-5 text-primary" />
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        {vcenter.name}
+                        {getConnectionStatusBadge(vcenter.id)}
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        {vcenter.hostname}:{vcenter.port}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {vcenter.ignore_ssl && (
+                      <Shield className="w-4 h-4 text-yellow-500" />
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleTestConnection(vcenter.id)}
+                      disabled={testingConnections.has(vcenter.id)}
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(vcenter)}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(vcenter.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4 text-sm">
                   <div>
-                    <CardTitle>{vcenter.name}</CardTitle>
-                    <div className="text-sm text-muted-foreground">
-                      {vcenter.hostname}:{vcenter.port}
+                    <span className="text-muted-foreground">Username:</span>
+                    <div className="font-medium">{vcenter.username}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">SSL Verification:</span>
+                    <div className="font-medium">
+                      {vcenter.ignore_ssl ? 'Disabled' : 'Enabled'}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Last Updated:</span>
+                    <div className="font-medium">
+                      {formatDistanceToNow(new Date(vcenter.updated_at))} ago
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  {vcenter.ignore_ssl && (
-                    <Shield className="w-4 h-4 text-yellow-500" />
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(vcenter)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(vcenter.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Username:</span>
-                  <div className="font-medium">{vcenter.username}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Port:</span>
-                  <div className="font-medium">{vcenter.port}</div>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">SSL:</span>
-                  <div className="font-medium">
-                    {vcenter.ignore_ssl ? 'Disabled' : 'Enabled'}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
-
-      {/* Synchronization Manager - Integrated with the app */}
-      <div className="mb-6">
-        <VCenterSyncManager showAllVCenters={true} />
-      </div>
-
-      {/* Quick Integration Status */}
-      <Card className="card-enterprise mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Network className="w-5 h-5" />
-            vCenter Integration Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <div className="text-2xl font-bold text-primary">
-                {vcenters.length}
-              </div>
-              <div className="text-sm text-muted-foreground">Connected vCenters</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-success">
-                {vcenters.filter(vc => 
-                  new Date().getTime() - new Date(vc.updated_at).getTime() < 3600000
-                ).length}
-              </div>
-              <div className="text-sm text-muted-foreground">Recently Synced</div>
-            </div>
-            <div>
-              <div className="text-2xl font-bold text-blue-600">
-                {/* This would show managed hosts from integrated servers */}
-                TBD
-              </div>
-              <div className="text-sm text-muted-foreground">Managed Hosts</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import SetupWizard from "@/components/setup/SetupWizard";
-import { VCenterConfiguration } from "@/components/vcenter/VCenterConfiguration";
+
 import { CommandControlCenter } from "@/components/scheduler/CommandControlCenter";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
@@ -98,7 +98,7 @@ export default function IdracUpdater() {
       case "alerts":
         return <AlertsEventsPage />;
       case "vcenter":
-        return <VCenterConfiguration />;
+        return <div className="text-center py-12">vCenter Management is being migrated to /vcenter route</div>;
       case "scheduler":
         return <CommandControlCenter />;
       case "users":

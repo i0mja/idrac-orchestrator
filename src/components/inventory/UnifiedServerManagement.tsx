@@ -39,7 +39,7 @@ import {
   Building2,
   Network
 } from "lucide-react";
-import { VCenterSyncManager } from "@/components/vcenter/VCenterSyncManager";
+
 import { supabase } from "@/integrations/supabase/client";
 
 export function UnifiedServerManagement() {
