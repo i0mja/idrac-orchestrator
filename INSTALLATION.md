@@ -6,7 +6,7 @@ For RedHat Enterprise Linux 9, Rocky Linux 9, or AlmaLinux 9 servers:
 
 ```bash
 # Enterprise-optimized installer with SELinux, systemd, and firewalld
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | sudo bash
 ```
 
 This RHEL 9 installer provides:

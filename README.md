@@ -9,20 +9,20 @@ Get up and running instantly with our one-click installation:
 ### Option 1: RHEL 9 Optimized (Recommended)
 ```bash
 # RedHat Enterprise Linux 9, Rocky Linux 9, AlmaLinux 9
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | sudo bash
 ```
 **✅ Optimized for RHEL 9 • ✅ SELinux configured • ✅ systemd integration • ✅ Enterprise ready**
 
 ### Option 2: Docker (Universal)
 ```bash
-curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
 ```
 **✅ Works on any platform • ✅ Complete setup in 5 minutes • ✅ Auto-configures everything**
 
 ### Option 3: Windows Server
 ```powershell
 # Run as Administrator in PowerShell
-Invoke-WebRequest -Uri "https://install.idrac-orchestrator.com/install-windows.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\install.ps1
 ```
@@ -111,13 +111,13 @@ See [QUICK_START.md](QUICK_START.md) for detailed options or [DEPLOYMENT.md](DEP
 **1. Run One-Click Installer**
 ```bash
 # RHEL 9 / Rocky Linux 9 / AlmaLinux 9 (Recommended for Enterprise)
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | sudo bash
 
 # Docker (works everywhere)
-curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
 
 # Other Linux distributions
-curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
 ```
 
 **2. Access Web Interface**

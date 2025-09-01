@@ -9,7 +9,7 @@ Get your iDRAC Updater Orchestrator running in minutes with these simple options
 
 ```bash
 # RedHat Enterprise Linux 9, Rocky Linux 9, AlmaLinux 9
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | sudo bash
 ```
 
 **Enterprise features:**
@@ -25,7 +25,7 @@ curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
 
 ```bash
 # For other Linux distributions and universal compatibility
-curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
 ```
 
 **What it does:**
@@ -52,7 +52,7 @@ npx idrac-orchestrator-demo
 
 ```powershell
 # Run as Administrator in PowerShell
-Invoke-WebRequest -Uri "https://install.idrac-orchestrator.com/install-windows.ps1" -OutFile "install.ps1"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\install.ps1
 ```
@@ -64,7 +64,7 @@ Then open http://localhost:3000
 
 ```bash
 # Ubuntu / Debian / CentOS Stream / Other distributions
-curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
 ```
 
 ## 🎯 Quick Setup Wizard
@@ -169,13 +169,13 @@ For production environments:
 1. **Security Hardening**
    ```bash
    # Use the production installer with security hardening
-   curl -fsSL https://install.idrac-orchestrator.com/production.sh | sudo bash
+   curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
    ```
 
 2. **High Availability Setup**
    ```bash
    # Deploy with load balancer and database cluster
-   curl -fsSL https://install.idrac-orchestrator.com/ha.sh | sudo bash
+   curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
    ```
 
 3. **Cloud Deployment**

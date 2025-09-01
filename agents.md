@@ -8,7 +8,7 @@ This document details the various agents, services, and automated processes that
 
 ```bash
 # Get running in 5 minutes:
-curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
 ```
 
 ---
