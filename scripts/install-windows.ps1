@@ -4,7 +4,8 @@
 param(
     [string]$InstallPath = "C:\Program Files\iDRAC Orchestrator",
     [string]$DataPath = "C:\ProgramData\iDRAC Orchestrator",
-    [switch]$QuickStart = $false
+    [switch]$QuickStart = $false,
+    [switch]$UseSQLite = $false
 )
 
 # Check if running as Administrator
@@ -16,6 +17,11 @@ if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdent
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  iDRAC Updater Orchestrator Installer" -ForegroundColor Cyan  
 Write-Host "  Windows Edition" -ForegroundColor Cyan
+if ($UseSQLite) {
+    Write-Host "  Fast Setup Mode (SQLite)" -ForegroundColor Yellow
+} else {
+    Write-Host "  Full Setup Mode (PostgreSQL)" -ForegroundColor Green
+}
 Write-Host "========================================" -ForegroundColor Cyan
 
 # Function to write colored output
@@ -105,34 +111,73 @@ function Install-NodeJS {
     Write-Success "Node.js installed successfully"
 }
 
-# Install PostgreSQL
-function Install-PostgreSQL {
+# Install Database (PostgreSQL or SQLite)
+function Install-Database {
+    param([switch]$UseSQLite = $false)
+    
+    if ($UseSQLite) {
+        Write-Info "Using SQLite database (faster setup)..."
+        
+        # Create SQLite database path
+        $sqliteDb = "$DataPath\idrac_orchestrator.db"
+        New-Item -ItemType Directory -Force -Path (Split-Path $sqliteDb) | Out-Null
+        
+        # Store database URL for SQLite
+        "sqlite:$sqliteDb" | Out-File -FilePath "$DataPath\db_connection.txt" -Encoding UTF8
+        
+        Write-Success "SQLite database configured"
+        return
+    }
+    
+    # Check if PostgreSQL is already installed
     if (Get-Service postgresql* -ErrorAction SilentlyContinue) {
         Write-Success "PostgreSQL already installed"
         return
     }
     
-    Write-Info "Installing PostgreSQL..."
+    Write-Info "Installing PostgreSQL (this may take a few minutes)..."
+    Write-Warning "For faster setup, you can restart with -UseSQLite flag"
     
     # Generate random password
     $dbPassword = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 16 | % {[char]$_})
     
-    # Install PostgreSQL
-    choco install postgresql --params '/Password:$dbPassword' -y
+    # Install PostgreSQL with progress
+    Write-Info "Downloading PostgreSQL package..."
+    choco install postgresql --params "/Password:$dbPassword" -y --no-progress
     
-    # Wait for service to start
-    Start-Sleep -Seconds 30
+    # Smart wait for service to be ready
+    Write-Info "Waiting for PostgreSQL service to start..."
+    $timeout = 120
+    $elapsed = 0
+    do {
+        Start-Sleep -Seconds 5
+        $elapsed += 5
+        $service = Get-Service postgresql* -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq "Running" }
+        if ($service) { break }
+        Write-Host "." -NoNewline
+    } while ($elapsed -lt $timeout)
     
-    # Create database and user
-    Write-Info "Setting up database..."
+    if (-not $service) {
+        Write-Error "PostgreSQL service failed to start within $timeout seconds"
+        return
+    }
     
+    Write-Host ""
+    Write-Info "Setting up database and user..."
+    
+    # Set environment and combine SQL commands for efficiency
     $env:PGPASSWORD = $dbPassword
-    & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -c "CREATE DATABASE idrac_orchestrator;"
-    & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -c "CREATE USER idrac_admin WITH ENCRYPTED PASSWORD '$dbPassword';"
-    & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE idrac_orchestrator TO idrac_admin;"
+    $sqlCommands = @"
+CREATE DATABASE idrac_orchestrator;
+CREATE USER idrac_admin WITH ENCRYPTED PASSWORD '$dbPassword';
+GRANT ALL PRIVILEGES ON DATABASE idrac_orchestrator TO idrac_admin;
+"@
     
-    # Store password for later use
-    $dbPassword | Out-File -FilePath "$DataPath\db_password.txt" -Encoding UTF8
+    # Execute all SQL commands at once
+    $sqlCommands | & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -f -
+    
+    # Store database connection info
+    "postgresql://idrac_admin:$dbPassword@localhost:5432/idrac_orchestrator" | Out-File -FilePath "$DataPath\db_connection.txt" -Encoding UTF8
     
     Write-Success "PostgreSQL installed and configured"
 }
@@ -182,9 +227,12 @@ function Install-Application {
 function New-Configuration {
     Write-Info "Creating configuration files..."
     
-    # Read database password
-    $dbPassword = Get-Content "$DataPath\db_password.txt" -Raw
-    $dbPassword = $dbPassword.Trim()
+    # Read database connection info
+    $databaseUrl = Get-Content "$DataPath\db_connection.txt" -Raw -ErrorAction SilentlyContinue
+    if (-not $databaseUrl) {
+        $databaseUrl = "sqlite:$DataPath\idrac_orchestrator.db"
+    }
+    $databaseUrl = $databaseUrl.Trim()
     
     # Generate secrets
     $jwtSecret = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 64 | % {[char]$_})
@@ -200,7 +248,7 @@ PORT=3000
 HOST=0.0.0.0
 
 # Database
-DATABASE_URL=postgresql://idrac_admin:$dbPassword@localhost:5432/idrac_orchestrator
+DATABASE_URL=$databaseUrl
 
 # Security
 JWT_SECRET=$jwtSecret
@@ -303,7 +351,7 @@ function Start-Installation {
         Test-SystemRequirements
         Install-Chocolatey
         Install-NodeJS
-        Install-PostgreSQL
+        Install-Database -UseSQLite:$UseSQLite
         New-AppDirectories
         Install-Application
         New-Configuration
@@ -316,6 +364,11 @@ function Start-Installation {
         Write-Host "========================================" -ForegroundColor Green
         Write-Success "Installation completed successfully!"
         Write-Host "========================================" -ForegroundColor Green
+        Write-Host ""
+        if ($UseSQLite) {
+            Write-Host "SQLite Mode - Perfect for testing and development!" -ForegroundColor Yellow
+            Write-Host "For production, consider re-running without -UseSQLite flag" -ForegroundColor Gray
+        }
         Write-Host ""
         Write-Host "Next steps:" -ForegroundColor Yellow
         Write-Host "1. Open http://localhost:3000 in your browser" -ForegroundColor White

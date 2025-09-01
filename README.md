@@ -22,6 +22,13 @@ curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/insta
 ### Option 3: Windows Server
 ```powershell
 # Run as Administrator in PowerShell
+
+# Fast setup with SQLite (recommended for testing)
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\install.ps1 -UseSQLite
+
+# OR full PostgreSQL setup (for production)
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\install.ps1

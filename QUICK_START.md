@@ -52,10 +52,23 @@ npx idrac-orchestrator-demo
 
 ```powershell
 # Run as Administrator in PowerShell
+
+# Fast setup (SQLite - completes in ~2 minutes)
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\install.ps1 -UseSQLite
+
+# OR full setup (PostgreSQL - takes 5-10 minutes)
 Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\install.ps1
 ```
+
+**Fast SQLite mode:**
+- ✅ Installs in ~2 minutes
+- ✅ Perfect for testing and development
+- ✅ No external database setup required
+- ℹ️ For production, use full PostgreSQL mode
 
 Then open http://localhost:3000
 
