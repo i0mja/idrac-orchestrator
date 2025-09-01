@@ -199,23 +199,49 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
     
-    # Try to find the current script directory (where the installer is running from)
-    $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
-    if (-not $scriptDir) {
+    # Try multiple methods to find the script directory
+    $scriptDir = $null
+    
+    # Method 1: Use PSScriptRoot (PowerShell 3.0+)
+    if ($PSScriptRoot) {
+        $scriptDir = $PSScriptRoot
+    }
+    # Method 2: Use MyInvocation
+    elseif ($MyInvocation.MyCommand.Path) {
+        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    }
+    # Method 3: Use current location as fallback
+    else {
         $scriptDir = Get-Location
     }
     
-    # Look for project files in parent directories
-    $projectRoot = $scriptDir
+    Write-Info "Script directory detected as: $scriptDir"
+    
+    # Look for project files in current and parent directories
+    $projectRoot = $null
+    $searchPaths = @($scriptDir)
+    
+    # Add parent directories to search
+    $currentPath = $scriptDir
     for ($i = 0; $i -lt 3; $i++) {
-        if (Test-Path "$projectRoot\package.json") {
+        $parentPath = Split-Path -Parent $currentPath
+        if ($parentPath -and ($parentPath -ne $currentPath)) {
+            $searchPaths += $parentPath
+            $currentPath = $parentPath
+        }
+    }
+    
+    # Find project root by looking for package.json
+    foreach ($searchPath in $searchPaths) {
+        if (Test-Path "$searchPath\package.json") {
+            $projectRoot = $searchPath
             break
         }
-        $projectRoot = Split-Path -Parent $projectRoot
-        if (-not $projectRoot) {
-            Write-Error "Could not find project root with package.json"
-            return
-        }
+    }
+    
+    if (-not $projectRoot) {
+        Write-Error "Could not find project root with package.json in any of these locations: $($searchPaths -join ', ')"
+        return
     }
     
     Write-Info "Found project files at: $projectRoot"
@@ -234,8 +260,8 @@ function Install-Application {
         )
         
         foreach ($item in $filesToCopy) {
-            $sourcePath = "$projectRoot\$item"
-            $destPath = "$InstallPath\$item"
+            $sourcePath = Join-Path $projectRoot $item
+            $destPath = Join-Path $InstallPath $item
             
             if (Test-Path $sourcePath) {
                 if (Test-Path $sourcePath -PathType Container) {
@@ -246,6 +272,8 @@ function Install-Application {
                     Copy-Item -Path $sourcePath -Destination $destPath -Force
                 }
                 Write-Info "Copied $item"
+            } else {
+                Write-Warning "Source file/directory not found: $sourcePath"
             }
         }
         
