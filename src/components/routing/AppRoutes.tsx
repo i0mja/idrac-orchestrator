@@ -13,6 +13,7 @@ import { SettingsPage } from "@/components/settings/SettingsPage";
 
 import { NetworkDiscovery } from "@/components/discovery/NetworkDiscovery";
 import { EnterpriseManagement } from "@/components/enterprise/EnterpriseManagement";
+import { CredentialsPage } from "@/pages/CredentialsPage";
 
 export function AppRoutes() {
   return (
@@ -22,6 +23,7 @@ export function AppRoutes() {
         <Route index element={<EnhancedDashboard />} />
         <Route path="inventory" element={<EnhancedGlobalInventory />} />
         <Route path="discovery" element={<NetworkDiscovery />} />
+        <Route path="credentials" element={<CredentialsPage />} />
         <Route path="scheduler" element={<EnhancedCommandControl />} />
         <Route path="enterprise" element={<EnterpriseManagement />} />
         <Route path="alerts" element={<AlertsEventsPage />} />

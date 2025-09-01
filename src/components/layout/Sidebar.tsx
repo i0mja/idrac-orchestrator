@@ -12,10 +12,11 @@ import {
   Bell,
   Network,
   Calendar,
-  Search
+  Search,
+  Key
 } from "lucide-react";
 
-type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery";
+type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery" | "credentials";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -32,6 +33,7 @@ const menuItems: Array<{
   { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
   { id: "discovery", label: "Network Discovery", icon: Search, roles: ["admin", "operator"] },
+  { id: "credentials", label: "Credentials", icon: Key, roles: ["admin", "operator"] },
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Infrastructure & Operations", icon: Building2, roles: ["admin", "operator"] },
   { id: "scheduler", label: "Command & Control", icon: Calendar, roles: ["admin", "operator"] },
