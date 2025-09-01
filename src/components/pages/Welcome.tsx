@@ -252,11 +252,11 @@ const Welcome: React.FC = () => {
                     <h3 className="text-lg font-semibold">Docker Installation (Recommended)</h3>
                     <p className="text-muted-foreground">Complete setup with one command</p>
                   </div>
-                  <div className="bg-black rounded-lg p-4">
-                    <code className="text-green-400 font-mono text-sm">
-                      curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
-                    </code>
-                  </div>
+                    <div className="bg-black rounded-lg p-4">
+                      <code className="text-green-400 font-mono text-sm">
+                        curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
+                      </code>
+                    </div>
                   <div className="grid gap-2 text-sm">
                     <div className="flex items-center gap-2">
                       <CheckCircle className="h-4 w-4 text-green-500" />
@@ -280,11 +280,11 @@ const Welcome: React.FC = () => {
                     <h3 className="text-lg font-semibold">Native Linux Installation</h3>
                     <p className="text-muted-foreground">Direct installation on Ubuntu, RHEL, or CentOS</p>
                   </div>
-                  <div className="bg-black rounded-lg p-4">
-                    <code className="text-green-400 font-mono text-sm">
-                      wget -O- https://install.idrac-orchestrator.com/linux.sh | sudo bash
-                    </code>
-                  </div>
+                    <div className="bg-black rounded-lg p-4">
+                      <code className="text-green-400 font-mono text-sm">
+                        wget -O- https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
+                      </code>
+                    </div>
                   <div className="text-sm text-muted-foreground">
                     Installs as systemd service with automatic startup
                   </div>

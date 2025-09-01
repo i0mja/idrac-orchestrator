@@ -21,14 +21,18 @@ This RHEL 9 installer provides:
 ```bash
 # Clone repository
 git clone <repository-url>
-cd idrac-updater-orchestrator
+cd idrac-orchestrator
 
-# Install dependencies
+# Install dependencies and configure environment
+cp .env.example .env
 npm install
+npx supabase gen types typescript --project-id hrqzmjjpnylcmunyaovj > src/integrations/supabase/types.ts
 
-# Start development server
+# Start development server on http://localhost:8080
 npm run dev
 ```
+
+Ensure your Supabase project `auth.site_url` and `additional_redirect_urls` include `http://localhost:8080` for authentication callbacks.
 
 ## Production Installation
 

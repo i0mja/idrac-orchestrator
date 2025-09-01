@@ -157,6 +157,30 @@ For custom deployments or development environments, see the detailed guides:
 - **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
 - **[Docker Compose](docker-compose.prod.yml)** - Self-hosted containers
 
+### Local Development
+
+1. Ensure [Node.js](https://nodejs.org/) 18 or 20 is installed.
+2. Copy `.env.example` to `.env` and fill in Supabase values.
+3. Install dependencies and start the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+The app will be available at [http://localhost:8080](http://localhost:8080).
+
+### Docker
+
+Build and run the production image:
+
+```bash
+docker build -t idrac-orchestrator \
+  --build-arg VITE_SUPABASE_URL=https://your-project.supabase.co \
+  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=your_anon_key .
+docker run -p 3000:3000 idrac-orchestrator
+```
+
 ## 📚 Documentation
 
 | Guide | Purpose |
