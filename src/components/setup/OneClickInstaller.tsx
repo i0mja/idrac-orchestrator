@@ -31,7 +31,7 @@ const OneClickInstaller: React.FC = () => {
       description: "One command to run everything",
       icon: Terminal,
       platform: "docker",
-      command: `curl -fsSL https://raw.githubusercontent.com/your-org/idrac-orchestrator/main/install.sh | bash`,
+        command: `curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash`,
       steps: [
         "Download Docker Compose configuration",
         "Pull required container images", 
@@ -47,7 +47,7 @@ const OneClickInstaller: React.FC = () => {
       description: "Direct installation on Linux server",
       icon: Terminal,
       platform: "linux",
-      command: `wget -O- https://install.idrac-orchestrator.com/linux.sh | sudo bash`,
+        command: `wget -O- https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash`,
       steps: [
         "Install PostgreSQL 15",
         "Create database and user",

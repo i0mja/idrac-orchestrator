@@ -64,6 +64,13 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\install.ps1
 ```
 
+Verify the service after installation:
+
+```powershell
+Get-Service "iDRAC Orchestrator"
+Invoke-WebRequest -Uri "http://localhost:3000/health.txt"
+```
+
 **Fast SQLite mode:**
 - ✅ Installs in ~2 minutes
 - ✅ Perfect for testing and development
