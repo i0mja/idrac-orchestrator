@@ -8,6 +8,10 @@ Get your iDRAC Updater Orchestrator running in minutes with these simple options
 **⏱️ 5 minutes | 🔧 Automatic setup | 💻 Works everywhere**
 
 ```bash
+# For RHEL 9, Rocky Linux 9, AlmaLinux 9
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+
+# For other Linux distributions
 curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 ```
 
@@ -42,6 +46,10 @@ npx idrac-orchestrator-demo
 **⏱️ 8 minutes | 🐧 Direct install | ⚡ Best performance**
 
 ```bash
+# RHEL 9 / Rocky Linux 9 / AlmaLinux 9 (optimized)
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+
+# Ubuntu / Debian
 curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
 ```
 

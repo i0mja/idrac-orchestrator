@@ -2,6 +2,7 @@
 
 # iDRAC Updater Orchestrator - One-Click Installation Script
 # This script sets up the complete environment with Docker Compose
+# Compatible with RHEL 9, CentOS 9, Rocky Linux 9, AlmaLinux 9
 
 set -e
 
@@ -35,6 +36,33 @@ print_error() {
     exit 1
 }
 
+# Detect OS
+detect_os() {
+    if [ -f /etc/redhat-release ]; then
+        OS="rhel"
+        if grep -q "Rocky" /etc/redhat-release; then
+            DISTRO="rocky"
+        elif grep -q "AlmaLinux" /etc/redhat-release; then
+            DISTRO="alma"  
+        elif grep -q "CentOS" /etc/redhat-release; then
+            DISTRO="centos"
+        else
+            DISTRO="rhel"
+        fi
+        VERSION=$(rpm -E %rhel)
+        PACKAGE_MANAGER="dnf"
+    elif [ -f /etc/debian_version ]; then
+        OS="debian"
+        DISTRO="ubuntu"
+        VERSION=$(lsb_release -sr)
+        PACKAGE_MANAGER="apt"
+    else
+        print_error "Unsupported operating system. This installer supports RHEL 9, CentOS 9, Rocky Linux 9, and Ubuntu 20.04+."
+    fi
+    
+    print_success "Detected: $DISTRO $VERSION"
+}
+
 # Check if running as root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
@@ -46,12 +74,12 @@ check_root() {
 check_requirements() {
     print_info "Checking system requirements..."
     
-    # Check OS
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        print_success "Linux system detected"
-    else
-        print_error "This installer only supports Linux. Use Docker Desktop for other platforms."
+    # Check OS support
+    if [[ "$OS" == "rhel" && "$VERSION" -lt "9" ]]; then
+        print_error "RHEL/CentOS 8 or lower is not supported. Please use RHEL 9+ or Rocky/AlmaLinux 9+."
     fi
+    
+    print_success "OS compatibility check passed"
     
     # Check memory
     MEM_GB=$(free -g | awk '/^Mem:/{print $2}')
@@ -68,6 +96,139 @@ check_requirements() {
     else
         print_success "Disk space check passed (${DISK_GB}GB available)"
     fi
+}
+
+# Install Docker if not present
+install_docker() {
+    if command -v docker &> /dev/null; then
+        print_success "Docker already installed"
+        return
+    fi
+    
+    print_info "Installing Docker..."
+    
+    if [[ "$OS" == "rhel" ]]; then
+        # RHEL/CentOS/Rocky/AlmaLinux Docker installation
+        $PACKAGE_MANAGER update -y
+        $PACKAGE_MANAGER install -y yum-utils device-mapper-persistent-data lvm2
+        
+        # Add Docker repository
+        $PACKAGE_MANAGER config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+        
+        # Install Docker
+        $PACKAGE_MANAGER install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    else
+        # Ubuntu/Debian Docker installation
+        apt-get update -qq
+        apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        
+        # Add Docker GPG key
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+        
+        # Add Docker repository
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        
+        # Install Docker
+        apt-get update -qq
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    fi
+    
+    # Start and enable Docker service
+    systemctl start docker
+    systemctl enable docker
+    
+    # Add current user to docker group if not root
+    if [[ $EUID -ne 0 ]]; then
+        usermod -aG docker $USER
+        print_warning "Added $USER to docker group. You may need to log out and back in."
+    fi
+    
+    print_success "Docker installed successfully"
+}
+
+# Configure firewall
+setup_firewall() {
+    if [[ "$OS" == "rhel" ]]; then
+        # RHEL uses firewalld
+        print_info "Configuring firewalld..."
+        
+        systemctl start firewalld
+        systemctl enable firewalld
+        
+        firewall-cmd --permanent --add-port=22/tcp    # SSH
+        firewall-cmd --permanent --add-port=80/tcp    # HTTP
+        firewall-cmd --permanent --add-port=443/tcp   # HTTPS
+        firewall-cmd --permanent --add-port=3000/tcp  # Application
+        firewall-cmd --reload
+        
+        print_success "Firewalld configured"
+    else
+        # Ubuntu uses ufw
+        if command -v ufw &> /dev/null; then
+            print_info "Configuring ufw..."
+            
+            ufw --force enable
+            ufw allow 22/tcp    # SSH
+            ufw allow 80/tcp    # HTTP
+            ufw allow 443/tcp   # HTTPS
+            ufw allow 3000/tcp  # Application
+            
+            print_success "UFW configured"
+        else
+            print_warning "No firewall manager found. Configure firewall manually if needed."
+        fi
+    fi
+}
+
+# Install PostgreSQL if needed (for native installation)
+install_postgresql() {
+    if [[ "$1" != "--native" ]]; then
+        return  # Skip for Docker installation
+    fi
+    
+    print_info "Installing PostgreSQL..."
+    
+    if [[ "$OS" == "rhel" ]]; then
+        # RHEL PostgreSQL installation
+        $PACKAGE_MANAGER install -y postgresql postgresql-server postgresql-contrib
+        
+        # Initialize database
+        if [ ! -f /var/lib/pgsql/data/postgresql.conf ]; then
+            postgresql-setup --initdb
+        fi
+        
+        systemctl start postgresql
+        systemctl enable postgresql
+    else
+        # Ubuntu PostgreSQL installation  
+        apt-get update -qq
+        apt-get install -y postgresql postgresql-contrib
+        
+        systemctl start postgresql
+        systemctl enable postgresql
+    fi
+    
+    print_success "PostgreSQL installed"
+}
+
+# Setup SELinux for RHEL
+configure_selinux() {
+    if [[ "$OS" != "rhel" ]]; then
+        return
+    fi
+    
+    print_info "Configuring SELinux for Docker..."
+    
+    # Install SELinux tools
+    $PACKAGE_MANAGER install -y policycoreutils-python-utils
+    
+    # Allow Docker to bind to ports
+    setsebool -P container_manage_cgroup on
+    
+    # Allow Docker to access network
+    setsebool -P docker_connect_any on
+    
+    print_success "SELinux configured for Docker"
 }
 
 # Install Docker if not present
@@ -434,10 +595,11 @@ main() {
     print_info "Starting installation..."
     
     # Run installation steps
+    detect_os
     check_root
     check_requirements
+    configure_selinux
     install_docker
-    install_docker_compose
     create_directories
     generate_config
     download_application

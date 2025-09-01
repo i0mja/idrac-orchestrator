@@ -290,8 +290,9 @@ Cluster Policies:
 | Platform | Installation Method | Status |
 |----------|-------------------|---------|
 | **Docker** | One-click script | ✅ Recommended |
+| **RHEL 9 / Rocky 9 / AlmaLinux 9** | Optimized native install | ✅ **Primary Support** |
 | **Ubuntu 20.04+** | Native install | ✅ Supported |
-| **RHEL/CentOS 8+** | Native install | ✅ Supported |  
+| **CentOS Stream 9** | RHEL script | ✅ Supported |  
 | **Windows Server 2019+** | MSI installer | ✅ Supported |
 | **AWS/Azure/GCP** | Cloud templates | ✅ Supported |
 | **Kubernetes** | Helm charts | ✅ Supported |
