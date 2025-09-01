@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, Circle, Server, Mail, Shield, Database, Network, Monitor, Users, Settings, Key, HardDrive } from "lucide-react";
+import { CheckCircle, Circle, Server, Mail, Shield, Database, Network, Monitor, Users, Settings, Key, HardDrive, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,9 +18,22 @@ interface SetupWizardProps {
 }
 
 const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for database setup
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+
+  // Database Connection Settings (new step 0)
+  const [databaseConfig, setDatabaseConfig] = useState({
+    type: "postgresql", // Only PostgreSQL supported
+    host: "localhost",
+    port: 5432,
+    database: "idrac_orchestrator",
+    username: "idrac_admin",
+    password: "",
+    ssl_enabled: false,
+    connection_timeout: 30,
+    pool_size: 20
+  });
 
   // Organization & Basic Settings
   const [orgConfig, setOrgConfig] = useState({
@@ -224,6 +237,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   };
 
   const steps = [
+    { id: 0, title: "Database", icon: Database, description: "Database connection setup" },
     { id: 1, title: "Organization", icon: Settings, description: "Basic organization settings" },
     { id: 2, title: "iDRAC Access", icon: Server, description: "Default server credentials" },
     { id: 3, title: "File Storage", icon: HardDrive, description: "Firmware storage configuration" },
@@ -231,13 +245,18 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     { id: 5, title: "Authentication", icon: Users, description: "User authentication setup" },
     { id: 6, title: "Network", icon: Network, description: "Network and discovery settings" },
     { id: 7, title: "Security", icon: Shield, description: "Security policies" },
-    { id: 8, title: "Backup & Monitoring", icon: Database, description: "Backup and monitoring configuration" },
+    { id: 8, title: "Backup & Monitoring", icon: Monitor, description: "Backup and monitoring configuration" },
     { id: 9, title: "Admin User", icon: Key, description: "Create first administrator" },
     { id: 10, title: "Review", icon: CheckCircle, description: "Review and complete setup" }
   ];
 
   const validateStep = (step: number): boolean => {
     switch (step) {
+      case 0:
+        return databaseConfig.host.trim() !== "" && 
+               databaseConfig.database.trim() !== "" && 
+               databaseConfig.username.trim() !== "" && 
+               databaseConfig.password.trim() !== "";
       case 1:
         return orgConfig.name.trim() !== "" && orgConfig.contact_email.trim() !== "";
       case 2:
@@ -277,7 +296,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
   };
 
   const handlePrevious = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
+    setCurrentStep(prev => Math.max(prev - 1, 0));
   };
 
   const saveAllConfigurations = async () => {
@@ -368,6 +387,127 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
   const renderStepContent = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <div className="space-y-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5" />
+                Database Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure your PostgreSQL database connection. The system requires PostgreSQL 15+ for operation.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-4 w-4 text-blue-600" />
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Database Requirements</h4>
+                </div>
+                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
+                  <li>• PostgreSQL 15+ server running</li>
+                  <li>• Database "idrac_orchestrator" created</li>
+                  <li>• User with full privileges on the database</li>
+                  <li>• Network connectivity from application to database</li>
+                </ul>
+              </div>
+
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="db-host">Database Host *</Label>
+                    <Input
+                      id="db-host"
+                      value={databaseConfig.host}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, host: e.target.value }))}
+                      placeholder="localhost"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="db-port">Port</Label>
+                    <Input
+                      id="db-port"
+                      type="number"
+                      value={databaseConfig.port}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, port: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="db-name">Database Name *</Label>
+                  <Input
+                    id="db-name"
+                    value={databaseConfig.database}
+                    onChange={(e) => setDatabaseConfig(prev => ({ ...prev, database: e.target.value }))}
+                    placeholder="idrac_orchestrator"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="db-username">Username *</Label>
+                    <Input
+                      id="db-username"
+                      value={databaseConfig.username}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, username: e.target.value }))}
+                      placeholder="idrac_admin"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="db-password">Password *</Label>
+                    <Input
+                      id="db-password"
+                      type="password"
+                      value={databaseConfig.password}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Database password"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="db-timeout">Connection Timeout (seconds)</Label>
+                    <Input
+                      id="db-timeout"
+                      type="number"
+                      value={databaseConfig.connection_timeout}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, connection_timeout: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="db-pool-size">Connection Pool Size</Label>
+                    <Input
+                      id="db-pool-size"
+                      type="number"
+                      value={databaseConfig.pool_size}
+                      onChange={(e) => setDatabaseConfig(prev => ({ ...prev, pool_size: parseInt(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="ssl-enabled"
+                    checked={databaseConfig.ssl_enabled}
+                    onCheckedChange={(checked) => setDatabaseConfig(prev => ({ ...prev, ssl_enabled: !!checked }))}
+                  />
+                  <Label htmlFor="ssl-enabled">Enable SSL connection</Label>
+                </div>
+              </div>
+
+              <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-900/20">
+                <h4 className="font-medium mb-2">Quick Setup Commands</h4>
+                <div className="text-xs font-mono bg-black text-green-400 p-2 rounded">
+                  <div># Create database and user:</div>
+                  <div>sudo -u postgres psql</div>
+                  <div>CREATE DATABASE idrac_orchestrator;</div>
+                  <div>CREATE USER idrac_admin WITH ENCRYPTED PASSWORD 'your_password';</div>
+                  <div>GRANT ALL PRIVILEGES ON DATABASE idrac_orchestrator TO idrac_admin;</div>
+                </div>
+              </div>
+            </CardContent>
+          </div>
+        );
+
       case 1:
         return (
           <div className="space-y-6">
@@ -1202,7 +1342,7 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             <Button
               variant="outline"
               onClick={handlePrevious}
-              disabled={currentStep === 1}
+              disabled={currentStep === 0}
             >
               Previous
             </Button>
