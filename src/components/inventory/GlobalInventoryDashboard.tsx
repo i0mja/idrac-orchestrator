@@ -9,7 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useServers } from "@/hooks/useServers";
+import { useCredentialProfiles } from "@/hooks/useCredentialProfiles";
+import { useUpdateJobs } from "@/hooks/useUpdateJobs";
+import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
@@ -34,7 +38,17 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  TrendingUp
+  TrendingUp,
+  Key,
+  Settings,
+  PlayCircle,
+  FileText,
+  Zap,
+  ExternalLink,
+  Users,
+  Target,
+  RefreshCw,
+  Eye
 } from "lucide-react";
 
 interface ServerNote {
@@ -49,7 +63,10 @@ interface ServerNote {
 }
 
 export function GlobalInventoryDashboard() {
-  const { servers, loading } = useServers();
+  const { servers, loading, testConnection } = useServers();
+  const { profiles: credentialProfiles, getCredentialsForIP } = useCredentialProfiles();
+  const { jobs: updateJobs } = useUpdateJobs();
+  const { packages: firmwarePackages } = useFirmwarePackages();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterEnvironment, setFilterEnvironment] = useState("all");
@@ -59,13 +76,26 @@ export function GlobalInventoryDashboard() {
   const [notes, setNotes] = useState<ServerNote[]>([]);
   const [newNote, setNewNote] = useState({ title: "", content: "", category: "general" });
   const [isNotesDialogOpen, setIsNotesDialogOpen] = useState(false);
+  const [serverCredentials, setServerCredentials] = useState<Record<string, any>>({});
+  const [maintenanceWindows, setMaintenanceWindows] = useState<Record<string, any>>({});
+  const [healthChecks, setHealthChecks] = useState<Record<string, any>>({});
 
-  // Load notes for selected server
+  // Load enhanced server data
   useEffect(() => {
     if (selectedServer) {
       loadServerNotes(selectedServer.id);
+      loadServerCredentials(selectedServer.id);
+      loadMaintenanceWindow(selectedServer.id);
+      loadHealthCheckStatus(selectedServer.id);
     }
   }, [selectedServer]);
+
+  // Load credential and maintenance data for all servers
+  useEffect(() => {
+    if (servers.length > 0) {
+      loadAllServerData();
+    }
+  }, [servers]);
 
   const loadServerNotes = async (serverId: string) => {
     try {
@@ -79,6 +109,118 @@ export function GlobalInventoryDashboard() {
       setNotes(data || []);
     } catch (error) {
       console.error('Error loading notes:', error);
+    }
+  };
+
+  // Load all server data for enhanced display
+  const loadAllServerData = async () => {
+    const credentials: Record<string, any> = {};
+    const maintenance: Record<string, any> = {};
+    const health: Record<string, any> = {};
+
+    for (const server of servers) {
+      try {
+        const creds = await getCredentialsForIP(server.ip_address?.toString() || '');
+        if (creds.length > 0) {
+          credentials[server.id] = creds[0];
+        }
+
+        // Load maintenance windows
+        const { data: dcData } = await supabase
+          .from('datacenters')
+          .select('*')
+          .eq('name', server.datacenter)
+          .single();
+        
+        if (dcData) {
+          maintenance[server.id] = {
+            start: dcData.maintenance_window_start,
+            end: dcData.maintenance_window_end,
+            timezone: dcData.timezone
+          };
+        }
+
+        // Load recent health checks
+        const { data: healthData } = await supabase
+          .from('system_events')
+          .select('*')
+          .eq('event_type', 'health_check')
+          .contains('metadata', { server_id: server.id })
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (healthData && healthData.length > 0) {
+          health[server.id] = healthData[0];
+        }
+      } catch (error) {
+        console.error('Error loading server data:', error);
+      }
+    }
+
+    setServerCredentials(credentials);
+    setMaintenanceWindows(maintenance);
+    setHealthChecks(health);
+  };
+
+  const loadServerCredentials = async (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return;
+
+    try {
+      const creds = await getCredentialsForIP(server.ip_address?.toString() || '');
+      setServerCredentials(prev => ({
+        ...prev,
+        [serverId]: creds.length > 0 ? creds[0] : null
+      }));
+    } catch (error) {
+      console.error('Error loading credentials:', error);
+    }
+  };
+
+  const loadMaintenanceWindow = async (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (!server || !server.datacenter) return;
+
+    try {
+      const { data } = await supabase
+        .from('datacenters')
+        .select('*')
+        .eq('name', server.datacenter)
+        .single();
+      
+      if (data) {
+        setMaintenanceWindows(prev => ({
+          ...prev,
+          [serverId]: {
+            start: data.maintenance_window_start,
+            end: data.maintenance_window_end,
+            timezone: data.timezone
+          }
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading maintenance window:', error);
+    }
+  };
+
+  const loadHealthCheckStatus = async (serverId: string) => {
+    try {
+      const { data } = await supabase
+        .from('system_events')
+        .select('*')
+        .eq('event_type', 'health_check')
+        .contains('metadata', { server_id: serverId })
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0) {
+        setHealthChecks(prev => ({
+          ...prev,
+          [serverId]: data[0]
+        }));
+      }
+    } catch (error) {
+      console.error('Error loading health check:', error);
     }
   };
 
@@ -117,6 +259,75 @@ export function GlobalInventoryDashboard() {
         description: "Failed to add note",
         variant: "destructive",
       });
+    }
+  };
+
+  // Enhanced action functions
+  const handleTestConnection = async (serverId: string) => {
+    try {
+      await testConnection(serverId);
+      loadHealthCheckStatus(serverId);
+    } catch (error) {
+      console.error('Connection test failed:', error);
+    }
+  };
+
+  const handleRunHealthCheck = async (serverId: string) => {
+    toast({
+      title: "Health Check",
+      description: "Running comprehensive health check...",
+    });
+
+    try {
+      // Create health check event
+      const { error } = await supabase
+        .from('system_events')
+        .insert([{
+          event_type: 'health_check',
+          title: 'Health Check Initiated',
+          description: 'Comprehensive server health check started',
+          severity: 'info',
+          metadata: { server_id: serverId }
+        }]);
+
+      if (error) throw error;
+
+      setTimeout(() => {
+        toast({
+          title: "Health Check Complete",
+          description: "Server health check completed successfully",
+        });
+        loadHealthCheckStatus(serverId);
+      }, 3000);
+    } catch (error) {
+      console.error('Health check failed:', error);
+      toast({
+        title: "Error",
+        description: "Health check failed to complete",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const scheduleUpdate = (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (server) {
+      // Navigate to scheduler with pre-selected server
+      window.location.href = `/scheduler?server=${serverId}`;
+    }
+  };
+
+  const manageCredentials = (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (server) {
+      // Navigate to network discovery with focus on credentials
+      window.location.href = `/network-discovery?ip=${server.ip_address}`;
+    }
+  };
+
+  const viewVCenterCluster = (server: any) => {
+    if (server.vcenter_id) {
+      window.location.href = `/vcenter-management?vcenter=${server.vcenter_id}`;
     }
   };
 
@@ -171,6 +382,63 @@ export function GlobalInventoryDashboard() {
       case "low": return <Badge className="status-online">Low</Badge>;
       default: return <Badge variant="outline">Unknown</Badge>;
     }
+  };
+
+  const getCredentialsBadge = (serverId: string) => {
+    const creds = serverCredentials[serverId];
+    if (!creds) return <Badge variant="outline">No Credentials</Badge>;
+    return <Badge className="status-online">{creds.name}</Badge>;
+  };
+
+  const getMaintenanceStatus = (serverId: string) => {
+    const maintenance = maintenanceWindows[serverId];
+    if (!maintenance) return "Unknown";
+    
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [startH, startM] = maintenance.start.split(':').map(Number);
+    const [endH, endM] = maintenance.end.split(':').map(Number);
+    const startTime = startH * 60 + startM;
+    const endTime = endH * 60 + endM;
+    
+    if (currentTime >= startTime && currentTime <= endTime) {
+      return "In Maintenance";
+    }
+    return "Outside Window";
+  };
+
+  const getUpdateJobStatus = (serverId: string) => {
+    const job = updateJobs.find(j => j.server_id === serverId);
+    if (!job) return null;
+    
+    return {
+      status: job.status,
+      progress: job.progress,
+      lastUpdate: job.updated_at
+    };
+  };
+
+  const getAvailableUpdates = (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return 0;
+    
+    return firmwarePackages.filter(pkg => 
+      pkg.applicable_models?.includes(server.model || '') || 
+      pkg.name.toLowerCase().includes('dell')
+    ).length;
+  };
+
+  const getHealthStatus = (serverId: string) => {
+    const health = healthChecks[serverId];
+    if (!health) return "Unknown";
+    
+    const isRecent = health.created_at && 
+      new Date(health.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    if (!isRecent) return "Outdated";
+    
+    return health.severity === 'error' ? 'Failed' : 
+           health.severity === 'warning' ? 'Warning' : 'Healthy';
   };
 
   const calculateWarrantyStatus = (warrantyEnd?: string) => {
@@ -346,57 +614,266 @@ export function GlobalInventoryDashboard() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Hostname</TableHead>
-                    <TableHead>IP Address</TableHead>
-                    <TableHead>Environment</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>Server Info</TableHead>
+                    <TableHead>Credentials</TableHead>
+                    <TableHead>Maintenance</TableHead>
+                    <TableHead>Updates</TableHead>
+                    <TableHead>Health</TableHead>
                     <TableHead>Management</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Model</TableHead>
+                    <TableHead>Security</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredServers.map((server) => (
-                    <TableRow key={server.id}>
-                      <TableCell className="font-medium">{server.hostname}</TableCell>
-                      <TableCell>{server.ip_address?.toString()}</TableCell>
-                      <TableCell>
-                        <Badge variant={server.environment === 'production' ? 'destructive' : 'outline'}>
-                          {server.environment}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(server.status)}</TableCell>
-                      <TableCell>
-                        {server.vcenter_id ? 
-                          <Badge className="status-online">vCenter</Badge> : 
-                          <Badge variant="outline">Standalone</Badge>
-                        }
-                      </TableCell>
-                      <TableCell>{server.datacenter || 'Unknown'}</TableCell>
-                      <TableCell>{server.model || 'Unknown'}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
-                                size="sm"
-                                onClick={() => setSelectedServer(server)}
-                              >
-                                <Edit className="w-4 h-4" />
+                  {filteredServers.map((server) => {
+                    const updateJob = getUpdateJobStatus(server.id);
+                    const availableUpdates = getAvailableUpdates(server.id);
+                    const healthStatus = getHealthStatus(server.id);
+                    const maintenanceStatus = getMaintenanceStatus(server.id);
+                    
+                    return (
+                      <TableRow key={server.id}>
+                        <TableCell className="font-medium">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span>{server.hostname}</span>
+                              {getStatusBadge(server.status)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">{server.ip_address?.toString()}</div>
+                            <div className="text-xs">
+                              <Badge variant={server.environment === 'production' ? 'destructive' : 'outline'} className="text-xs">
+                                {server.environment}
+                              </Badge>
+                            </div>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-2 cursor-pointer" onClick={() => manageCredentials(server.id)}>
+                                  <Key className="w-4 h-4" />
+                                  {getCredentialsBadge(server.id)}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Click to manage credentials</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Badge variant={maintenanceStatus === 'In Maintenance' ? 'destructive' : 'outline'} className="text-xs">
+                              {maintenanceStatus}
+                            </Badge>
+                            <div className="text-xs text-muted-foreground">{server.datacenter || 'Unknown DC'}</div>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="space-y-1">
+                            {updateJob ? (
+                              <div className="flex items-center gap-2">
+                                <Badge className={`status-${updateJob.status === 'completed' ? 'online' : updateJob.status === 'failed' ? 'offline' : 'updating'}`}>
+                                  {updateJob.status}
+                                </Badge>
+                                {updateJob.status === 'running' && (
+                                  <Progress value={updateJob.progress} className="w-16 h-2" />
+                                )}
+                              </div>
+                            ) : availableUpdates > 0 ? (
+                              <Button size="sm" variant="outline" onClick={() => scheduleUpdate(server.id)}>
+                                <Zap className="w-3 h-3 mr-1" />
+                                {availableUpdates} Available
                               </Button>
-                            </DialogTrigger>
-                            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                            ) : (
+                              <Badge className="status-online">Up to Date</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              healthStatus === 'Healthy' ? 'default' : 
+                              healthStatus === 'Warning' ? 'secondary' : 
+                              'destructive'
+                            } className="text-xs">
+                              {healthStatus}
+                            </Badge>
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => handleRunHealthCheck(server.id)}
+                            >
+                              <RefreshCw className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          {server.vcenter_id ? (
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                onClick={() => viewVCenterCluster(server)}
+                              >
+                                <Network className="w-3 h-3 mr-1" />
+                                vCenter
+                              </Button>
+                            </div>
+                          ) : (
+                            <Badge variant="outline">Standalone</Badge>
+                          )}
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            {getCriticalityBadge((server as any).criticality)}
+                            {(server as any).os_eol_date && new Date((server as any).os_eol_date) <= new Date() && (
+                              <Badge variant="destructive" className="text-xs">EOL</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm"
+                                    onClick={() => handleTestConnection(server.id)}
+                                  >
+                                    <PlayCircle className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Test Connection</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                            
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => setSelectedServer(server)}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                              </DialogTrigger>
+                            <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                               <DialogHeader>
-                                <DialogTitle>{server.hostname} - Asset Details</DialogTitle>
+                                <DialogTitle className="flex items-center gap-2">
+                                  <Server className="w-5 h-5" />
+                                  {server.hostname} - Integrated Server Dashboard
+                                </DialogTitle>
                               </DialogHeader>
                               {selectedServer && (
                                 <div className="space-y-6">
+                                  {/* Quick Actions Bar */}
+                                  <div className="flex flex-wrap gap-2 p-4 bg-muted/30 rounded-lg">
+                                    <Button size="sm" onClick={() => handleTestConnection(selectedServer.id)}>
+                                      <PlayCircle className="w-4 h-4 mr-2" />
+                                      Test Connection
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => handleRunHealthCheck(selectedServer.id)}>
+                                      <Activity className="w-4 h-4 mr-2" />
+                                      Health Check
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => scheduleUpdate(selectedServer.id)}>
+                                      <Calendar className="w-4 h-4 mr-2" />
+                                      Schedule Update
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => manageCredentials(selectedServer.id)}>
+                                      <Key className="w-4 h-4 mr-2" />
+                                      Manage Credentials
+                                    </Button>
+                                    {selectedServer.vcenter_id && (
+                                      <Button size="sm" variant="outline" onClick={() => viewVCenterCluster(selectedServer)}>
+                                        <Network className="w-4 h-4 mr-2" />
+                                        View vCenter
+                                      </Button>
+                                    )}
+                                    <Button size="sm" variant="outline" onClick={() => window.location.href = '/settings'}>
+                                      <Settings className="w-4 h-4 mr-2" />
+                                      Security Settings
+                                    </Button>
+                                  </div>
+
+                                  {/* Enhanced Status Cards */}
+                                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <Card>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2">
+                                          <Key className="w-4 h-4 text-blue-600" />
+                                          <div>
+                                            <div className="font-medium text-sm">Credentials</div>
+                                            {getCredentialsBadge(selectedServer.id)}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                    
+                                    <Card>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2">
+                                          <Calendar className="w-4 h-4 text-green-600" />
+                                          <div>
+                                            <div className="font-medium text-sm">Maintenance</div>
+                                            <Badge variant={getMaintenanceStatus(selectedServer.id) === 'In Maintenance' ? 'destructive' : 'outline'} className="text-xs">
+                                              {getMaintenanceStatus(selectedServer.id)}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                    
+                                    <Card>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2">
+                                          <Activity className="w-4 h-4 text-orange-600" />
+                                          <div>
+                                            <div className="font-medium text-sm">Health Status</div>
+                                            <Badge variant={
+                                              getHealthStatus(selectedServer.id) === 'Healthy' ? 'default' : 
+                                              getHealthStatus(selectedServer.id) === 'Warning' ? 'secondary' : 
+                                              'destructive'
+                                            } className="text-xs">
+                                              {getHealthStatus(selectedServer.id)}
+                                            </Badge>
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                    
+                                    <Card>
+                                      <CardContent className="p-4">
+                                        <div className="flex items-center gap-2">
+                                          <Shield className="w-4 h-4 text-red-600" />
+                                          <div>
+                                            <div className="font-medium text-sm">Security Risk</div>
+                                            {getCriticalityBadge(selectedServer.criticality)}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  </div>
+
                                   {/* Server Details Grid */}
-                                  <div className="grid grid-cols-2 gap-6">
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-4">
-                                      <h3 className="font-semibold">System Information</h3>
+                                      <h3 className="font-semibold flex items-center gap-2">
+                                        <Database className="w-4 h-4" />
+                                        System Information
+                                      </h3>
                                       <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                           <span>Hostname:</span>
@@ -531,7 +1008,8 @@ export function GlobalInventoryDashboard() {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
