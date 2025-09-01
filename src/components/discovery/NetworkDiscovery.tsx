@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CredentialManagement } from "../credentials/CredentialManagement";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -205,6 +207,14 @@ export function NetworkDiscovery() {
           Scan your network to discover Dell servers with iDRAC/BMC access
         </p>
       </div>
+
+      <Tabs defaultValue="discovery" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="discovery">Network Scanning</TabsTrigger>
+          <TabsTrigger value="credentials">Credentials</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="discovery" className="space-y-6">
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Scan Configuration */}
@@ -422,6 +432,12 @@ export function NetworkDiscovery() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="credentials" className="space-y-6">
+          <CredentialManagement />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

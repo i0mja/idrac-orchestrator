@@ -5,7 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DatacenterManagement } from "../datacenter/DatacenterManagement";
-import { CredentialManagement } from "../credentials/CredentialManagement";
+
 import { NetworkDiscovery } from "../discovery/NetworkDiscovery";
 import { HealthChecks } from "../health/HealthChecks";
 import {
@@ -185,10 +185,9 @@ export function EnterpriseManagement() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>
-          <TabsTrigger value="credentials">Credentials</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -399,10 +398,6 @@ export function EnterpriseManagement() {
 
         <TabsContent value="infrastructure" className="space-y-6">
           <DatacenterManagement />
-        </TabsContent>
-
-        <TabsContent value="credentials" className="space-y-6">
-          <CredentialManagement />
         </TabsContent>
       </Tabs>
     </div>
