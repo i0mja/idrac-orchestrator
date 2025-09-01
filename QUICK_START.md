@@ -47,13 +47,17 @@ npx idrac-orchestrator-demo
 - Learning the interface
 - Proof of concept demos
 
-### Option 4: Windows Installer
-**⏱️ 10 minutes | 🖱️ GUI installer | 🪟 Windows Server**
+### Option 4: Windows Server
+**⏱️ 10 minutes | 📟 PowerShell script | 🪟 Windows Server**
 
-1. Download: [iDRAC-Orchestrator-Setup.msi](https://releases.idrac-orchestrator.com/latest/windows)
-2. Right-click → "Run as Administrator"
-3. Follow the installation wizard
-4. Open http://localhost:3000
+```powershell
+# Run as Administrator in PowerShell
+Invoke-WebRequest -Uri "https://install.idrac-orchestrator.com/install-windows.ps1" -OutFile "install.ps1"
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\install.ps1
+```
+
+Then open http://localhost:3000
 
 ### Option 5: Other Linux Distributions
 **⏱️ 8 minutes | 🐧 Direct install | ⚡ Best performance**

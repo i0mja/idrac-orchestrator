@@ -20,7 +20,12 @@ curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 **✅ Works on any platform • ✅ Complete setup in 5 minutes • ✅ Auto-configures everything**
 
 ### Option 3: Windows Server
-Download and run: [iDRAC-Orchestrator-Setup.msi](https://releases.idrac-orchestrator.com/latest/windows)
+```powershell
+# Run as Administrator in PowerShell
+Invoke-WebRequest -Uri "https://install.idrac-orchestrator.com/install-windows.ps1" -OutFile "install.ps1"
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\install.ps1
+```
 
 ### Option 4: Try Demo Mode  
 ```bash
@@ -133,7 +138,7 @@ Default login: admin@localhost (password generated during setup)
 |--------|------|----------|
 | **[RHEL 9 Optimized](QUICK_START.md#option-4-linux-native)** | 8 min | RHEL/Rocky/AlmaLinux 9 (recommended) |
 | **[One-Click Docker](QUICK_START.md#option-1-docker-recommended)** | 5 min | Universal compatibility |
-| **[Windows Installer](QUICK_START.md#option-3-windows-installer)** | 10 min | Windows Server environments |
+| **[Windows PowerShell](QUICK_START.md#option-4-windows-server)** | 10 min | Windows Server environments |
 | **[Demo Mode](QUICK_START.md#option-2-demo-mode)** | 1 min | Testing and evaluation |
 | **[Cloud Deployment](DEPLOYMENT.md#option-3-kubernetes-deployment)** | 15 min | AWS, Azure, GCP |
 | **[Manual Setup](INSTALLATION.md)** | 30 min | Custom configurations |
@@ -303,7 +308,7 @@ Cluster Policies:
 | **RHEL 9 / Rocky 9 / AlmaLinux 9** | Optimized native install | ✅ **Primary Support** |
 | **Ubuntu 20.04+** | Native install | ✅ Supported |
 | **CentOS Stream 9** | RHEL script | ✅ Supported |  
-| **Windows Server 2019+** | MSI installer | ✅ Supported |
+| **Windows Server 2019+** | PowerShell script | ✅ Supported |
 | **AWS/Azure/GCP** | Cloud templates | ✅ Supported |
 | **Kubernetes** | Helm charts | ✅ Supported |
 
