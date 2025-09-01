@@ -197,29 +197,76 @@ function New-AppDirectories {
 
 # Download and install application
 function Install-Application {
-    Write-Info "Downloading application files..."
+    Write-Info "Installing application files..."
     
-    # Download latest release
-    $downloadUrl = "https://github.com/your-org/idrac-orchestrator/releases/latest/download/idrac-orchestrator-windows.zip"
-    $zipFile = "$env:TEMP\idrac-orchestrator.zip"
+    # Try to find the current script directory (where the installer is running from)
+    $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
+    if (-not $scriptDir) {
+        $scriptDir = Get-Location
+    }
+    
+    # Look for project files in parent directories
+    $projectRoot = $scriptDir
+    for ($i = 0; $i -lt 3; $i++) {
+        if (Test-Path "$projectRoot\package.json") {
+            break
+        }
+        $projectRoot = Split-Path -Parent $projectRoot
+        if (-not $projectRoot) {
+            Write-Error "Could not find project root with package.json"
+            return
+        }
+    }
+    
+    Write-Info "Found project files at: $projectRoot"
     
     try {
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+        # Copy project files to installation directory
+        $filesToCopy = @(
+            "package.json",
+            "src",
+            "public", 
+            "dist",
+            "vite.config.ts",
+            "tsconfig.json",
+            "tailwind.config.ts",
+            "index.html"
+        )
         
-        # Extract files
-        Expand-Archive -Path $zipFile -DestinationPath $InstallPath -Force
+        foreach ($item in $filesToCopy) {
+            $sourcePath = "$projectRoot\$item"
+            $destPath = "$InstallPath\$item"
+            
+            if (Test-Path $sourcePath) {
+                if (Test-Path $sourcePath -PathType Container) {
+                    # Copy directory
+                    Copy-Item -Path $sourcePath -Destination $InstallPath -Recurse -Force
+                } else {
+                    # Copy file
+                    Copy-Item -Path $sourcePath -Destination $destPath -Force
+                }
+                Write-Info "Copied $item"
+            }
+        }
         
         # Install npm dependencies
         Set-Location $InstallPath
-        npm install --production
         
-        Remove-Item $zipFile -Force
+        # Build the application if dist doesn't exist or is empty
+        if (-not (Test-Path "$InstallPath\dist") -or ((Get-ChildItem "$InstallPath\dist" -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0)) {
+            Write-Info "Building application..."
+            npm install
+            npm run build
+        } else {
+            Write-Info "Installing production dependencies..."
+            npm install --omit=dev
+        }
         
-        Write-Success "Application files installed"
+        Write-Success "Application files installed and configured"
     }
     catch {
-        Write-Warning "Could not download from GitHub. Installing from local files..."
-        # Fallback to local installation
+        Write-Error "Failed to install application files: $($_.Exception.Message)"
+        throw
     }
 }
 
@@ -277,8 +324,40 @@ function New-WindowsService {
     # Install nssm (Non-Sucking Service Manager)
     choco install nssm -y
     
-    # Create service
-    & nssm install "iDRAC Orchestrator" "$InstallPath\node.exe" "$InstallPath\dist\server\index.js"
+    # Find Node.js executable
+    $nodeExe = where.exe node
+    if (-not $nodeExe) {
+        $nodeExe = "C:\Program Files\nodejs\node.exe"
+    }
+    
+    # Create a simple HTTP server script for serving the built application
+    $serverScript = @"
+const express = require('express');
+const path = require('path');
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Serve static files from dist directory
+app.use(express.static(path.join(__dirname, 'dist')));
+
+// Handle client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+app.listen(port, '0.0.0.0', () => {
+  console.log(`iDRAC Orchestrator server running on port ${port}`);
+});
+"@
+    
+    $serverScript | Out-File -FilePath "$InstallPath\server.js" -Encoding UTF8
+    
+    # Install express for the server
+    Set-Location $InstallPath
+    npm install express --save
+    
+    # Create service to run the server
+    & nssm install "iDRAC Orchestrator" "$nodeExe" "server.js"
     & nssm set "iDRAC Orchestrator" AppDirectory $InstallPath
     & nssm set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
     & nssm set "iDRAC Orchestrator" DisplayName "iDRAC Updater Orchestrator"
