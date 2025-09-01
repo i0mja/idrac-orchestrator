@@ -198,145 +198,25 @@ function New-AppDirectories {
 # Download and install application
 function Install-Application {
     Write-Info "Installing application files..."
-    
-    # Try multiple methods to find the script directory with detailed debugging
-    $scriptDir = $null
-    
-    Write-Info "Attempting to detect script directory..."
-    
-    # Method 1: Use PSScriptRoot (PowerShell 3.0+)
-    if ($PSScriptRoot) {
-        $scriptDir = $PSScriptRoot
-        Write-Info "Found script directory using PSScriptRoot: $scriptDir"
+
+    $scriptDir = $PSScriptRoot
+    if (-not $scriptDir) {
+        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
     }
-    # Method 2: Use MyInvocation
-    elseif ($MyInvocation.MyCommand.Path) {
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-        Write-Info "Found script directory using MyInvocation: $scriptDir"
+
+    $projectRoot = Resolve-Path "$scriptDir\.."
+    $distSource = Join-Path $projectRoot "dist"
+
+    if (-not (Test-Path $distSource)) {
+        Write-Error "Build artifacts not found at $distSource. Run 'npm run build' before executing this installer."
+        exit 1
     }
-    # Method 3: Use the global MyInvocation
-    elseif ($script:MyInvocation.MyCommand.Path) {
-        $scriptDir = Split-Path -Parent $script:MyInvocation.MyCommand.Path
-        Write-Info "Found script directory using script:MyInvocation: $scriptDir"
-    }
-    # Method 4: Check if we're in the project directory already
-    elseif (Test-Path ".\package.json") {
-        $scriptDir = Get-Location
-        Write-Info "Found package.json in current directory: $scriptDir"
-    }
-    # Method 5: Use current location as fallback
-    else {
-        $scriptDir = Get-Location
-        Write-Info "Using current location as fallback: $scriptDir"
-    }
-    
-    # Ensure we have a valid path
-    if (-not $scriptDir -or $scriptDir -eq "") {
-        Write-Error "Could not determine script directory. Current location: $(Get-Location)"
-        return
-    }
-    
-    Write-Info "Final script directory: $scriptDir"
-    
-    # Look for project files in current and parent directories
-    $projectRoot = $null
-    $searchPaths = @()
-    
-    # Add current directory
-    $searchPaths += $scriptDir.ToString()
-    
-    # Add parent directories to search
-    $currentPath = $scriptDir.ToString()
-    for ($i = 0; $i -lt 4; $i++) {
-        try {
-            $parentPath = Split-Path -Parent $currentPath
-            if ($parentPath -and ($parentPath -ne $currentPath) -and $parentPath -ne "") {
-                $searchPaths += $parentPath
-                $currentPath = $parentPath
-            }
-        }
-        catch {
-            Write-Warning "Error getting parent path for $currentPath: $($_.Exception.Message)"
-            break
-        }
-    }
-    
-    Write-Info "Searching for package.json in: $($searchPaths -join ', ')"
-    
-    # Find project root by looking for package.json
-    foreach ($searchPath in $searchPaths) {
-        $packageJsonPath = Join-Path $searchPath "package.json"
-        Write-Info "Checking: $packageJsonPath"
-        
-        if (Test-Path $packageJsonPath) {
-            $projectRoot = $searchPath
-            Write-Success "Found package.json at: $packageJsonPath"
-            break
-        }
-    }
-    
-    if (-not $projectRoot) {
-        Write-Error "Could not find project root with package.json. Searched in: $($searchPaths -join ', ')"
-        Write-Info "Available files in current directory: $(Get-ChildItem | Select-Object -ExpandProperty Name)"
-        return
-    }
-    
-    Write-Info "Using project root: $projectRoot"
-    
-    try {
-        # Copy project files to installation directory
-        $filesToCopy = @(
-            "package.json",
-            "src",
-            "public", 
-            "dist",
-            "vite.config.ts",
-            "tsconfig.json",
-            "tailwind.config.ts",
-            "index.html"
-        )
-        
-        foreach ($item in $filesToCopy) {
-            $sourcePath = Join-Path $projectRoot $item
-            $destPath = Join-Path $InstallPath $item
-            
-            Write-Info "Checking source: $sourcePath"
-            
-            if (Test-Path $sourcePath) {
-                if (Test-Path $sourcePath -PathType Container) {
-                    # Copy directory
-                    Copy-Item -Path $sourcePath -Destination $InstallPath -Recurse -Force
-                    Write-Success "Copied directory: $item"
-                } else {
-                    # Copy file
-                    Copy-Item -Path $sourcePath -Destination $destPath -Force
-                    Write-Success "Copied file: $item"
-                }
-            } else {
-                Write-Warning "Source file/directory not found: $sourcePath"
-            }
-        }
-        
-        # Install npm dependencies
-        Set-Location $InstallPath
-        
-        # Build the application if dist doesn't exist or is empty
-        if (-not (Test-Path "$InstallPath\dist") -or ((Get-ChildItem "$InstallPath\dist" -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0)) {
-            Write-Info "Building application..."
-            npm install
-            npm run build
-        } else {
-            Write-Info "Installing production dependencies..."
-            npm install --omit=dev
-        }
-        
-        Write-Success "Application files installed and configured"
-    }
-    catch {
-        Write-Error "Failed to install application files: $($_.Exception.Message)"
-        Write-Error "Stack trace: $($_.ScriptStackTrace)"
-        throw
-    }
+
+    New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
+    Copy-Item -Path $distSource -Destination $InstallPath -Recurse -Force
+    Copy-Item -Path (Join-Path $projectRoot 'server\serve.js') -Destination (Join-Path $InstallPath 'serve.js') -Force
+
+    Write-Success "Application files installed"
 }
 
 # Create configuration files
@@ -389,52 +269,21 @@ LOG_RETENTION_DAYS=30
 # Create Windows Service
 function New-WindowsService {
     Write-Info "Creating Windows service..."
-    
-    # Install nssm (Non-Sucking Service Manager)
-    choco install nssm -y
-    
-    # Find Node.js executable
-    $nodeExe = where.exe node
-    if (-not $nodeExe) {
-        $nodeExe = "C:\Program Files\nodejs\node.exe"
-    }
-    
-    # Create a simple HTTP server script for serving the built application
-    $serverScript = @"
-const express = require('express');
-const path = require('path');
-const app = express();
-const port = process.env.PORT || 3000;
 
-// Serve static files from dist directory
-app.use(express.static(path.join(__dirname, 'dist')));
+    choco install nssm -y | Out-Null
 
-// Handle client-side routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+    $nodeExe = (Get-Command node).Source
+    $nssmExe = (Get-Command nssm).Source
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`iDRAC Orchestrator server running on port ${port}`);
-});
-"@
-    
-    $serverScript | Out-File -FilePath "$InstallPath\server.js" -Encoding UTF8
-    
-    # Install express for the server
-    Set-Location $InstallPath
-    npm install express --save
-    
-    # Create service to run the server
-    & nssm install "iDRAC Orchestrator" "$nodeExe" "server.js"
-    & nssm set "iDRAC Orchestrator" AppDirectory $InstallPath
-    & nssm set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
-    & nssm set "iDRAC Orchestrator" DisplayName "iDRAC Updater Orchestrator"
-    & nssm set "iDRAC Orchestrator" Description "Enterprise Dell iDRAC firmware management system"
-    & nssm set "iDRAC Orchestrator" Start SERVICE_AUTO_START
-    & nssm set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
-    & nssm set "iDRAC Orchestrator" AppStderr "$DataPath\logs\error.log"
-    
+    & $nssmExe install "iDRAC Orchestrator" $nodeExe "serve.js"
+    & $nssmExe set "iDRAC Orchestrator" AppDirectory $InstallPath
+    & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "PORT=3000"
+    & $nssmExe set "iDRAC Orchestrator" DisplayName "iDRAC Updater Orchestrator"
+    & $nssmExe set "iDRAC Orchestrator" Description "Enterprise Dell iDRAC firmware management system"
+    & $nssmExe set "iDRAC Orchestrator" Start SERVICE_AUTO_START
+    & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
+    & $nssmExe set "iDRAC Orchestrator" AppStderr "$DataPath\logs\error.log"
+
     Write-Success "Windows service created"
 }
 
@@ -467,7 +316,7 @@ function Start-Services {
     
     # Test connection
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:3000/api/health" -TimeoutSec 10
+        $response = Invoke-WebRequest -Uri "http://localhost:3000/health.txt" -TimeoutSec 10
         if ($response.StatusCode -eq 200) {
             Write-Success "Application started successfully"
         }
