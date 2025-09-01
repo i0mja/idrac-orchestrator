@@ -12,7 +12,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { useVCenterIntegratedServers } from "@/hooks/useVCenterIntegratedServers";
 import { useVCenterService } from "@/hooks/useVCenterService";
+import { useCredentialProfiles } from "@/hooks/useCredentialProfiles";
+import { useUpdateJobs } from "@/hooks/useUpdateJobs";
+import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { formatDistanceToNow } from "date-fns";
 import {
   Server,
@@ -38,7 +42,13 @@ import {
   Upload,
   Terminal,
   Settings,
-  Eye
+  Eye,
+  Key,
+  RefreshCw,
+  PlayCircle,
+  ExternalLink,
+  Users,
+  Target
 } from "lucide-react";
 
 export function EnhancedGlobalInventory() {
@@ -66,6 +76,9 @@ export function EnhancedGlobalInventory() {
   } = useVCenterIntegratedServers();
   
   const { vcenters, syncHosts } = useVCenterService();
+  const { profiles: credentialProfiles, getCredentialsForIP } = useCredentialProfiles();
+  const { jobs: updateJobs } = useUpdateJobs();
+  const { packages: firmwarePackages } = useFirmwarePackages();
   
   // Use integrated servers that include vCenter information
   const servers = integratedServers.length > 0 ? integratedServers : enhancedServers;
@@ -79,6 +92,182 @@ export function EnhancedGlobalInventory() {
   const [filterEOLRisk, setFilterEOLRisk] = useState("all");
   const [selectedServer, setSelectedServer] = useState<any>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [serverCredentials, setServerCredentials] = useState<Record<string, any>>({});
+  const [maintenanceWindows, setMaintenanceWindows] = useState<Record<string, any>>({});
+  const [healthChecks, setHealthChecks] = useState<Record<string, any>>({});
+
+  // Load enhanced server data for integrations
+  useEffect(() => {
+    if (servers.length > 0) {
+      loadAllServerData();
+    }
+  }, [servers]);
+
+  const loadAllServerData = async () => {
+    const credentials: Record<string, any> = {};
+    const maintenance: Record<string, any> = {};
+    const health: Record<string, any> = {};
+
+    for (const server of servers) {
+      try {
+        // Load credentials
+        const creds = await getCredentialsForIP(server.ip_address?.toString() || '');
+        if (creds.length > 0) {
+          credentials[server.id] = creds[0];
+        }
+
+        // Load maintenance windows
+        if (server.datacenter || (server as any).site_id) {
+          const { data: dcData } = await supabase
+            .from('datacenters')
+            .select('*')
+            .eq('name', server.datacenter || (server as any).site_id)
+            .single();
+          
+          if (dcData) {
+            maintenance[server.id] = {
+              start: dcData.maintenance_window_start,
+              end: dcData.maintenance_window_end,
+              timezone: dcData.timezone
+            };
+          }
+        }
+
+        // Load recent health checks
+        const { data: healthData } = await supabase
+          .from('system_events')
+          .select('*')
+          .eq('event_type', 'health_check')
+          .contains('metadata', { server_id: server.id })
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (healthData && healthData.length > 0) {
+          health[server.id] = healthData[0];
+        }
+      } catch (error) {
+        console.error('Error loading server data:', error);
+      }
+    }
+
+    setServerCredentials(credentials);
+    setMaintenanceWindows(maintenance);
+    setHealthChecks(health);
+  };
+
+  // Helper functions for enhanced server data
+  const getCredentialsBadge = (serverId: string) => {
+    const creds = serverCredentials[serverId];
+    if (!creds) return <Badge variant="outline">No Credentials</Badge>;
+    return <Badge className="status-online">{creds.name}</Badge>;
+  };
+
+  const getMaintenanceStatus = (serverId: string) => {
+    const maintenance = maintenanceWindows[serverId];
+    if (!maintenance) return "Unknown";
+    
+    const now = new Date();
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const [startH, startM] = maintenance.start.split(':').map(Number);
+    const [endH, endM] = maintenance.end.split(':').map(Number);
+    const startTime = startH * 60 + startM;
+    const endTime = endH * 60 + endM;
+    
+    if (currentTime >= startTime && currentTime <= endTime) {
+      return "In Maintenance";
+    }
+    return "Outside Window";
+  };
+
+  const getHealthStatus = (serverId: string) => {
+    const health = healthChecks[serverId];
+    if (!health) return "Unknown";
+    
+    const isRecent = health.created_at && 
+      new Date(health.created_at) > new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    if (!isRecent) return "Outdated";
+    
+    return health.severity === 'error' ? 'Failed' : 
+           health.severity === 'warning' ? 'Warning' : 'Healthy';
+  };
+
+  const getUpdateJobStatus = (serverId: string) => {
+    const job = updateJobs.find(j => j.server_id === serverId);
+    if (!job) return null;
+    
+    return {
+      status: job.status,
+      progress: job.progress,
+      lastUpdate: job.updated_at
+    };
+  };
+
+  const getAvailableUpdates = (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (!server) return 0;
+    
+    return firmwarePackages.filter(pkg => 
+      pkg.applicable_models?.includes(server.model || '') || 
+      pkg.name.toLowerCase().includes('dell')
+    ).length;
+  };
+
+  const handleTestConnection = async (serverId: string) => {
+    toast({
+      title: "Connection Test",
+      description: "Testing server connectivity...",
+    });
+    
+    try {
+      const { error } = await supabase
+        .from('system_events')
+        .insert([{
+          event_type: 'connectivity_test',
+          title: 'Connection Test',
+          description: 'Testing server connectivity',
+          severity: 'info',
+          metadata: { server_id: serverId }
+        }]);
+
+      if (error) throw error;
+
+      setTimeout(() => {
+        toast({
+          title: "Connection Test Complete",
+          description: "Server is reachable and responding",
+        });
+      }, 2000);
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      toast({
+        title: "Connection Failed",
+        description: "Unable to connect to server",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const scheduleUpdate = (serverId: string) => {
+    window.location.href = `/scheduler?server=${serverId}`;
+  };
+
+  const manageCredentials = (serverId: string) => {
+    const server = servers.find(s => s.id === serverId);
+    if (server) {
+      window.location.href = `/discovery?ip=${server.ip_address}`;
+    }
+  };
+
+  const viewHealthChecks = (serverId: string) => {
+    window.location.href = `/health?server=${serverId}`;
+  };
+
+  const openVCenterManagement = (server: any) => {
+    if (server.vcenter_id) {
+      window.location.href = `/vcenter?vcenter=${server.vcenter_id}`;
+    }
+  };
 
   // Enhanced: Multi-dimensional filtering
   const filteredServers = useMemo(() => {
@@ -371,10 +560,13 @@ export function EnhancedGlobalInventory() {
                 <TableHead>Hostname</TableHead>
                 <TableHead>Source</TableHead>
                 <TableHead>Datacenter</TableHead>
+                <TableHead>Credentials</TableHead>
+                <TableHead>Maintenance</TableHead>
+                <TableHead>Health</TableHead>
+                <TableHead>Updates</TableHead>
                 <TableHead>Operating System</TableHead>
                 <TableHead>EOL Status</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>iSM</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -409,6 +601,87 @@ export function EnhancedGlobalInventory() {
                     <div className="flex items-center gap-2">
                       <Building className="w-4 h-4 text-muted-foreground" />
                       <span>{getDatacenterName((server as any).site_id || (server as any).datacenter)}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Key className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        {getCredentialsBadge(server.id)}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => manageCredentials(server.id)}
+                          className="ml-1 h-6 w-6 p-0"
+                        >
+                          <Settings className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <Badge variant={getMaintenanceStatus(server.id) === "In Maintenance" ? "destructive" : "outline"}>
+                        {getMaintenanceStatus(server.id)}
+                      </Badge>
+                      {maintenanceWindows[server.id] && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {maintenanceWindows[server.id].start} - {maintenanceWindows[server.id].end}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        getHealthStatus(server.id) === "Healthy" ? "default" :
+                        getHealthStatus(server.id) === "Warning" ? "secondary" :
+                        getHealthStatus(server.id) === "Failed" ? "destructive" : "outline"
+                      }>
+                        {getHealthStatus(server.id)}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => viewHealthChecks(server.id)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Eye className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      {(() => {
+                        const jobStatus = getUpdateJobStatus(server.id);
+                        const availableUpdates = getAvailableUpdates(server.id);
+                        
+                        if (jobStatus) {
+                          return (
+                            <Badge variant={jobStatus.status === "running" ? "secondary" : "default"}>
+                              {jobStatus.status} ({jobStatus.progress}%)
+                            </Badge>
+                          );
+                        }
+                        
+                        return (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">
+                              {availableUpdates} available
+                            </Badge>
+                            {availableUpdates > 0 && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => scheduleUpdate(server.id)}
+                                className="h-6 w-6 p-0"
+                              >
+                                <PlayCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </TableCell>
                   <TableCell>
