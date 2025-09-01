@@ -6,22 +6,29 @@ A comprehensive enterprise-grade solution for orchestrating firmware updates acr
 
 Get up and running instantly with our one-click installation:
 
-### Option 1: Docker (Recommended)
+### Option 1: RHEL 9 Optimized (Recommended)
+```bash
+# RedHat Enterprise Linux 9, Rocky Linux 9, AlmaLinux 9
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+```
+**✅ Optimized for RHEL 9 • ✅ SELinux configured • ✅ systemd integration • ✅ Enterprise ready**
+
+### Option 2: Docker (Universal)
 ```bash
 curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 ```
-**✅ Complete setup in 5 minutes • ✅ Auto-configures everything • ✅ Production ready**
+**✅ Works on any platform • ✅ Complete setup in 5 minutes • ✅ Auto-configures everything**
 
-### Option 2: Windows Server
+### Option 3: Windows Server
 Download and run: [iDRAC-Orchestrator-Setup.msi](https://releases.idrac-orchestrator.com/latest/windows)
 
-### Option 3: Try Demo Mode  
+### Option 4: Try Demo Mode  
 ```bash
 npx idrac-orchestrator-demo
 ```
 **✅ No installation • ✅ Sample data included • ✅ Ready in 1 minute**
 
-### Option 4: Advanced Setup
+### Option 5: Advanced Setup
 See [QUICK_START.md](QUICK_START.md) for detailed options or [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment.
 
 ---
@@ -98,10 +105,13 @@ See [QUICK_START.md](QUICK_START.md) for detailed options or [DEPLOYMENT.md](DEP
 
 **1. Run One-Click Installer**
 ```bash
+# RHEL 9 / Rocky Linux 9 / AlmaLinux 9 (Recommended for Enterprise)
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+
 # Docker (works everywhere)
 curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 
-# Linux native
+# Other Linux distributions
 curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
 ```
 
@@ -121,9 +131,9 @@ Default login: admin@localhost (password generated during setup)
 
 | Method | Time | Best For |
 |--------|------|----------|
-| **[One-Click Docker](QUICK_START.md#option-1-docker-recommended)** | 5 min | Everyone (recommended) |
+| **[RHEL 9 Optimized](QUICK_START.md#option-4-linux-native)** | 8 min | RHEL/Rocky/AlmaLinux 9 (recommended) |
+| **[One-Click Docker](QUICK_START.md#option-1-docker-recommended)** | 5 min | Universal compatibility |
 | **[Windows Installer](QUICK_START.md#option-3-windows-installer)** | 10 min | Windows Server environments |
-| **[Linux Native](QUICK_START.md#option-4-linux-native)** | 8 min | Direct Linux installation |
 | **[Demo Mode](QUICK_START.md#option-2-demo-mode)** | 1 min | Testing and evaluation |
 | **[Cloud Deployment](DEPLOYMENT.md#option-3-kubernetes-deployment)** | 15 min | AWS, Azure, GCP |
 | **[Manual Setup](INSTALLATION.md)** | 30 min | Custom configurations |

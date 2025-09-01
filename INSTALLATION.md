@@ -1,5 +1,21 @@
 # Installation Guide
 
+## Recommended: RHEL 9 One-Click Installation
+
+For RedHat Enterprise Linux 9, Rocky Linux 9, or AlmaLinux 9 servers:
+
+```bash
+# Enterprise-optimized installer with SELinux, systemd, and firewalld
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+```
+
+This RHEL 9 installer provides:
+- Native DNF package management
+- SELinux security policies configured
+- systemd service with security hardening
+- firewalld rules and custom service definitions
+- Automated backup and monitoring scripts
+
 ## Quick Start (Development)
 
 ```bash

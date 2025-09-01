@@ -4,14 +4,27 @@ Get your iDRAC Updater Orchestrator running in minutes with these simple options
 
 ## 🚀 One-Click Installation Options
 
-### Option 1: Docker (Recommended) 
+### Option 1: RHEL 9 Enterprise (Recommended)
+**⏱️ 8 minutes | 🏢 Enterprise-ready | 🛡️ SELinux + systemd**
+
+```bash
+# RedHat Enterprise Linux 9, Rocky Linux 9, AlmaLinux 9
+curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
+```
+
+**Enterprise features:**
+- ✅ Native RHEL 9 optimization with DNF package management
+- ✅ SELinux policies configured for secure container operations
+- ✅ systemd service integration with proper hardening
+- ✅ firewalld configuration with custom service definitions
+- ✅ Automated backup scripts and log rotation
+- ✅ Production-ready with monitoring and health checks
+
+### Option 2: Docker Universal
 **⏱️ 5 minutes | 🔧 Automatic setup | 💻 Works everywhere**
 
 ```bash
-# For RHEL 9, Rocky Linux 9, AlmaLinux 9
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
-
-# For other Linux distributions
+# For other Linux distributions and universal compatibility
 curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 ```
 
@@ -22,7 +35,7 @@ curl -fsSL https://install.idrac-orchestrator.com/docker.sh | bash
 - ✅ Creates admin user
 - ✅ Starts all services
 
-### Option 2: Demo Mode
+### Option 3: Demo Mode
 **⏱️ 1 minute | 🎮 Try it now | 🌐 No installation needed**
 
 ```bash
@@ -34,7 +47,7 @@ npx idrac-orchestrator-demo
 - Learning the interface
 - Proof of concept demos
 
-### Option 3: Windows Installer
+### Option 4: Windows Installer
 **⏱️ 10 minutes | 🖱️ GUI installer | 🪟 Windows Server**
 
 1. Download: [iDRAC-Orchestrator-Setup.msi](https://releases.idrac-orchestrator.com/latest/windows)
@@ -42,14 +55,11 @@ npx idrac-orchestrator-demo
 3. Follow the installation wizard
 4. Open http://localhost:3000
 
-### Option 4: Linux Native
+### Option 5: Other Linux Distributions
 **⏱️ 8 minutes | 🐧 Direct install | ⚡ Best performance**
 
 ```bash
-# RHEL 9 / Rocky Linux 9 / AlmaLinux 9 (optimized)
-curl -fsSL https://install.idrac-orchestrator.com/rhel.sh | sudo bash
-
-# Ubuntu / Debian
+# Ubuntu / Debian / CentOS Stream / Other distributions
 curl -fsSL https://install.idrac-orchestrator.com/linux.sh | sudo bash
 ```
 
