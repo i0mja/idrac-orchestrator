@@ -8,6 +8,14 @@ param(
     [switch]$UseSQLite = $false
 )
 
+# Allow interactive selection of database when not specified
+if (-not $PSBoundParameters.ContainsKey('UseSQLite')) {
+    $choice = Read-Host "Use SQLite for faster setup? (Y/N)"
+    if ($choice -match '^[Yy]') {
+        $UseSQLite = $true
+    }
+}
+
 # Check if running as Administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Error "This script must be run as Administrator. Right-click PowerShell and select 'Run as Administrator'"
@@ -201,10 +209,13 @@ function Install-Application {
 
     $scriptDir = $PSScriptRoot
     if (-not $scriptDir) {
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+        if (-not $scriptDir) {
+            $scriptDir = Get-Location
+        }
     }
 
-    $projectRoot = Resolve-Path "$scriptDir\.."
+    $projectRoot = Resolve-Path (Join-Path $scriptDir "..")
     $distSource = Join-Path $projectRoot "dist"
 
     if (-not (Test-Path $distSource)) {
