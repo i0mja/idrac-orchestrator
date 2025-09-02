@@ -221,9 +221,10 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
-    # Determine if we're running from the source repository
+    # Determine project root even when script is executed via a web request
     $scriptPath = $PSCommandPath
     if (-not $scriptPath) { $scriptPath = $MyInvocation.MyCommand.Path }
+    
     if ($scriptPath) {
         $scriptDir = Split-Path -Parent $scriptPath
         $candidateRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue

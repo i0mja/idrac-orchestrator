@@ -39,8 +39,6 @@ This script:
 - Configures either SQLite (fast) or PostgreSQL (production)
 - Requires no manual `npm` commands
 
-### Option 4: Try Demo Mode
-
 ```bash
 npx idrac-orchestrator-demo
 ```
