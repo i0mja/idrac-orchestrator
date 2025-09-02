@@ -49,6 +49,45 @@ function Write-Error($message) {
     Write-Host "[ERROR] $message" -ForegroundColor Red
 }
 
+# Function to refresh environment variables
+function Refresh-Environment {
+    $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+}
+
+# Function to cleanup previous installation
+function Remove-PreviousInstallation {
+    Write-Info "Checking for previous installation..."
+    
+    # Stop and remove service if it exists
+    $service = Get-Service -Name "iDRAC Orchestrator" -ErrorAction SilentlyContinue
+    if ($service) {
+        Write-Info "Stopping and removing existing service..."
+        Stop-Service -Name "iDRAC Orchestrator" -Force -ErrorAction SilentlyContinue
+        & nssm remove "iDRAC Orchestrator" confirm 2>$null
+        Start-Sleep -Seconds 2
+    }
+    
+    # Remove installation directory
+    if (Test-Path $InstallPath) {
+        Write-Info "Removing previous installation files..."
+        try {
+            Remove-Item -Path $InstallPath -Recurse -Force -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Could not remove installation directory: $($_.Exception.Message)"
+            Write-Info "Some files may be in use. Continuing with installation..."
+        }
+    }
+    
+    # Remove desktop shortcut
+    $shortcutPath = "$env:USERPROFILE\Desktop\iDRAC Orchestrator.lnk"
+    if (Test-Path $shortcutPath) {
+        Remove-Item -Path $shortcutPath -Force -ErrorAction SilentlyContinue
+    }
+    
+    Write-Success "Previous installation cleaned up"
+}
+
 # Check system requirements
 function Test-SystemRequirements {
     Write-Info "Checking system requirements..."
@@ -114,7 +153,7 @@ function Install-NodeJS {
     choco install nodejs -y
     
     # Refresh PATH
-    $env:PATH = [System.Environment]::GetEnvironmentVariable("PATH","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("PATH","User")
+    Refresh-Environment
     
     Write-Success "Node.js installed successfully"
 }
@@ -129,6 +168,9 @@ function Install-Git {
 
     Write-Info "Installing Git..."
     choco install git -y | Out-Null
+    
+    # Refresh environment to make Git available
+    Refresh-Environment
 
     Write-Success "Git installed successfully"
 }
@@ -192,11 +234,16 @@ function Install-Database {
     $sqlCommands = @"
 CREATE DATABASE idrac_orchestrator;
 CREATE USER idrac_admin WITH ENCRYPTED PASSWORD '$dbPassword';
-GRANT ALL PRIVILEGES ON DATABASE idrac_orchestrator TO idrac_admin;
+GRANT ALL PRIVileGES ON DATABASE idrac_orchestrator TO idrac_admin;
 "@
     
     # Execute all SQL commands at once
-    $sqlCommands | & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -f -
+    try {
+        $sqlCommands | & "C:\Program Files\PostgreSQL\15\bin\psql.exe" -U postgres -f -
+    }
+    catch {
+        Write-Warning "Database might already exist, continuing..."
+    }
     
     # Store database connection info
     "postgresql://idrac_admin:$dbPassword@localhost:5432/idrac_orchestrator" | Out-File -FilePath "$DataPath\db_connection.txt" -Encoding UTF8
@@ -221,33 +268,59 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
-    # Determine project root even when script is executed via a web request
-    $scriptPath = $PSCommandPath
-    if (-not $scriptPath) { $scriptPath = $MyInvocation.MyCommand.Path }
+    # Create a unique temp directory to avoid conflicts
+    $tempId = Get-Random -Minimum 1000 -Maximum 9999
+    $projectRoot = Join-Path $env:TEMP "idrac-orchestrator-$tempId"
     
-    if ($scriptPath) {
-        $scriptDir = Split-Path -Parent $scriptPath
-        $candidateRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue
-        if ($candidateRoot -and (Test-Path (Join-Path $candidateRoot 'package.json'))) {
-            $projectRoot = $candidateRoot
+    if (Test-Path $projectRoot) { 
+        Write-Info "Cleaning up previous clone..."
+        try {
+            Remove-Item $projectRoot -Recurse -Force -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Could not remove directory: $($_.Exception.Message)"
+            # Try a different directory
+            $tempId = Get-Random -Minimum 1000 -Maximum 9999
+            $projectRoot = Join-Path $env:TEMP "idrac-orchestrator-$tempId"
         }
     }
-
-    if (-not $projectRoot) {
-        $projectRoot = Join-Path $env:TEMP 'idrac-orchestrator'
-        if (Test-Path $projectRoot) { Remove-Item $projectRoot -Recurse -Force }
-        Write-Info "Cloning source repository..."
-        git clone https://github.com/i0mja/idrac-orchestrator $projectRoot | Out-Null
+    
+    Write-Info "Cloning source repository..."
+    
+    # Verify Git is available after installation
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        Write-Error "Git is not available even after installation. Please restart PowerShell and run the script again."
+        exit 1
+    }
+    
+    git clone https://github.com/i0mja/idrac-orchestrator $projectRoot 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Failed to clone repository"
+        exit 1
     }
 
     $distSource = Join-Path $projectRoot 'dist'
     if (-not (Test-Path $distSource)) {
         Write-Info "Installing Node dependencies..."
         Push-Location $projectRoot
-        npm install --omit=dev | Out-Null
-        Write-Info "Building application..."
-        npm run build | Out-Null
-        Pop-Location
+        try {
+            # Install all dependencies including dev dependencies for build
+            npm install 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "npm install failed"
+                exit 1
+            }
+            
+            Write-Info "Building application..."
+            npm run build 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-Error "npm run build failed"
+                exit 1
+            }
+        }
+        finally {
+            Pop-Location
+        }
         $distSource = Join-Path $projectRoot 'dist'
     }
 
@@ -257,7 +330,7 @@ function Install-Application {
     }
 
     New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
-    Copy-Item -Path $distSource -Destination $InstallPath -Recurse -Force
+    Copy-Item -Path "$distSource\*" -Destination $InstallPath -Recurse -Force
     $servePath = Join-Path (Join-Path $projectRoot 'server') 'serve.js'
     Copy-Item -Path $servePath -Destination (Join-Path $InstallPath 'serve.js') -Force
 
@@ -315,19 +388,33 @@ LOG_RETENTION_DAYS=30
 function New-WindowsService {
     Write-Info "Creating Windows service..."
 
-    choco install nssm -y | Out-Null
+    # Install NSSM if not already installed
+    if (-not (Get-Command nssm -ErrorAction SilentlyContinue)) {
+        choco install nssm -y | Out-Null
+        Refresh-Environment
+    }
 
     $nodeExe = (Get-Command node).Source
     $nssmExe = (Get-Command nssm).Source
 
-    & $nssmExe install "iDRAC Orchestrator" $nodeExe "serve.js"
+    # Check if service already exists and remove it
+    $service = Get-Service -Name "iDRAC Orchestrator" -ErrorAction SilentlyContinue
+    if ($service) {
+        Write-Info "Removing existing service..."
+        & $nssmExe remove "iDRAC Orchestrator" confirm 2>$null
+        Start-Sleep -Seconds 2
+    }
+
+    # Create the service
+    Write-Info "Creating new service..."
+    & $nssmExe install "iDRAC Orchestrator" $nodeExe "$InstallPath\serve.js"
     & $nssmExe set "iDRAC Orchestrator" AppDirectory $InstallPath
-    & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "PORT=3000"
+    & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
+    & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
+    & $nssmExe set "iDRAC Orchestrator" AppStderr "$DataPath\logs\error.log"
     & $nssmExe set "iDRAC Orchestrator" DisplayName "iDRAC Updater Orchestrator"
     & $nssmExe set "iDRAC Orchestrator" Description "Enterprise Dell iDRAC firmware management system"
     & $nssmExe set "iDRAC Orchestrator" Start SERVICE_AUTO_START
-    & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
-    & $nssmExe set "iDRAC Orchestrator" AppStderr "$DataPath\logs\error.log"
 
     Write-Success "Windows service created"
 }
@@ -336,9 +423,13 @@ function New-WindowsService {
 function Set-FirewallRules {
     Write-Info "Configuring Windows Firewall..."
     
+    # Remove existing rules to avoid duplicates
+    Remove-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTP" -ErrorAction SilentlyContinue
+    Remove-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTPS" -ErrorAction SilentlyContinue
+    
     # Allow inbound connections on port 3000
-    New-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTP" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow -ErrorAction SilentlyContinue
-    New-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow -ErrorAction SilentlyContinue
+    New-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTP" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow | Out-Null
+    New-NetFirewallRule -DisplayName "iDRAC Orchestrator HTTPS" -Direction Inbound -Protocol TCP -LocalPort 443 -Action Allow | Out-Null
     
     Write-Success "Firewall rules configured"
 }
@@ -347,27 +438,74 @@ function Set-FirewallRules {
 function Start-Services {
     Write-Info "Starting services..."
     
-    # Start PostgreSQL if not running
-    $pgService = Get-Service postgresql* | Select-Object -First 1
-    if ($pgService.Status -ne "Running") {
-        Start-Service $pgService.Name
-    }
-    
     # Start application service
-    Start-Service "iDRAC Orchestrator"
-    
-    # Wait for application to start
-    Start-Sleep -Seconds 15
-    
-    # Test connection
     try {
-        $response = Invoke-WebRequest -Uri "http://localhost:3000/health.txt" -TimeoutSec 10
-        if ($response.StatusCode -eq 200) {
-            Write-Success "Application started successfully"
-        }
+        Start-Service "iDRAC Orchestrator" -ErrorAction Stop
+        Write-Success "Service started successfully"
     }
     catch {
-        Write-Warning "Application may still be starting. Check service status with: Get-Service 'iDRAC Orchestrator'"
+        Write-Warning "Service failed to start: $($_.Exception.Message)"
+        Write-Info "Attempting to start manually..."
+        
+        # Try to start the service using NSSM
+        & nssm start "iDRAC Orchestrator" 2>$null
+        
+        # Wait a bit and check status
+        Start-Sleep -Seconds 5
+        $service = Get-Service "iDRAC Orchestrator" -ErrorAction SilentlyContinue
+        if ($service -and $service.Status -eq "Running") {
+            Write-Success "Service started successfully using NSSM"
+        } else {
+            Write-Warning "Service may need to be started manually"
+            Write-Info "You can start it later with: nssm start 'iDRAC Orchestrator'"
+        }
+    }
+    
+    # Wait for application to start
+    Write-Info "Waiting for application to start..."
+    $timeout = 60
+    $elapsed = 0
+    $started = $false
+    
+    do {
+        Start-Sleep -Seconds 3
+        $elapsed += 3
+        
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 5 -ErrorAction Stop
+            if ($response.StatusCode -eq 200) {
+                $started = $true
+                break
+            }
+        }
+        catch {
+            # Check if it's a connection refused error (which means the server is not up yet)
+            if ($_.Exception.Message -like "*connection refused*") {
+                # Server not up yet, continue waiting
+            }
+            else {
+                # Other error, might be a different issue
+                Write-Warning "Connection attempt failed: $($_.Exception.Message)"
+            }
+        }
+        
+        Write-Host "." -NoNewline
+    } while ($elapsed -lt $timeout)
+    
+    Write-Host ""
+    if ($started) {
+        Write-Success "Application started successfully"
+    } else {
+        Write-Warning "Application startup timed out after $timeout seconds"
+        Write-Info "Check service status with: Get-Service 'iDRAC Orchestrator'"
+        Write-Info "Check logs at: $DataPath\logs\ for more information"
+        Write-Info "You can try starting the service manually with: nssm start 'iDRAC Orchestrator'"
+        
+        # Show the last few lines of the error log
+        if (Test-Path "$DataPath\logs\error.log") {
+            Write-Info "Last 10 lines of error log:"
+            Get-Content "$DataPath\logs\error.log" -Tail 10
+        }
     }
 }
 
@@ -379,10 +517,52 @@ function New-DesktopShortcut {
     $Shortcut = $WshShell.CreateShortcut("$env:USERPROFILE\Desktop\iDRAC Orchestrator.lnk")
     $Shortcut.TargetPath = "http://localhost:3000"
     $Shortcut.Description = "iDRAC Updater Orchestrator Web Interface"
-    $Shortcut.IconLocation = "$InstallPath\assets\icon.ico"
+    
+    # Check if icon exists
+    $iconPath = "$InstallPath\assets\icon.ico"
+    if (Test-Path $iconPath) {
+        $Shortcut.IconLocation = $iconPath
+    }
+    
     $Shortcut.Save()
     
     Write-Success "Desktop shortcut created"
+}
+
+# Test the application manually
+function Test-Application {
+    Write-Info "Testing application manually..."
+    
+    # Set environment variables
+    $env:NODE_ENV = "production"
+    
+    # Start the application in the background
+    $process = Start-Process -FilePath "node" -ArgumentList "$InstallPath\serve.js" -PassThru -WindowStyle Hidden
+    
+    # Wait a bit for the application to start
+    Start-Sleep -Seconds 5
+    
+    # Check if the process is still running
+    if (-not $process.HasExited) {
+        Write-Success "Application started successfully manually"
+        
+        # Test the connection
+        try {
+            $response = Invoke-WebRequest -Uri "http://localhost:3000" -TimeoutSec 10
+            if ($response.StatusCode -eq 200) {
+                Write-Success "Application is responding correctly"
+            }
+        }
+        catch {
+            Write-Warning "Application is running but not responding correctly: $($_.Exception.Message)"
+        }
+        
+        # Stop the process
+        Stop-Process -Id $process.Id -Force
+    } else {
+        Write-Error "Application failed to start manually"
+        Write-Info "Check the error logs for more information"
+    }
 }
 
 # Main installation function
@@ -390,6 +570,7 @@ function Start-Installation {
     try {
         Write-Info "Starting installation..."
         
+        Remove-PreviousInstallation
         Test-SystemRequirements
         Install-Chocolatey
         Install-NodeJS
@@ -401,6 +582,13 @@ function Start-Installation {
         New-WindowsService
         Set-FirewallRules
         Start-Services
+        
+        # Test the application manually if the service didn't start
+        $service = Get-Service "iDRAC Orchestrator" -ErrorAction SilentlyContinue
+        if (-not $service -or $service.Status -ne "Running") {
+            Test-Application
+        }
+        
         New-DesktopShortcut
         
         Write-Host ""
