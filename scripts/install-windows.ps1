@@ -286,6 +286,10 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
+    # Initialize install log
+    $installLog = Join-Path $DataPath 'logs\\install.log'
+    Remove-Item $installLog -ErrorAction SilentlyContinue
+
     # Create a unique temp directory to avoid conflicts
     $tempId = Get-Random -Minimum 1000 -Maximum 9999
     $projectRoot = Join-Path $env:TEMP "idrac-orchestrator-$tempId"
@@ -323,16 +327,21 @@ function Install-Application {
         Push-Location $projectRoot
         try {
             # Install all dependencies including dev dependencies for build
-            npm install 2>&1 | Out-Null
+            $npmInstall = npm install 2>&1
+            $npmInstall | Out-File -FilePath $installLog -Append
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "npm install failed"
+                $npmInstall | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
                 exit 1
             }
-            
+
             Write-Info "Building application..."
-            npm run build 2>&1 | Out-Null
+            $npmBuild = npm run build 2>&1
+            $npmBuild | Out-File -FilePath $installLog -Append
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "npm run build failed"
+                $npmBuild | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
+                Write-Info "See install.log for full details: $installLog"
                 exit 1
             }
         }
