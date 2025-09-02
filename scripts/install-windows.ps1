@@ -351,6 +351,8 @@ function Install-Application {
         Push-Location $projectRoot
         try {
             # Install all dependencies including dev dependencies for build
+            $previousNodeEnv = $env:NODE_ENV
+            $env:NODE_ENV = "development"
             $npmInstall = npm install 2>&1
             $npmInstall | Out-File -FilePath $installLog -Append
             if ($LASTEXITCODE -ne 0) {
@@ -358,9 +360,15 @@ function Install-Application {
                 $npmInstall | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
                 exit 1
             }
+            if ($previousNodeEnv) {
+                $env:NODE_ENV = $previousNodeEnv
+            } else {
+                Remove-Item Env:NODE_ENV -ErrorAction SilentlyContinue
+            }
 
-            $viteBin = Join-Path $projectRoot 'node_modules\\.bin\\vite.cmd'
-            if (-not (Test-Path $viteBin)) {
+            $viteCmd = Join-Path $projectRoot 'node_modules\\.bin\\vite.cmd'
+            $vitePs1 = Join-Path $projectRoot 'node_modules\\.bin\\vite.ps1'
+            if (-not (Test-Path $viteCmd) -and -not (Test-Path $vitePs1)) {
                 Write-Error "Required build tool 'vite' is missing after npm install."
                 Write-Info "Run 'npm install' manually or install Vite with 'npm install --save-dev vite' and re-run the installer."
                 Write-Info "See install.log for full details: $installLog"
