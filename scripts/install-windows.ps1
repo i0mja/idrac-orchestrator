@@ -429,7 +429,8 @@ function New-WindowsService {
 
     # Create the service
     Write-Info "Creating new service..."
-    & $nssmExe install "iDRAC Orchestrator" $nodeExe "$InstallPath\serve.js"
+    & $nssmExe install "iDRAC Orchestrator" $nodeExe
+    & $nssmExe set "iDRAC Orchestrator" AppParameters "\"$InstallPath\serve.js\""
     & $nssmExe set "iDRAC Orchestrator" AppDirectory $InstallPath
     & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
     & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
@@ -493,7 +494,7 @@ function Start-Services {
 
             # Attempt to show related Windows Event Log entries
             try {
-                $events = Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-5)} |
+                $events = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-5)} -ErrorAction Stop |
                     Where-Object { $_.Message -like '*iDRAC Orchestrator*' } |
                     Select-Object -First 5
                 if ($events) {
