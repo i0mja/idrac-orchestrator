@@ -5,6 +5,7 @@ Get your iDRAC Updater Orchestrator running in minutes with these simple options
 ## 🚀 One-Click Installation Options
 
 ### Option 1: RHEL 9 Enterprise (Recommended)
+
 **⏱️ 8 minutes | 🏢 Enterprise-ready | 🛡️ SELinux + systemd**
 
 ```bash
@@ -13,6 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/insta
 ```
 
 **Enterprise features:**
+
 - ✅ Native RHEL 9 optimization with DNF package management
 - ✅ SELinux policies configured for secure container operations
 - ✅ systemd service integration with proper hardening
@@ -21,6 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/insta
 - ✅ Production-ready with monitoring and health checks
 
 ### Option 2: Docker Universal
+
 **⏱️ 5 minutes | 🔧 Automatic setup | 💻 Works everywhere**
 
 ```bash
@@ -29,13 +32,15 @@ curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/insta
 ```
 
 **What it does:**
+
 - ✅ Downloads and configures everything automatically
 - ✅ Sets up PostgreSQL database
-- ✅ Configures SSL certificates  
+- ✅ Configures SSL certificates
 - ✅ Creates admin user
 - ✅ Starts all services
 
 ### Option 3: Demo Mode
+
 **⏱️ 1 minute | 🎮 Try it now | 🌐 No installation needed**
 
 ```bash
@@ -43,26 +48,23 @@ npx idrac-orchestrator-demo
 ```
 
 **Perfect for:**
+
 - Quick testing and evaluation
 - Learning the interface
 - Proof of concept demos
 
 ### Option 4: Windows Server
+
 **⏱️ 10 minutes | 📟 PowerShell script | 🪟 Windows Server**
 
 ```powershell
 # Run as Administrator in PowerShell
-
-# Fast setup (SQLite - completes in ~2 minutes)
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-.\install.ps1 -UseSQLite
-
-# OR full setup (PostgreSQL - takes 5-10 minutes)
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1" -OutFile "install.ps1"
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-.\install.ps1
+# Single command installer – prompts for SQLite or PostgreSQL
+Set-ExecutionPolicy Bypass -Scope Process -Force; \
+  iwr https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1 -useb | iex
 ```
+
+The installer automatically installs Chocolatey, Git, and Node.js, then clones and builds the app. No prior `npm` knowledge is required.
 
 Verify the service after installation:
 
@@ -72,14 +74,16 @@ Invoke-WebRequest -Uri "http://localhost:3000/health.txt"
 ```
 
 **Fast SQLite mode:**
+
 - ✅ Installs in ~2 minutes
 - ✅ Perfect for testing and development
 - ✅ No external database setup required
-- ℹ️ For production, use full PostgreSQL mode
+- ℹ️ For production, choose PostgreSQL when prompted
 
 Then open http://localhost:3000
 
 ### Option 5: Other Linux Distributions
+
 **⏱️ 8 minutes | 🐧 Direct install | ⚡ Best performance**
 
 ```bash
@@ -92,26 +96,31 @@ curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/insta
 After installation, complete the 2-minute setup wizard:
 
 ### Step 1: Database Connection (Auto-detected)
+
 - ✅ PostgreSQL connection verified
 - ✅ Database schema created
 - ✅ Security configured
 
 ### Step 2: Organization Settings
+
 - Company name and contact info
 - Timezone and datacenter locations
 - Default maintenance windows
 
 ### Step 3: VMware Integration
+
 - Add your vCenter servers
 - Test API connectivity
 - Configure cluster policies
 
-### Step 4: Dell Server Credentials  
+### Step 4: Dell Server Credentials
+
 - Set default iDRAC login credentials
 - Configure credential profiles by IP range
 - Test server connectivity
 
 ### Step 5: Ready to Use!
+
 - Discover servers automatically
 - Upload firmware packages
 - Schedule maintenance updates
@@ -120,19 +129,20 @@ After installation, complete the 2-minute setup wizard:
 
 Every installation includes:
 
-| Component | Description |
-|-----------|-------------|
-| **Web Interface** | Modern React-based dashboard |
-| **PostgreSQL Database** | Optimized schema with RLS security |
-| **VMware Integration** | Native vCenter REST API support |
-| **Dell iDRAC Support** | Redfish API for all PowerEdge servers |
-| **Security Suite** | SSL, encryption, RBAC, audit logs |
-| **Monitoring** | Real-time health checks and alerting |
-| **Backup System** | Automated configuration backups |
+| Component               | Description                           |
+| ----------------------- | ------------------------------------- |
+| **Web Interface**       | Modern React-based dashboard          |
+| **PostgreSQL Database** | Optimized schema with RLS security    |
+| **VMware Integration**  | Native vCenter REST API support       |
+| **Dell iDRAC Support**  | Redfish API for all PowerEdge servers |
+| **Security Suite**      | SSL, encryption, RBAC, audit logs     |
+| **Monitoring**          | Real-time health checks and alerting  |
+| **Backup System**       | Automated configuration backups       |
 
 ## 🏃‍♂️ Next Steps (5 minutes)
 
 1. **Access Web Interface**
+
    ```
    http://localhost:3000
    Default login: admin@localhost / (generated password)
@@ -161,22 +171,24 @@ Every installation includes:
 ## 🆘 Need Help?
 
 ### Auto-Detection Failed?
+
 The installer automatically detects your environment. If something isn't detected:
 
 - **Docker**: Install Docker Desktop or Docker Engine
-- **PostgreSQL**: The installer can set this up for you  
+- **PostgreSQL**: The installer can set this up for you
 - **Network**: Check firewall settings (ports 3000, 5432)
 
 ### Common Issues
 
-| Issue | Solution |
-|-------|----------|
-| Port 3000 busy | Stop existing services or use custom port |
-| Permission denied | Run installer as administrator/root |
-| Database connection failed | Check PostgreSQL service is running |
-| vCenter SSL errors | Enable "Ignore SSL" in connection settings |
+| Issue                      | Solution                                   |
+| -------------------------- | ------------------------------------------ |
+| Port 3000 busy             | Stop existing services or use custom port  |
+| Permission denied          | Run installer as administrator/root        |
+| Database connection failed | Check PostgreSQL service is running        |
+| vCenter SSL errors         | Enable "Ignore SSL" in connection settings |
 
 ### Get Support
+
 - 📖 [Full Documentation](DEPLOYMENT.md)
 - 🐛 [Report Issues](https://github.com/i0mja/idrac-orchestrator/issues)
 - 💬 [Community Forum](https://community.idrac-orchestrator.com)
@@ -187,12 +199,14 @@ The installer automatically detects your environment. If something isn't detecte
 For production environments:
 
 1. **Security Hardening**
+
    ```bash
    # Use the production installer with security hardening
    curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
    ```
 
 2. **High Availability Setup**
+
    ```bash
    # Deploy with load balancer and database cluster
    curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | sudo bash
@@ -200,7 +214,7 @@ For production environments:
 
 3. **Cloud Deployment**
    - [AWS CloudFormation Template](https://templates.idrac-orchestrator.com/aws)
-   - [Azure ARM Template](https://templates.idrac-orchestrator.com/azure)  
+   - [Azure ARM Template](https://templates.idrac-orchestrator.com/azure)
    - [Google Cloud Deployment Manager](https://templates.idrac-orchestrator.com/gcp)
 
 ## 🎉 Success!
@@ -208,7 +222,7 @@ For production environments:
 You now have a fully functional iDRAC Updater Orchestrator that can:
 
 - ✅ Manage firmware updates across your entire Dell server fleet
-- ✅ Integrate with VMware vCenter for cluster-aware operations  
+- ✅ Integrate with VMware vCenter for cluster-aware operations
 - ✅ Respect maintenance windows and business policies
 - ✅ Provide audit trails and compliance reporting
 - ✅ Scale from small labs to enterprise datacenters

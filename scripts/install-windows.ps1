@@ -8,6 +8,14 @@ param(
     [switch]$UseSQLite = $false
 )
 
+# Allow interactive selection of database when not specified
+if (-not $PSBoundParameters.ContainsKey('UseSQLite')) {
+    $choice = Read-Host "Use SQLite for faster setup? (Y/N)"
+    if ($choice -match '^[Yy]') {
+        $UseSQLite = $true
+    }
+}
+
 # Check if running as Administrator
 if (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
     Write-Error "This script must be run as Administrator. Right-click PowerShell and select 'Run as Administrator'"
@@ -111,6 +119,20 @@ function Install-NodeJS {
     Write-Success "Node.js installed successfully"
 }
 
+# Install Git
+function Install-Git {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $gitVersion = git --version
+        Write-Success "Git already installed: $gitVersion"
+        return
+    }
+
+    Write-Info "Installing Git..."
+    choco install git -y | Out-Null
+
+    Write-Success "Git installed successfully"
+}
+
 # Install Database (PostgreSQL or SQLite)
 function Install-Database {
     param([switch]$UseSQLite = $false)
@@ -199,22 +221,44 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
-    $scriptDir = $PSScriptRoot
-    if (-not $scriptDir) {
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+    # Determine if we're running from the source repository
+    $scriptPath = $PSCommandPath
+    if (-not $scriptPath) { $scriptPath = $MyInvocation.MyCommand.Path }
+    if ($scriptPath) {
+        $scriptDir = Split-Path -Parent $scriptPath
+        $candidateRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue
+        if ($candidateRoot -and (Test-Path (Join-Path $candidateRoot 'package.json'))) {
+            $projectRoot = $candidateRoot
+        }
     }
 
-    $projectRoot = Resolve-Path "$scriptDir\.."
-    $distSource = Join-Path $projectRoot "dist"
+    if (-not $projectRoot) {
+        $projectRoot = Join-Path $env:TEMP 'idrac-orchestrator'
+        if (Test-Path $projectRoot) { Remove-Item $projectRoot -Recurse -Force }
+        Write-Info "Cloning source repository..."
+        git clone https://github.com/i0mja/idrac-orchestrator $projectRoot | Out-Null
+    }
+
+    $distSource = Join-Path $projectRoot 'dist'
+    if (-not (Test-Path $distSource)) {
+        Write-Info "Installing Node dependencies..."
+        Push-Location $projectRoot
+        npm install --omit=dev | Out-Null
+        Write-Info "Building application..."
+        npm run build | Out-Null
+        Pop-Location
+        $distSource = Join-Path $projectRoot 'dist'
+    }
 
     if (-not (Test-Path $distSource)) {
-        Write-Error "Build artifacts not found at $distSource. Run 'npm run build' before executing this installer."
+        Write-Error "Unable to build application. See output above for details."
         exit 1
     }
 
     New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
     Copy-Item -Path $distSource -Destination $InstallPath -Recurse -Force
-    Copy-Item -Path (Join-Path $projectRoot 'server\serve.js') -Destination (Join-Path $InstallPath 'serve.js') -Force
+    $servePath = Join-Path (Join-Path $projectRoot 'server') 'serve.js'
+    Copy-Item -Path $servePath -Destination (Join-Path $InstallPath 'serve.js') -Force
 
     Write-Success "Application files installed"
 }
@@ -348,6 +392,7 @@ function Start-Installation {
         Test-SystemRequirements
         Install-Chocolatey
         Install-NodeJS
+        Install-Git
         Install-Database -UseSQLite:$UseSQLite
         New-AppDirectories
         Install-Application
