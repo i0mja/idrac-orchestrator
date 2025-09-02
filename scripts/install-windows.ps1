@@ -193,6 +193,29 @@ function Install-Git {
     Write-Success "Git installed successfully"
 }
 
+# Verify required build tooling is available
+function Test-BuildDependencies {
+    Write-Info "Checking build prerequisites..."
+
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Error "Node.js is required but was not found. Install it from https://nodejs.org/en/download/ and re-run this script."
+        exit 1
+    }
+
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "npm CLI is missing. Reinstall Node.js to include npm and ensure it's available in PATH."
+        exit 1
+    }
+
+    $nodeVersion = (node --version).TrimStart('v')
+    if ([version]$nodeVersion -lt [version]'18.0.0') {
+        Write-Error "Node.js 18 or newer is required. Detected version $nodeVersion. Please upgrade Node.js and try again."
+        exit 1
+    }
+
+    Write-Success "Build prerequisites satisfied"
+}
+
 # Install Database (PostgreSQL or SQLite)
 function Install-Database {
     param([switch]$UseSQLite = $false)
@@ -286,6 +309,12 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
+    Test-BuildDependencies
+
+    # Initialize install log
+    $installLog = Join-Path $DataPath 'logs\\install.log'
+    Remove-Item $installLog -ErrorAction SilentlyContinue
+
     # Create a unique temp directory to avoid conflicts
     $tempId = Get-Random -Minimum 1000 -Maximum 9999
     $projectRoot = Join-Path $env:TEMP "idrac-orchestrator-$tempId"
@@ -323,16 +352,29 @@ function Install-Application {
         Push-Location $projectRoot
         try {
             # Install all dependencies including dev dependencies for build
-            npm install 2>&1 | Out-Null
+            $npmInstall = npm install 2>&1
+            $npmInstall | Out-File -FilePath $installLog -Append
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "npm install failed"
+                $npmInstall | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
                 exit 1
             }
-            
+
+            $viteBin = Join-Path $projectRoot 'node_modules\\.bin\\vite.cmd'
+            if (-not (Test-Path $viteBin)) {
+                Write-Error "Required build tool 'vite' is missing after npm install."
+                Write-Info "Run 'npm install' manually or install Vite with 'npm install --save-dev vite' and re-run the installer."
+                Write-Info "See install.log for full details: $installLog"
+                exit 1
+            }
+
             Write-Info "Building application..."
-            npm run build 2>&1 | Out-Null
+            $npmBuild = npm run build 2>&1
+            $npmBuild | Out-File -FilePath $installLog -Append
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "npm run build failed"
+                $npmBuild | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
+                Write-Info "See install.log for full details: $installLog"
                 exit 1
             }
         }
@@ -429,7 +471,8 @@ function New-WindowsService {
 
     # Create the service
     Write-Info "Creating new service..."
-    & $nssmExe install "iDRAC Orchestrator" $nodeExe "$InstallPath\serve.js"
+    & $nssmExe install "iDRAC Orchestrator" $nodeExe
+    & $nssmExe set "iDRAC Orchestrator" AppParameters "\"$InstallPath\serve.js\""
     & $nssmExe set "iDRAC Orchestrator" AppDirectory $InstallPath
     & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
     & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
@@ -459,7 +502,7 @@ function Set-FirewallRules {
 # Start services
 function Start-Services {
     Write-Info "Starting services..."
-    
+
     # Start application service
     try {
         Start-Service "iDRAC Orchestrator" -ErrorAction Stop
@@ -468,10 +511,10 @@ function Start-Services {
     catch {
         Write-Warning "Service failed to start: $($_.Exception.Message)"
         Write-Info "Attempting to start manually..."
-        
+
         # Try to start the service using NSSM
         & nssm start "iDRAC Orchestrator" 2>$null
-        
+
         # Wait a bit and check status
         Start-Sleep -Seconds 5
         $service = Get-Service "iDRAC Orchestrator" -ErrorAction SilentlyContinue
@@ -480,6 +523,30 @@ function Start-Services {
         } else {
             Write-Warning "Service may need to be started manually"
             Write-Info "You can start it later with: nssm start 'iDRAC Orchestrator'"
+
+            # Immediately surface log details for troubleshooting
+            if (Test-Path "$DataPath\logs\error.log") {
+                Write-Info "Recent error log entries:"
+                Get-Content "$DataPath\logs\error.log" -Tail 20
+            }
+            if (Test-Path "$DataPath\logs\service.log") {
+                Write-Info "Recent service log entries:"
+                Get-Content "$DataPath\logs\service.log" -Tail 20
+            }
+
+            # Attempt to show related Windows Event Log entries
+            try {
+                $events = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-5)} -ErrorAction Stop |
+                    Where-Object { $_.Message -like '*iDRAC Orchestrator*' } |
+                    Select-Object -First 5
+                if ($events) {
+                    Write-Info "Recent Service Control Manager events:"
+                    $events | ForEach-Object { Write-Host ($_.TimeCreated.ToString('u') + ' - ' + $_.Message) }
+                }
+            }
+            catch {
+                Write-Warning "Unable to read Windows Event Log: $($_.Exception.Message)"
+            }
         }
     }
     
@@ -522,11 +589,15 @@ function Start-Services {
         Write-Info "Check service status with: Get-Service 'iDRAC Orchestrator'"
         Write-Info "Check logs at: $DataPath\logs\ for more information"
         Write-Info "You can try starting the service manually with: nssm start 'iDRAC Orchestrator'"
-        
-        # Show the last few lines of the error log
+
+        # Show the last few lines of available logs
         if (Test-Path "$DataPath\logs\error.log") {
-            Write-Info "Last 10 lines of error log:"
-            Get-Content "$DataPath\logs\error.log" -Tail 10
+            Write-Info "Last 20 lines of error.log:"
+            Get-Content "$DataPath\logs\error.log" -Tail 20
+        }
+        if (Test-Path "$DataPath\logs\service.log") {
+            Write-Info "Last 20 lines of service.log:"
+            Get-Content "$DataPath\logs\service.log" -Tail 20
         }
     }
 }
