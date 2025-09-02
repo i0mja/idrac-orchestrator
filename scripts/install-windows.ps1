@@ -63,7 +63,13 @@ function Remove-PreviousInstallation {
     if ($service) {
         Write-Info "Stopping and removing existing service..."
         Stop-Service -Name "iDRAC Orchestrator" -Force -ErrorAction SilentlyContinue
-        & nssm remove "iDRAC Orchestrator" confirm 2>$null
+
+        if (Get-Command nssm -ErrorAction SilentlyContinue) {
+            & nssm remove "iDRAC Orchestrator" confirm 2>$null
+        } else {
+            sc.exe delete "iDRAC Orchestrator" | Out-Null
+        }
+
         Start-Sleep -Seconds 2
     }
     
@@ -75,6 +81,18 @@ function Remove-PreviousInstallation {
         }
         catch {
             Write-Warning "Could not remove installation directory: $($_.Exception.Message)"
+            Write-Info "Some files may be in use. Continuing with installation..."
+        }
+    }
+
+    # Remove data directory
+    if (Test-Path $DataPath) {
+        Write-Info "Removing previous data files..."
+        try {
+            Remove-Item -Path $DataPath -Recurse -Force -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Could not remove data directory: $($_.Exception.Message)"
             Write-Info "Some files may be in use. Continuing with installation..."
         }
     }
@@ -333,6 +351,10 @@ function Install-Application {
     Copy-Item -Path "$distSource\*" -Destination $InstallPath -Recurse -Force
     $servePath = Join-Path (Join-Path $projectRoot 'server') 'serve.js'
     Copy-Item -Path $servePath -Destination (Join-Path $InstallPath 'serve.js') -Force
+
+    # Ensure Node treats serve.js as an ES module
+    $packageJsonPath = Join-Path $InstallPath 'package.json'
+    '{"type": "module"}' | Out-File -FilePath $packageJsonPath -Encoding utf8
 
     Write-Success "Application files installed"
 }
