@@ -209,10 +209,13 @@ function Install-Application {
 
     $scriptDir = $PSScriptRoot
     if (-not $scriptDir) {
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+        if (-not $scriptDir) {
+            $scriptDir = Get-Location
+        }
     }
 
-    $projectRoot = Resolve-Path "$scriptDir\.."
+    $projectRoot = Resolve-Path (Join-Path $scriptDir "..")
     $distSource = Join-Path $projectRoot "dist"
 
     if (-not (Test-Path $distSource)) {
