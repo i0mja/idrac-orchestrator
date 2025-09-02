@@ -193,6 +193,29 @@ function Install-Git {
     Write-Success "Git installed successfully"
 }
 
+# Verify required build tooling is available
+function Test-BuildDependencies {
+    Write-Info "Checking build prerequisites..."
+
+    if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+        Write-Error "Node.js is required but was not found. Install it from https://nodejs.org/en/download/ and re-run this script."
+        exit 1
+    }
+
+    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+        Write-Error "npm CLI is missing. Reinstall Node.js to include npm and ensure it's available in PATH."
+        exit 1
+    }
+
+    $nodeVersion = (node --version).TrimStart('v')
+    if ([version]$nodeVersion -lt [version]'18.0.0') {
+        Write-Error "Node.js 18 or newer is required. Detected version $nodeVersion. Please upgrade Node.js and try again."
+        exit 1
+    }
+
+    Write-Success "Build prerequisites satisfied"
+}
+
 # Install Database (PostgreSQL or SQLite)
 function Install-Database {
     param([switch]$UseSQLite = $false)
@@ -286,6 +309,7 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
+    Test-BuildDependencies
     # Initialize install log
     $installLog = Join-Path $DataPath 'logs\\install.log'
     Remove-Item $installLog -ErrorAction SilentlyContinue
@@ -332,6 +356,14 @@ function Install-Application {
             if ($LASTEXITCODE -ne 0) {
                 Write-Error "npm install failed"
                 $npmInstall | Select-Object -Last 20 | ForEach-Object { Write-Warning $_ }
+                exit 1
+            }
+
+            $viteBin = Join-Path $projectRoot 'node_modules\\.bin\\vite.cmd'
+            if (-not (Test-Path $viteBin)) {
+                Write-Error "Required build tool 'vite' is missing after npm install."
+                Write-Info "Run 'npm install' manually or install Vite with 'npm install --save-dev vite' and re-run the installer."
+                Write-Info "See install.log for full details: $installLog"
                 exit 1
             }
 
