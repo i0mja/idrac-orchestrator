@@ -207,15 +207,21 @@ function New-AppDirectories {
 function Install-Application {
     Write-Info "Installing application files..."
 
-    $scriptDir = $PSScriptRoot
-    if (-not $scriptDir) {
-        $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-        if (-not $scriptDir) {
-            $scriptDir = Get-Location
-        }
+    # Determine project root even when script is executed via a web request
+    $scriptPath = $PSCommandPath
+    if (-not $scriptPath) { $scriptPath = $MyInvocation.MyCommand.Path }
+    if ($scriptPath) {
+        $scriptDir = Split-Path -Parent $scriptPath
+    } else {
+        $scriptDir = Get-Location
     }
 
-    $projectRoot = Resolve-Path (Join-Path $scriptDir "..")
+    $projectRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue
+    if (-not $projectRoot) {
+        Write-Error "Unable to determine project root. Ensure the script resides in the 'scripts' directory of the repository or download a release package."
+        exit 1
+    }
+
     $distSource = Join-Path $projectRoot "dist"
 
     if (-not (Test-Path $distSource)) {
@@ -225,7 +231,8 @@ function Install-Application {
 
     New-Item -ItemType Directory -Path $InstallPath -Force | Out-Null
     Copy-Item -Path $distSource -Destination $InstallPath -Recurse -Force
-    Copy-Item -Path (Join-Path $projectRoot 'server\serve.js') -Destination (Join-Path $InstallPath 'serve.js') -Force
+    $servePath = Join-Path (Join-Path $projectRoot 'server') 'serve.js'
+    Copy-Item -Path $servePath -Destination (Join-Path $InstallPath 'serve.js') -Force
 
     Write-Success "Application files installed"
 }
