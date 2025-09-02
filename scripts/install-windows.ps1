@@ -429,7 +429,8 @@ function New-WindowsService {
 
     # Create the service
     Write-Info "Creating new service..."
-    & $nssmExe install "iDRAC Orchestrator" $nodeExe "$InstallPath\serve.js"
+    & $nssmExe install "iDRAC Orchestrator" $nodeExe
+    & $nssmExe set "iDRAC Orchestrator" AppParameters "\"$InstallPath\serve.js\""
     & $nssmExe set "iDRAC Orchestrator" AppDirectory $InstallPath
     & $nssmExe set "iDRAC Orchestrator" AppEnvironmentExtra "NODE_ENV=production"
     & $nssmExe set "iDRAC Orchestrator" AppStdout "$DataPath\logs\service.log"
@@ -459,7 +460,7 @@ function Set-FirewallRules {
 # Start services
 function Start-Services {
     Write-Info "Starting services..."
-    
+
     # Start application service
     try {
         Start-Service "iDRAC Orchestrator" -ErrorAction Stop
@@ -468,10 +469,10 @@ function Start-Services {
     catch {
         Write-Warning "Service failed to start: $($_.Exception.Message)"
         Write-Info "Attempting to start manually..."
-        
+
         # Try to start the service using NSSM
         & nssm start "iDRAC Orchestrator" 2>$null
-        
+
         # Wait a bit and check status
         Start-Sleep -Seconds 5
         $service = Get-Service "iDRAC Orchestrator" -ErrorAction SilentlyContinue
@@ -480,6 +481,30 @@ function Start-Services {
         } else {
             Write-Warning "Service may need to be started manually"
             Write-Info "You can start it later with: nssm start 'iDRAC Orchestrator'"
+
+            # Immediately surface log details for troubleshooting
+            if (Test-Path "$DataPath\logs\error.log") {
+                Write-Info "Recent error log entries:"
+                Get-Content "$DataPath\logs\error.log" -Tail 20
+            }
+            if (Test-Path "$DataPath\logs\service.log") {
+                Write-Info "Recent service log entries:"
+                Get-Content "$DataPath\logs\service.log" -Tail 20
+            }
+
+            # Attempt to show related Windows Event Log entries
+            try {
+                $events = Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Service Control Manager'; StartTime=(Get-Date).AddMinutes(-5)} -ErrorAction Stop |
+                    Where-Object { $_.Message -like '*iDRAC Orchestrator*' } |
+                    Select-Object -First 5
+                if ($events) {
+                    Write-Info "Recent Service Control Manager events:"
+                    $events | ForEach-Object { Write-Host ($_.TimeCreated.ToString('u') + ' - ' + $_.Message) }
+                }
+            }
+            catch {
+                Write-Warning "Unable to read Windows Event Log: $($_.Exception.Message)"
+            }
         }
     }
     
@@ -522,11 +547,15 @@ function Start-Services {
         Write-Info "Check service status with: Get-Service 'iDRAC Orchestrator'"
         Write-Info "Check logs at: $DataPath\logs\ for more information"
         Write-Info "You can try starting the service manually with: nssm start 'iDRAC Orchestrator'"
-        
-        # Show the last few lines of the error log
+
+        # Show the last few lines of available logs
         if (Test-Path "$DataPath\logs\error.log") {
-            Write-Info "Last 10 lines of error log:"
-            Get-Content "$DataPath\logs\error.log" -Tail 10
+            Write-Info "Last 20 lines of error.log:"
+            Get-Content "$DataPath\logs\error.log" -Tail 20
+        }
+        if (Test-Path "$DataPath\logs\service.log") {
+            Write-Info "Last 20 lines of service.log:"
+            Get-Content "$DataPath\logs\service.log" -Tail 20
         }
     }
 }
