@@ -119,6 +119,20 @@ function Install-NodeJS {
     Write-Success "Node.js installed successfully"
 }
 
+# Install Git
+function Install-Git {
+    if (Get-Command git -ErrorAction SilentlyContinue) {
+        $gitVersion = git --version
+        Write-Success "Git already installed: $gitVersion"
+        return
+    }
+
+    Write-Info "Installing Git..."
+    choco install git -y | Out-Null
+
+    Write-Success "Git installed successfully"
+}
+
 # Install Database (PostgreSQL or SQLite)
 function Install-Database {
     param([switch]$UseSQLite = $false)
@@ -210,22 +224,35 @@ function Install-Application {
     # Determine project root even when script is executed via a web request
     $scriptPath = $PSCommandPath
     if (-not $scriptPath) { $scriptPath = $MyInvocation.MyCommand.Path }
+    
     if ($scriptPath) {
         $scriptDir = Split-Path -Parent $scriptPath
-    } else {
-        $scriptDir = Get-Location
+        $candidateRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue
+        if ($candidateRoot -and (Test-Path (Join-Path $candidateRoot 'package.json'))) {
+            $projectRoot = $candidateRoot
+        }
     }
 
-    $projectRoot = Resolve-Path -LiteralPath (Join-Path $scriptDir "..") -ErrorAction SilentlyContinue
     if (-not $projectRoot) {
-        Write-Error "Unable to determine project root. Ensure the script resides in the 'scripts' directory of the repository or download a release package."
-        exit 1
+        $projectRoot = Join-Path $env:TEMP 'idrac-orchestrator'
+        if (Test-Path $projectRoot) { Remove-Item $projectRoot -Recurse -Force }
+        Write-Info "Cloning source repository..."
+        git clone https://github.com/i0mja/idrac-orchestrator $projectRoot | Out-Null
     }
 
-    $distSource = Join-Path $projectRoot "dist"
+    $distSource = Join-Path $projectRoot 'dist'
+    if (-not (Test-Path $distSource)) {
+        Write-Info "Installing Node dependencies..."
+        Push-Location $projectRoot
+        npm install --omit=dev | Out-Null
+        Write-Info "Building application..."
+        npm run build | Out-Null
+        Pop-Location
+        $distSource = Join-Path $projectRoot 'dist'
+    }
 
     if (-not (Test-Path $distSource)) {
-        Write-Error "Build artifacts not found at $distSource. Run 'npm run build' before executing this installer."
+        Write-Error "Unable to build application. See output above for details."
         exit 1
     }
 
@@ -366,6 +393,7 @@ function Start-Installation {
         Test-SystemRequirements
         Install-Chocolatey
         Install-NodeJS
+        Install-Git
         Install-Database -UseSQLite:$UseSQLite
         New-AppDirectories
         Install-Application

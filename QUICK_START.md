@@ -64,6 +64,8 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; \
   iwr https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1 -useb | iex
 ```
 
+The installer automatically installs Chocolatey, Git, and Node.js, then clones and builds the app. No prior `npm` knowledge is required.
+
 Verify the service after installation:
 
 ```powershell

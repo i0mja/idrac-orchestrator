@@ -32,7 +32,12 @@ Set-ExecutionPolicy Bypass -Scope Process -Force; \
   iwr https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1 -useb | iex
 ```
 
-### Option 4: Try Demo Mode
+This script:
+
+- Installs Chocolatey, Git, and Node.js if they aren't already present
+- Clones the repository and builds the app automatically
+- Configures either SQLite (fast) or PostgreSQL (production)
+- Requires no manual `npm` commands
 
 ```bash
 npx idrac-orchestrator-demo
