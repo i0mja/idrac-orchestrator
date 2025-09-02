@@ -310,7 +310,6 @@ function Install-Application {
     Write-Info "Installing application files..."
 
     Test-BuildDependencies
-
     # Initialize install log
     $installLog = Join-Path $DataPath 'logs\\install.log'
     Remove-Item $installLog -ErrorAction SilentlyContinue
