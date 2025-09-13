@@ -8,8 +8,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
-// Removed useFirstRun dependency for security isolation
 import { useToast } from '@/hooks/use-toast';
+import type { SetupConfig } from '@/types/setup';
 
 const STEPS = [
   { id: 'welcome', title: 'Welcome', description: 'Get started with iDRAC Updater Orchestrator' },
@@ -19,15 +19,8 @@ const STEPS = [
   { id: 'complete', title: 'Complete', description: 'Finish setup and start using the system' }
 ];
 
-interface SetupConfig {
-  backend_mode: 'supabase' | 'on_premise';
-  organization_name: string;
-  admin_email: string;
-  deployment_type: 'cloud' | 'on_premise' | 'hybrid';
-}
-
 interface OOBEWizardProps {
-  onComplete: (config: SetupConfig) => void;
+  onComplete: (config: SetupConfig) => Promise<void>;
 }
 
 export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
@@ -66,11 +59,11 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
 
     setIsCompleting(true);
     try {
+      await onComplete(formData);
       toast({
         title: "Setup Complete!",
         description: "Your iDRAC Updater Orchestrator is ready to use"
       });
-      onComplete(formData);
     } catch (error) {
       toast({
         title: "Setup Error",

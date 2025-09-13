@@ -1,16 +1,10 @@
 import { useState } from "react";
 import { OOBEWizard } from "./OOBEWizard";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface SetupConfig {
-  backend_mode: 'supabase' | 'on_premise';
-  organization_name: string;
-  admin_email: string;
-  deployment_type: 'cloud' | 'on_premise' | 'hybrid';
-}
+import type { SetupConfig } from '@/types/setup';
 
 interface SetupAppProps {
-  onSetupComplete: (config: SetupConfig) => void;
+  onSetupComplete: (config: SetupConfig) => Promise<void>;
 }
 
 export function SetupApp({ onSetupComplete }: SetupAppProps) {
@@ -19,15 +13,8 @@ export function SetupApp({ onSetupComplete }: SetupAppProps) {
   const handleComplete = async (config: SetupConfig) => {
     setIsCompleting(true);
     try {
-      // Store config in localStorage temporarily until main app takes over
-      localStorage.setItem('idrac_setup_config', JSON.stringify({
-        ...config,
-        setup_completed: true,
-        setup_completed_at: new Date().toISOString()
-      }));
-      
-      // Pass to main app
-      onSetupComplete(config);
+      // Pass to main app for processing
+      await onSetupComplete(config);
     } catch (error) {
       console.error('Setup completion failed:', error);
       setIsCompleting(false);
