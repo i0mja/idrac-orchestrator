@@ -8,11 +8,13 @@ import { Server, Network, Settings, Globe } from "lucide-react";
 export default function VCenterManagement() {
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Server className="w-8 h-8 text-primary" />
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <Globe className="w-6 h-6 text-white" />
+        </div>
         <div>
-          <h1 className="text-3xl font-bold">vCenter Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-4xl font-bold text-gradient">vCenter Management</h1>
+          <p className="text-muted-foreground text-lg">
             Manage vCenter connections and monitor your virtual infrastructure
           </p>
         </div>

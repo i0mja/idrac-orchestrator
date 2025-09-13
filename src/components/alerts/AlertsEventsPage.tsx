@@ -73,11 +73,16 @@ const AlertsEventsPage = () => {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Alerts & Events</h1>
-          <p className="text-muted-foreground">
-            Monitor system events and auto-orchestration activities
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <AlertTriangle className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">Alerts & Events</h1>
+            <p className="text-muted-foreground text-lg">
+              Monitor system events and auto-orchestration activities
+            </p>
+          </div>
         </div>
         <div className="flex items-center space-x-2">
           <Button 

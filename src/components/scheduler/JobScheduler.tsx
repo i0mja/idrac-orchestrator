@@ -138,9 +138,16 @@ export function JobScheduler() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Job Scheduler & Automation</h2>
-          <p className="text-muted-foreground">Manage scheduled tasks, maintenance windows, and automation policies</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <Calendar className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">Job Scheduler</h1>
+            <p className="text-muted-foreground text-lg">
+              Manage scheduled tasks, maintenance windows, and automation policies
+            </p>
+          </div>
         </div>
       </div>
 

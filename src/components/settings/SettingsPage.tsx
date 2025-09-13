@@ -1,17 +1,22 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdmConfiguration } from "./IdmConfiguration";
 import { SecuritySettings } from "./SecuritySettings";
 import { SetupDebug } from "@/components/debug/SetupDebug";
+import { Settings } from "lucide-react";
 
 export function SettingsPage() {
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your system configuration and preferences
-        </p>
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <Settings className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-bold text-gradient">Settings</h1>
+          <p className="text-muted-foreground text-lg">
+            Manage your system configuration and preferences
+          </p>
+        </div>
       </div>
 
       <Tabs defaultValue="security" className="w-full">

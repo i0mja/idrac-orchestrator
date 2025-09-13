@@ -212,7 +212,7 @@ export function NetworkDiscovery() {
         <div>
           <h1 className="text-4xl font-bold text-gradient">Network Discovery</h1>
           <p className="text-muted-foreground text-lg">
-            Discover Dell servers with iDRAC/BMC access across your network
+            Discover Dell servers with iDRAC access across your network infrastructure
           </p>
         </div>
       </div>

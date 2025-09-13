@@ -136,9 +136,16 @@ export function UserManagement() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">User Management</h2>
-          <p className="text-muted-foreground">Manage user accounts and role-based access control</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">User Management</h1>
+            <p className="text-muted-foreground text-lg">
+              Manage user accounts and role-based access control
+            </p>
+          </div>
         </div>
         <Dialog>
           <DialogTrigger asChild>
