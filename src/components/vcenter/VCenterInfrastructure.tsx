@@ -34,9 +34,10 @@ export function VCenterInfrastructure() {
             Monitor your virtualized environment across all vCenter servers
           </p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" className="flex-shrink-0">
           <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh All
+          <span className="hidden sm:inline">Refresh All</span>
+          <span className="sm:hidden">Refresh</span>
         </Button>
       </div>
 
@@ -134,9 +135,9 @@ export function VCenterInfrastructure() {
                       <p className="text-sm text-muted-foreground">
                         Sync this vCenter to discover clusters and hosts
                       </p>
-                      <Button variant="outline" size="sm" className="mt-4">
+                      <Button variant="outline" size="sm" className="mt-4 flex-shrink-0">
                         <RefreshCw className="w-4 h-4 mr-2" />
-                        Sync Now
+                        <span className="whitespace-nowrap">Sync Now</span>
                       </Button>
                     </div>
                   ) : (

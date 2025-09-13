@@ -44,9 +44,10 @@ export function VCenterClusters() {
             Manage cluster settings and maintenance policies across your vCenter infrastructure
           </p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" className="flex-shrink-0">
           <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh Clusters
+          <span className="hidden sm:inline">Refresh Clusters</span>
+          <span className="sm:hidden">Refresh</span>
         </Button>
       </div>
 
@@ -60,9 +61,9 @@ export function VCenterClusters() {
               <p className="text-muted-foreground mb-4">
                 Sync your vCenter connections to discover and manage clusters
               </p>
-              <Button variant="outline">
+              <Button variant="outline" className="flex-shrink-0">
                 <RefreshCw className="w-4 h-4 mr-2" />
-                Sync vCenter Data
+                <span className="whitespace-nowrap">Sync vCenter Data</span>
               </Button>
             </CardContent>
           </Card>
@@ -93,11 +94,13 @@ export function VCenterClusters() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm">
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button variant="outline" size="sm" className="px-2">
                         <Settings className="w-4 h-4" />
                       </Button>
-                      {getMaintenancePolicyBadge(cluster.maintenance_mode_policy)}
+                      <div className="max-w-32">
+                        {getMaintenancePolicyBadge(cluster.maintenance_mode_policy)}
+                      </div>
                     </div>
                   </div>
                 </CardHeader>
@@ -165,7 +168,7 @@ export function VCenterClusters() {
                         </Select>
                       </div>
                       <div className="flex items-end">
-                        <Button variant="outline" size="sm" disabled>
+                        <Button variant="outline" size="sm" disabled className="whitespace-nowrap">
                           Update Policy
                         </Button>
                       </div>

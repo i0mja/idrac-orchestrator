@@ -363,7 +363,7 @@ export function VCenterConnections() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     {vcenter.ignore_ssl && (
                       <Shield className="w-4 h-4 text-yellow-500" />
                     )}
@@ -372,6 +372,7 @@ export function VCenterConnections() {
                       size="sm"
                       onClick={() => handleTestConnection(vcenter.id)}
                       disabled={testingConnections.has(vcenter.id)}
+                      className="px-2"
                     >
                       <PlayCircle className="w-4 h-4" />
                     </Button>
@@ -379,6 +380,7 @@ export function VCenterConnections() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(vcenter)}
+                      className="px-2"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -386,6 +388,7 @@ export function VCenterConnections() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleDelete(vcenter.id)}
+                      className="px-2"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
