@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { IdmConfiguration } from "./IdmConfiguration";
 import { SecuritySettings } from "./SecuritySettings";
+import { useFirstRun } from "@/hooks/useFirstRun";
 import { 
   Settings, 
   Network, 
@@ -24,7 +25,9 @@ import {
   Trash2,
   CheckCircle,
   AlertCircle,
-  Users
+  Users,
+  RotateCcw,
+  Info
 } from "lucide-react";
 import { TimezoneSelect } from "@/components/ui/timezone-select";
 
@@ -56,6 +59,130 @@ interface VCenter {
   port: number;
   ignore_ssl: boolean;
   created_at: string;
+}
+
+function SystemSetupCard() {
+  const { setupConfig, resetSetup } = useFirstRun();
+  const { toast } = useToast();
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleResetSetup = async () => {
+    if (!confirm('Are you sure you want to reset the system setup? This will require you to go through the setup wizard again on next page load.')) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const result = await resetSetup();
+      if (result.success) {
+        toast({
+          title: "Setup Reset",
+          description: "System setup has been reset. Refresh the page to run the setup wizard again.",
+        });
+      } else {
+        toast({
+          title: "Reset Failed",
+          description: "Failed to reset system setup. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Reset Error", 
+        description: "An error occurred while resetting setup",
+        variant: "destructive"
+      });
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  return (
+    <Card className="card-enterprise">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="w-5 h-5" />
+          System Setup
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {setupConfig ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Setup Status</Label>
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <span className="text-sm">Setup Completed</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Completed At</Label>
+                <p className="text-sm text-muted-foreground">
+                  {setupConfig.setup_completed_at ? 
+                    new Date(setupConfig.setup_completed_at).toLocaleString() : 
+                    'Unknown'
+                  }
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Backend Mode</Label>
+                <Badge variant={setupConfig.backend_mode === 'supabase' ? 'default' : 'secondary'}>
+                  {setupConfig.backend_mode === 'supabase' ? 'Supabase Cloud' : 'On-Premises'}
+                </Badge>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Deployment Type</Label>
+                <Badge variant="outline">{setupConfig.deployment_type}</Badge>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Organization</Label>
+                <p className="text-sm">{setupConfig.organization_name}</p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Admin Email</Label>
+                <p className="text-sm">{setupConfig.admin_email}</p>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <div className="flex items-start space-x-3">
+                <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+                <div className="flex-1">
+                  <h4 className="text-sm font-medium">Reset Setup</h4>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    If you need to change your backend mode or reconfigure initial settings, 
+                    you can reset the setup. This will clear the setup completion flag and 
+                    show the setup wizard on next page load.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                    onClick={handleResetSetup}
+                    disabled={isResetting}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {isResetting ? 'Resetting...' : 'Reset Setup'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center space-x-3">
+            <AlertCircle className="h-5 w-5 text-amber-500" />
+            <div>
+              <p className="text-sm font-medium">Setup Not Completed</p>
+              <p className="text-sm text-muted-foreground">
+                The initial system setup has not been completed or data is not available.
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function SettingsPage() {
@@ -320,8 +447,9 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="setup">Setup</TabsTrigger>
           <TabsTrigger value="idm">IDM</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
@@ -411,6 +539,10 @@ export function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="setup" className="space-y-6">
+          <SystemSetupCard />
         </TabsContent>
 
         <TabsContent value="idm" className="space-y-6">
