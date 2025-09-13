@@ -4,7 +4,10 @@ Complete reference for the iDRAC Updater Orchestrator API endpoints.
 
 ## Base Configuration
 
-**Base URL:** `https://hrqzmjjpnylcmunyaovj.supabase.co`
+**Base URL:** Configure in Settings > Deployment Settings
+- **Cloud (Supabase):** `https://hrqzmjjpnylcmunyaovj.supabase.co`
+- **Self-Hosted:** `https://your-api-domain.com` (configurable)
+- **Local Development:** `http://localhost:8080` or your local server
 
 **Authentication:** Most endpoints require Bearer token authentication using your API key from Settings > Security & Authentication.
 
@@ -13,6 +16,63 @@ Authorization: Bearer YOUR_API_KEY
 ```
 
 **Rate Limiting:** API calls are limited to 100 requests per minute per API key. Rate limit headers are included in responses.
+
+## Environment Variables for Self-Hosted Deployments
+
+When hosting locally or on your own infrastructure, configure these environment variables:
+
+### Required Variables
+```bash
+# API Configuration
+API_BASE_URL=https://your-api-domain.com
+API_PORT=8080
+SSL_ENABLED=true
+
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/idrac_orchestrator
+DATABASE_SSL=require
+
+# Authentication
+AUTH_PROVIDER=supabase  # or 'ldap' or 'local'
+JWT_SECRET=your-jwt-secret-key
+SESSION_TIMEOUT=3600
+
+# Storage
+STORAGE_ENDPOINT=https://your-storage-endpoint.com
+STORAGE_ACCESS_KEY=your-access-key
+STORAGE_SECRET_KEY=your-secret-key
+
+# External APIs (optional)
+DELL_API_ENDPOINT=https://api.dell.com
+DELL_API_KEY=your-dell-api-key
+VMWARE_VCENTER_URL=https://your-vcenter.domain.com
+VMWARE_USERNAME=your-vcenter-user
+VMWARE_PASSWORD=your-vcenter-password
+
+# CORS Configuration
+CORS_ORIGINS=http://localhost:3000,https://yourdomain.com
+```
+
+### Optional Variables
+```bash
+# Logging
+LOG_LEVEL=info
+LOG_FILE_PATH=/var/log/idrac-orchestrator.log
+
+# Redis (for caching)
+REDIS_URL=redis://localhost:6379
+
+# Email Notifications
+SMTP_HOST=your-smtp-server.com
+SMTP_PORT=587
+SMTP_USERNAME=your-smtp-user
+SMTP_PASSWORD=your-smtp-password
+
+# Monitoring
+HEALTH_CHECK_INTERVAL=60
+METRICS_ENABLED=true
+METRICS_PORT=9090
+```
 
 ## API Endpoints
 
@@ -36,7 +96,7 @@ Automatically generates and schedules update orchestration plans based on server
 curl -X POST \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  "https://hrqzmjjpnylcmunyaovj.supabase.co/functions/v1/auto-orchestration"
+  "${API_BASE_URL}/functions/v1/auto-orchestration"
 ```
 
 ---
@@ -78,7 +138,7 @@ curl -X POST \
     "ip_ranges": ["10.0.1.0/24", "10.0.2.0/24"],
     "credential_profile_id": "123e4567-e89b-12d3-a456-426614174000"
   }' \
-  "https://hrqzmjjpnylcmunyaovj.supabase.co/functions/v1/discover-servers"
+  "${API_BASE_URL}/functions/v1/discover-servers"
 ```
 
 ---
@@ -228,7 +288,7 @@ Find your API key in the application under Settings > Security & Authentication.
 ### 2. Test connectivity
 Start with the health check endpoint (no authentication required):
 ```bash
-curl https://hrqzmjjpnylcmunyaovj.supabase.co/functions/v1/health-check
+curl ${API_BASE_URL}/functions/v1/health-check
 ```
 
 ### 3. Discover servers
@@ -241,7 +301,7 @@ curl -X POST \
     "ip_ranges": ["10.0.1.0/24"],
     "credential_profile_id": "YOUR_CREDENTIAL_PROFILE_ID"
   }' \
-  "https://hrqzmjjpnylcmunyaovj.supabase.co/functions/v1/discover-servers"
+  "${API_BASE_URL}/functions/v1/discover-servers"
 ```
 
 ## Error Handling

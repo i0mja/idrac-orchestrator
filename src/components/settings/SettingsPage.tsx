@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdmConfiguration } from "./IdmConfiguration";
 import { SecuritySettings } from "./SecuritySettings";
+import { DeploymentSettings } from "./DeploymentSettings";
 import { SetupDebug } from "@/components/debug/SetupDebug";
 
 export function SettingsPage() {
@@ -15,9 +16,10 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="security" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="security">Security & Authentication</TabsTrigger>
           <TabsTrigger value="identity">Identity Management</TabsTrigger>
+          <TabsTrigger value="deployment">Deployment Settings</TabsTrigger>
           <TabsTrigger value="debug">Setup Debug</TabsTrigger>
         </TabsList>
         
@@ -27,6 +29,10 @@ export function SettingsPage() {
         
         <TabsContent value="identity" className="space-y-4">
           <IdmConfiguration />
+        </TabsContent>
+        
+        <TabsContent value="deployment" className="space-y-4">
+          <DeploymentSettings />
         </TabsContent>
         
         <TabsContent value="debug" className="space-y-4">
