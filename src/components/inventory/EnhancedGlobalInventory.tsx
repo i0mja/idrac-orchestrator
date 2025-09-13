@@ -378,9 +378,14 @@ export function EnhancedGlobalInventory() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Enhanced Global Inventory</h1>
-          <p className="text-muted-foreground">OS-agnostic management with multi-datacenter support</p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <Database className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">Enhanced Global Inventory</h1>
+            <p className="text-muted-foreground text-lg">OS-agnostic management with multi-datacenter support</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => window.location.reload()}>

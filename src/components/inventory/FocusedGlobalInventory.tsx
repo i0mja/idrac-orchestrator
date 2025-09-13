@@ -197,11 +197,16 @@ export function FocusedGlobalInventory() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Global Inventory</h2>
-          <p className="text-muted-foreground">
-            Comprehensive inventory management for all discovered servers and hardware assets
-          </p>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+            <Database className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h1 className="text-4xl font-bold text-gradient">Global Inventory</h1>
+            <p className="text-muted-foreground text-lg">
+              Comprehensive inventory management for all discovered servers and hardware assets
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={refreshStats} variant="outline">

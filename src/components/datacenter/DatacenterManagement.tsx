@@ -477,7 +477,15 @@ export function DatacenterManagement() {
     return (
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Datacenter Management</h2>
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+              <Building2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold text-gradient">Datacenter Management</h1>
+              <p className="text-muted-foreground text-lg">Loading datacenter configurations...</p>
+            </div>
+          </div>
           <div className="h-10 w-32 bg-muted animate-pulse rounded" />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

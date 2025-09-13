@@ -22,7 +22,8 @@ import {
   RefreshCw,
   ArrowRight,
   Zap,
-  Clock
+  Clock,
+  TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -149,13 +150,15 @@ export function EnterpriseManagement() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-primary rounded-lg animate-pulse" />
-          <div>
-            <h1 className="text-3xl font-bold">Infrastructure & Operations</h1>
-            <p className="text-muted-foreground">Loading dashboard...</p>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <TrendingUp className="w-6 h-6 text-white" />
         </div>
+        <div>
+          <h1 className="text-4xl font-bold text-gradient">Infrastructure & Operations</h1>
+          <p className="text-muted-foreground text-lg">Loading dashboard...</p>
+        </div>
+      </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-24 bg-muted/20 rounded-lg animate-pulse" />
