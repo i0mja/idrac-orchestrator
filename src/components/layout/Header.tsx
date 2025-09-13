@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, User, LogOut } from "lucide-react";
+import { User, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useServers } from "@/hooks/useServers";
+import { NotificationDropdown } from "./NotificationDropdown";
 
 interface HeaderProps {
   userRole: "admin" | "operator" | "viewer";
@@ -38,10 +39,7 @@ export function Header({ userRole, userName }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="w-4 h-4" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full" />
-          </Button>
+          <NotificationDropdown />
 
           <div className="flex items-center gap-3 px-3 py-1 rounded-lg bg-muted/50">
             <User className="w-4 h-4 text-muted-foreground" />
