@@ -640,40 +640,40 @@ export function HealthChecks() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Button 
               variant="outline" 
-              className="h-auto p-6 flex flex-col gap-3"
+              className="h-auto min-h-[140px] p-4 flex flex-col items-center justify-center gap-2 text-wrap"
               onClick={runServerConnectivityTest}
             >
-              <Server className="w-8 h-8 text-primary" />
-              <span className="font-semibold">Test Server Connectivity</span>
-              <span className="text-sm text-muted-foreground text-center">
-                Verify iDRAC/BMC connections to all discovered servers
+              <Server className="w-8 h-8 text-primary flex-shrink-0" />
+              <span className="font-semibold text-center leading-tight">Test Server Connectivity</span>
+              <span className="text-xs text-muted-foreground text-center leading-tight">
+                Verify iDRAC/BMC connections
               </span>
             </Button>
             
             <Button 
               variant="outline" 
-              className="h-auto p-6 flex flex-col gap-3"
+              className="h-auto min-h-[140px] p-4 flex flex-col items-center justify-center gap-2 text-wrap"
               onClick={() => window.location.href = '/discovery'}
             >
-              <Network className="w-8 h-8 text-primary" />
-              <span className="font-semibold">Network Discovery</span>
-              <span className="text-sm text-muted-foreground text-center">
-                Scan network for new Dell servers
+              <Network className="w-8 h-8 text-primary flex-shrink-0" />
+              <span className="font-semibold text-center leading-tight">Network Discovery</span>
+              <span className="text-xs text-muted-foreground text-center leading-tight">
+                Scan for new Dell servers
               </span>
             </Button>
             
             <Button 
               variant="outline" 
-              className="h-auto p-6 flex flex-col gap-3"
+              className="h-auto min-h-[140px] p-4 flex flex-col items-center justify-center gap-2 text-wrap"
               onClick={() => window.location.href = '/alerts'}
             >
-              <AlertTriangle className="w-8 h-8 text-primary" />
-              <span className="font-semibold">Review Alerts</span>
-              <span className="text-sm text-muted-foreground text-center">
-                View and manage system alerts and events
+              <AlertTriangle className="w-8 h-8 text-primary flex-shrink-0" />
+              <span className="font-semibold text-center leading-tight">Review Alerts</span>
+              <span className="text-xs text-muted-foreground text-center leading-tight">
+                View system alerts and events
               </span>
             </Button>
           </div>
