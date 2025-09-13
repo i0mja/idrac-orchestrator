@@ -91,20 +91,18 @@ export function useSetupStatus() {
 
   const initializeSystem = async (config: CompletedSetupConfig) => {
     try {
-      // Store setup config in database using the same key as useFirstRun
-      await supabase
-        .from('system_config')
-        .upsert({
-          key: 'initial_setup',
-          value: config as any,
-          description: 'Initial system setup configuration'
-        });
+      // Store setup config in database via edge function (bypasses RLS/auth issues)
+      const { error } = await supabase.functions.invoke('save-initial-setup', {
+        body: { config }
+      });
+
+      if (error) throw error as any;
 
       // Clean up localStorage after successful database storage
       localStorage.removeItem('idrac_setup_config');
     } catch (error) {
       console.error('Failed to initialize system:', error);
-      // Keep localStorage as fallback if database fails
+      // Keep localStorage and sentinel as fallback if database fails
     }
   };
 

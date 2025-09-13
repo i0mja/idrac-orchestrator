@@ -24,10 +24,9 @@ export const useFirstRun = () => {
         .from('system_config')
         .select('*')
         .eq('key', 'initial_setup')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is expected for first run
+      if (error) {
         throw error;
       }
 
