@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { OOBEWizard } from "./OOBEWizard";
+import { EnhancedOOBEWizard } from "./EnhancedOOBEWizard";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SetupConfig } from '@/types/setup';
 
@@ -33,5 +33,5 @@ export function SetupApp({ onSetupComplete }: SetupAppProps) {
     );
   }
 
-  return <OOBEWizard onComplete={handleComplete} />;
+  return <EnhancedOOBEWizard onComplete={handleComplete} />;
 }

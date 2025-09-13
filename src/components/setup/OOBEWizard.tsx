@@ -7,15 +7,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft, Database, Network, Shield, TestTube, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import type { SetupConfig } from '@/types/setup';
+import type { SetupConfig, SetupStep } from '@/types/setup';
+import type { DatabaseConfig, InfrastructureConfig } from '@/types/database';
+import { DatabaseAdapterFactory } from '@/adapters/DatabaseAdapterFactory';
 
-const STEPS = [
+const STEPS: SetupStep[] = [
   { id: 'welcome', title: 'Welcome', description: 'Get started with iDRAC Updater Orchestrator' },
   { id: 'backend', title: 'Backend Mode', description: 'Choose your deployment architecture' },
-  { id: 'organization', title: 'Organization', description: 'Set up your organization details' },
-  { id: 'deployment', title: 'Deployment', description: 'Configure deployment settings' },
+  { id: 'database', title: 'Database', description: 'Configure your database connection', required: true },
+  { id: 'organization', title: 'Organization', description: 'Set up your organization details', required: true },
+  { id: 'infrastructure', title: 'Infrastructure', description: 'Configure datacenters and credentials' },
+  { id: 'vcenter', title: 'vCenter', description: 'Connect to VMware vCenter servers' },
+  { id: 'discovery', title: 'Discovery', description: 'Configure automatic server discovery' },
   { id: 'complete', title: 'Complete', description: 'Finish setup and start using the system' }
 ];
 
@@ -26,13 +33,33 @@ interface OOBEWizardProps {
 export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const { toast } = useToast();
 
   const [formData, setFormData] = useState<SetupConfig>({
     backend_mode: 'supabase',
     organization_name: '',
     admin_email: '',
-    deployment_type: 'cloud'
+    deployment_type: 'cloud',
+    database: {
+      type: 'postgresql',
+      host: '',
+      port: 5432,
+      database: '',
+      username: '',
+      password: '',
+      ssl: true
+    },
+    infrastructure: {
+      datacenters: [],
+      credentialProfiles: [],
+      vcenters: [],
+      discoverySettings: {
+        enabled: true,
+        intervalHours: 24,
+        autoAssignDatacenters: true
+      }
+    }
   });
 
   const handleNext = () => {

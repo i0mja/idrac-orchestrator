@@ -49,6 +49,12 @@ ip_version = "ipv4"
 [analytics]
 enabled = false
 
+[functions.test-database-connection]
+verify_jwt = false
+
+[functions.initialize-database-schema]
+verify_jwt = false
+
 [functions.orchestrator-start-rolling-update]
 verify_jwt = true
 
