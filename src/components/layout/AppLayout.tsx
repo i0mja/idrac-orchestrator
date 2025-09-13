@@ -1,9 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { DemoDataSeeder } from "@/components/demo/DemoDataSeeder";
-import { supabase } from "@/integrations/supabase/client";
 
 type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery";
 
@@ -12,7 +10,6 @@ export function AppLayout() {
   const location = useLocation();
   const [userRole] = useState<"admin" | "operator" | "viewer">("admin");
   const [userName] = useState("Administrator");
-  const [hasData, setHasData] = useState(true);
 
   // Map current route to sidebar page type
   const getCurrentPage = (): PageType => {
@@ -79,23 +76,6 @@ export function AppLayout() {
     }
   };
 
-  // Enhanced: Check if system has demo data
-  useEffect(() => {
-    const checkDemoData = async () => {
-      try {
-        const { count } = await supabase
-          .from('servers')
-          .select('*', { count: 'exact', head: true });
-        
-        setHasData((count || 0) > 0);
-      } catch (error) {
-        console.error('Error checking demo data:', error);
-      }
-    };
-
-    checkDemoData();
-  }, []);
-
   return (
     <div className="flex h-screen bg-background">
       <Sidebar 
@@ -106,8 +86,6 @@ export function AppLayout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header userRole={userRole} userName={userName} />
         <main className="flex-1 overflow-auto p-6">
-          {/* Enhanced: Demo data seeder for first-time setup */}
-          {!hasData && <DemoDataSeeder />}
           <Outlet />
         </main>
       </div>
