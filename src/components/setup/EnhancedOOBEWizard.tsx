@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft, Database, Network, Shield, TestTube, Plus, Trash2 } from 'lucide-react';
+import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft, Database, Network, Shield, TestTube, Plus, Trash2, X, Star } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { SetupConfig, SetupStep } from '@/types/setup';
 import type { DatabaseConfig, InfrastructureConfig } from '@/types/database';
@@ -145,7 +145,7 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
             name: '',
             location: '',
             timezone: 'UTC',
-            ipScopes: [{ subnet: '', description: '' }],
+            ipScopes: [{ subnet: '', description: '', credentialProfileId: '' }],
             maintenanceWindow: { start: '02:00', end: '06:00' }
           }
         ]
@@ -163,12 +163,14 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
         credentialProfiles: [
           ...formData.infrastructure.credentialProfiles,
           {
+            id: `profile-${Date.now()}`,
             name: '',
             username: '',
             password: '',
             port: 443,
-            protocol: 'https',
-            isDefault: false
+            protocol: 'https' as const,
+            isDefault: formData.infrastructure.credentialProfiles.length === 0,
+            description: ''
           }
         ]
       }
@@ -577,76 +579,161 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
               </p>
             ) : (
               <div className="space-y-4">
-                {formData.infrastructure?.datacenters.map((dc, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <Input 
-                        placeholder="Datacenter Name"
-                        value={dc.name}
-                        onChange={(e) => {
-                          const newDatacenters = [...formData.infrastructure!.datacenters];
-                          newDatacenters[index].name = e.target.value;
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                          });
-                        }}
-                      />
-                      <Input 
-                        placeholder="Location"
-                        value={dc.location}
-                        onChange={(e) => {
-                          const newDatacenters = [...formData.infrastructure!.datacenters];
-                          newDatacenters[index].location = e.target.value;
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                          });
-                        }}
-                      />
-                      <Input 
-                        placeholder="IP Subnet (e.g., 192.168.1.0/24)"
-                        value={dc.ipScopes[0]?.subnet || ''}
-                        onChange={(e) => {
-                          const newDatacenters = [...formData.infrastructure!.datacenters];
-                          newDatacenters[index].ipScopes[0] = { 
-                            subnet: e.target.value, 
-                            description: newDatacenters[index].ipScopes[0]?.description || ''
-                          };
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                          });
-                        }}
-                      />
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Start Time (HH:MM)"
-                          value={dc.maintenanceWindow.start}
-                          onChange={(e) => {
-                            const newDatacenters = [...formData.infrastructure!.datacenters];
-                            newDatacenters[index].maintenanceWindow.start = e.target.value;
-                            setFormData({
-                              ...formData,
-                              infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                            });
-                          }}
-                        />
-                        <Input 
-                          placeholder="End Time (HH:MM)"
-                          value={dc.maintenanceWindow.end}
-                          onChange={(e) => {
-                            const newDatacenters = [...formData.infrastructure!.datacenters];
-                            newDatacenters[index].maintenanceWindow.end = e.target.value;
-                            setFormData({
-                              ...formData,
-                              infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                            });
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </Card>
+                 {formData.infrastructure?.datacenters.map((dc, index) => (
+                   <Card key={index} className="p-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                         <Label htmlFor={`dc-name-${index}`}>Datacenter Name *</Label>
+                         <Input 
+                           id={`dc-name-${index}`}
+                           placeholder="e.g., NYC-DC1, West Coast"
+                           value={dc.name}
+                           onChange={(e) => {
+                             const newDatacenters = [...formData.infrastructure!.datacenters];
+                             newDatacenters[index].name = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                             });
+                           }}
+                         />
+                       </div>
+                       <div className="space-y-1">
+                         <Label htmlFor={`dc-location-${index}`}>Physical Location *</Label>
+                         <Input 
+                           id={`dc-location-${index}`}
+                           placeholder="e.g., New York, NY"
+                           value={dc.location}
+                           onChange={(e) => {
+                             const newDatacenters = [...formData.infrastructure!.datacenters];
+                             newDatacenters[index].location = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                             });
+                           }}
+                         />
+                       </div>
+                     </div>
+
+                     <div className="space-y-3">
+                       <Label>Network Configuration</Label>
+                       <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-subnet-${index}`}>IP Subnet Range *</Label>
+                           <Input 
+                             id={`dc-subnet-${index}`}
+                             placeholder="e.g., 192.168.1.0/24"
+                             value={dc.ipScopes[0]?.subnet || ''}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               if (!newDatacenters[index].ipScopes[0]) {
+                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
+                               }
+                               newDatacenters[index].ipScopes[0].subnet = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                           <p className="text-xs text-muted-foreground">
+                             Servers in this range will be auto-assigned to this datacenter
+                           </p>
+                         </div>
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-credentials-${index}`}>Default Credential Profile</Label>
+                           <select 
+                             id={`dc-credentials-${index}`}
+                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                             value={dc.ipScopes[0]?.credentialProfileId || ''}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               if (!newDatacenters[index].ipScopes[0]) {
+                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
+                               }
+                               newDatacenters[index].ipScopes[0].credentialProfileId = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           >
+                             <option value="">Select credential profile...</option>
+                             {formData.infrastructure?.credentialProfiles.map((profile) => (
+                               <option key={profile.id} value={profile.id}>
+                                 {profile.name} ({profile.username})
+                               </option>
+                             ))}
+                           </select>
+                           <p className="text-xs text-muted-foreground">
+                             Credentials to use for servers in this IP range
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="space-y-3">
+                       <Label>Maintenance Window</Label>
+                       <div className="flex gap-4 items-center">
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-start-${index}`}>Start Time *</Label>
+                           <Input 
+                             id={`dc-start-${index}`}
+                             placeholder="02:00"
+                             value={dc.maintenanceWindow.start}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               newDatacenters[index].maintenanceWindow.start = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                         </div>
+                         <div className="flex items-center pt-6">
+                           <span className="text-muted-foreground">to</span>
+                         </div>
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-end-${index}`}>End Time *</Label>
+                           <Input 
+                             id={`dc-end-${index}`}
+                             placeholder="04:00"
+                             value={dc.maintenanceWindow.end}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               newDatacenters[index].maintenanceWindow.end = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground">
+                         Daily window when maintenance operations can be performed (24-hour format)
+                       </p>
+                     </div>
+
+                     <div className="flex justify-end">
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => {
+                           const newDatacenters = formData.infrastructure!.datacenters.filter((_, i) => i !== index);
+                           setFormData({
+                             ...formData,
+                             infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                           });
+                         }}
+                       >
+                         <X className="h-4 w-4 mr-2" />
+                         Remove
+                       </Button>
+                     </div>
+                   </Card>
                 ))}
               </div>
             )}
@@ -667,7 +754,7 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
               </Button>
             </div>
             <CardDescription>
-              Configure credential profiles for connecting to Dell servers
+              Configure credential profiles for connecting to Dell iDRAC interfaces. These can be assigned to specific IP ranges.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -676,51 +763,170 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
                 No credential profiles configured. Add one to connect to Dell servers.
               </p>
             ) : (
-              <div className="space-y-4">
-                {formData.infrastructure?.credentialProfiles.map((profile, index) => (
-                  <Card key={index} className="p-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <Input 
-                        placeholder="Profile Name"
-                        value={profile.name}
-                        onChange={(e) => {
-                          const newProfiles = [...formData.infrastructure!.credentialProfiles];
-                          newProfiles[index].name = e.target.value;
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
-                          });
-                        }}
-                      />
-                      <Input 
-                        placeholder="Username"
-                        value={profile.username}
-                        onChange={(e) => {
-                          const newProfiles = [...formData.infrastructure!.credentialProfiles];
-                          newProfiles[index].username = e.target.value;
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
-                          });
-                        }}
-                      />
-                      <Input 
-                        type="password"
-                        placeholder="Password"
-                        value={profile.password}
-                        onChange={(e) => {
-                          const newProfiles = [...formData.infrastructure!.credentialProfiles];
-                          newProfiles[index].password = e.target.value;
-                          setFormData({
-                            ...formData,
-                            infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
-                          });
-                        }}
-                      />
-                    </div>
-                  </Card>
-                ))}
-              </div>
+               <div className="space-y-4">
+                 {formData.infrastructure?.credentialProfiles.map((profile, index) => (
+                   <Card key={index} className="p-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-name-${index}`}>Profile Name *</Label>
+                         <Input 
+                           id={`profile-name-${index}`}
+                           placeholder="e.g., Production iDRAC, Lab Servers"
+                           value={profile.name}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].name = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         />
+                       </div>
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-desc-${index}`}>Description</Label>
+                         <Input 
+                           id={`profile-desc-${index}`}
+                           placeholder="e.g., Production environment credentials"
+                           value={profile.description || ''}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].description = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         />
+                       </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-username-${index}`}>iDRAC Username *</Label>
+                         <Input 
+                           id={`profile-username-${index}`}
+                           placeholder="e.g., root, admin"
+                           value={profile.username}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].username = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         />
+                       </div>
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-password-${index}`}>iDRAC Password *</Label>
+                         <Input 
+                           id={`profile-password-${index}`}
+                           type="password"
+                           placeholder="Enter iDRAC password"
+                           value={profile.password}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].password = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         />
+                       </div>
+                     </div>
+
+                     <div className="grid grid-cols-3 gap-4">
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-port-${index}`}>Port</Label>
+                         <Input 
+                           id={`profile-port-${index}`}
+                           type="number"
+                           placeholder="443"
+                           value={profile.port}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].port = parseInt(e.target.value) || 443;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         />
+                         <p className="text-xs text-muted-foreground">Default: 443 (HTTPS)</p>
+                       </div>
+                       <div className="space-y-1">
+                         <Label htmlFor={`profile-protocol-${index}`}>Protocol</Label>
+                         <select
+                           id={`profile-protocol-${index}`}
+                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                           value={profile.protocol}
+                           onChange={(e) => {
+                             const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                             newProfiles[index].protocol = e.target.value as 'https' | 'http';
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                             });
+                           }}
+                         >
+                           <option value="https">HTTPS (Recommended)</option>
+                           <option value="http">HTTP</option>
+                         </select>
+                       </div>
+                       <div className="space-y-1 flex items-end">
+                         <div className="flex items-center space-x-2">
+                           <Switch
+                             checked={profile.isDefault}
+                             onCheckedChange={(checked) => {
+                               const newProfiles = [...formData.infrastructure!.credentialProfiles];
+                               // If setting as default, unset other defaults
+                               if (checked) {
+                                 newProfiles.forEach((p, i) => {
+                                   p.isDefault = i === index;
+                                 });
+                               } else {
+                                 newProfiles[index].isDefault = false;
+                               }
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                               });
+                             }}
+                           />
+                           <Label>Default Profile</Label>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="flex justify-between items-center pt-2 border-t">
+                       <div className="text-sm text-muted-foreground">
+                         {profile.isDefault && (
+                           <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary/10 text-primary">
+                             <Star className="h-3 w-3 mr-1" />
+                             Default Profile
+                           </span>
+                         )}
+                       </div>
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => {
+                           const newProfiles = formData.infrastructure!.credentialProfiles.filter((_, i) => i !== index);
+                           setFormData({
+                             ...formData,
+                             infrastructure: { ...formData.infrastructure!, credentialProfiles: newProfiles }
+                           });
+                         }}
+                       >
+                         <X className="h-4 w-4 mr-2" />
+                         Remove
+                       </Button>
+                     </div>
+                   </Card>
+                 ))}
+               </div>
             )}
           </CardContent>
         </Card>

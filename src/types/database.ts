@@ -36,19 +36,22 @@ export interface InfrastructureConfig {
     ipScopes: Array<{
       subnet: string;
       description: string;
+      credentialProfileId?: string; // Reference to credential profile for this IP range
     }>;
     maintenanceWindow: {
-      start: string;
-      end: string;
+      start: string; // HH:MM format for daily maintenance window start
+      end: string;   // HH:MM format for daily maintenance window end
     };
   }>;
   credentialProfiles: Array<{
+    id: string; // Unique identifier for referencing from IP scopes
     name: string;
     username: string;
     password: string;
     port: number;
     protocol: 'https' | 'http';
     isDefault: boolean;
+    description?: string; // Optional description of what this profile is for
   }>;
   vcenters: Array<{
     name: string;
