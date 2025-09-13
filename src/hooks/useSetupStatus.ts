@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import type { SetupConfig, CompletedSetupConfig } from '@/types/setup';
 import { supabase } from '@/integrations/supabase/client';
 
+const SETUP_SENTINEL_KEY = 'idrac_setup_complete';
+
 export function useSetupStatus() {
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
   const [setupConfig, setSetupConfig] = useState<CompletedSetupConfig | null>(null);
@@ -13,7 +15,22 @@ export function useSetupStatus() {
 
   const checkSetupStatus = async () => {
     try {
-      // First check localStorage (for fresh setups)
+      // 1) Fast path: durable local sentinel (survives DB/RLS hiccups in builder)
+      const sentinel = localStorage.getItem(SETUP_SENTINEL_KEY) === 'true';
+      if (sentinel) {
+        setIsSetupComplete(true);
+        // Optionally hydrate with any cached config if present
+        const cached = localStorage.getItem('idrac_setup_config');
+        if (cached) {
+          try {
+            setSetupConfig(JSON.parse(cached));
+          } catch {}
+        }
+        setLoading(false);
+        return;
+      }
+
+      // 2) Check local cached config (fresh setups before DB writes)
       const localConfig = localStorage.getItem('idrac_setup_config');
       if (localConfig) {
         const config = JSON.parse(localConfig);
@@ -23,15 +40,14 @@ export function useSetupStatus() {
         return;
       }
 
-      // Check database for setup completion using the same key as useFirstRun
+      // 3) Check database for setup completion using the same key as useFirstRun
       const { data, error } = await supabase
         .from('system_config')
         .select('value')
         .eq('key', 'initial_setup')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 = no rows returned, which is expected for first run
+      if (error) {
         throw error;
       }
 
@@ -47,7 +63,9 @@ export function useSetupStatus() {
       setLoading(false);
     } catch (error) {
       console.error('Failed to check setup status:', error);
-      setIsSetupComplete(false);
+      // If we have the sentinel, prefer staying in the app instead of OOBE
+      const sentinel = localStorage.getItem(SETUP_SENTINEL_KEY) === 'true';
+      setIsSetupComplete(sentinel ? true : false);
       setLoading(false);
     }
   };
@@ -61,6 +79,8 @@ export function useSetupStatus() {
     
     // Store temporarily in localStorage
     localStorage.setItem('idrac_setup_config', JSON.stringify(finalConfig));
+    // Set durable sentinel so refreshes don't return to OOBE even if DB is unreachable
+    localStorage.setItem(SETUP_SENTINEL_KEY, 'true');
     
     // Initialize database with setup configuration
     await initializeSystem(finalConfig);
@@ -90,6 +110,7 @@ export function useSetupStatus() {
 
   const clearSetup = async () => {
     localStorage.removeItem('idrac_setup_config');
+    localStorage.removeItem(SETUP_SENTINEL_KEY);
     
     // Also clear from database using the same key as useFirstRun
     try {
