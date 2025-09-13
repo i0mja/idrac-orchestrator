@@ -27,6 +27,11 @@ export class SupabaseDatabaseAdapter implements DatabaseAdapter {
     }
   }
 
+  async createDatabase(): Promise<{ success: boolean; error?: string; created?: boolean }> {
+    // Supabase database already exists
+    return { success: true, created: false };
+  }
+
   async initializeSchema(): Promise<{ success: boolean; error?: string }> {
     // Supabase schema is already initialized
     return { success: true };
@@ -57,6 +62,22 @@ export class SqlServerAdapter implements DatabaseAdapter {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Connection test failed'
+      };
+    }
+  }
+
+  async createDatabase(): Promise<{ success: boolean; error?: string; created?: boolean }> {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-database', {
+        body: this.config
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Database creation failed'
       };
     }
   }

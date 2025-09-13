@@ -10,6 +10,9 @@ export interface DatabaseConfig {
   trustServerCertificate?: boolean; // For SQL Server
   connectionTimeout?: number;
   requestTimeout?: number;
+  autoCreateDatabase?: boolean; // New: auto-create database if it doesn't exist
+  adminUsername?: string; // For database creation (optional, defaults to username)
+  adminPassword?: string; // For database creation (optional, defaults to password)
   pool?: {
     min: number;
     max: number;
@@ -19,6 +22,7 @@ export interface DatabaseConfig {
 
 export interface DatabaseAdapter {
   testConnection(): Promise<{ success: boolean; error?: string; version?: string }>;
+  createDatabase(): Promise<{ success: boolean; error?: string; created?: boolean }>;
   initializeSchema(): Promise<{ success: boolean; error?: string }>;
   executeQuery(query: string, params?: any[]): Promise<any>;
   migrate(scripts: string[]): Promise<{ success: boolean; error?: string }>;

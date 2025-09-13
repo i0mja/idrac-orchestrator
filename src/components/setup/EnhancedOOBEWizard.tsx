@@ -45,11 +45,12 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
       type: 'mssql',
       host: '',
       port: 1433,
-      database: '',
+      database: 'idrac_orchestrator',
       username: '',
       password: '',
       ssl: true,
-      trustServerCertificate: true
+      trustServerCertificate: true,
+      autoCreateDatabase: true
     },
     infrastructure: {
       datacenters: [],
@@ -75,29 +76,54 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
     }
   };
 
-  const testDatabaseConnection = async () => {
-    if (!formData.database) return;
+  const setupDatabase = async () => {
+    if (!formData.database || formData.backend_mode === 'supabase') return;
     
     setIsTestingConnection(true);
     try {
       const adapter = DatabaseAdapterFactory.create(formData.database);
-      const result = await adapter.testConnection();
       
-      if (result.success) {
-        toast({
-          title: "Connection Successful",
-          description: `Connected to database successfully. Version: ${result.version || 'Unknown'}`,
-        });
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: result.error || "Failed to connect to database",
-          variant: "destructive",
-        });
+      // Step 1: Test connection to server
+      toast({
+        title: "Testing Connection",
+        description: "Connecting to database server...",
+      });
+      
+      const connectionResult = await adapter.testConnection();
+      if (!connectionResult.success) {
+        throw new Error(connectionResult.error);
       }
+      
+      // Step 2: Create database if needed
+      toast({
+        title: "Creating Database",
+        description: "Setting up your database...",
+      });
+      
+      const createResult = await adapter.createDatabase();
+      if (!createResult.success) {
+        throw new Error(createResult.error);
+      }
+      
+      // Step 3: Initialize schema
+      toast({
+        title: "Initializing Schema", 
+        description: "Creating tables and initial data...",
+      });
+      
+      const schemaResult = await adapter.initializeSchema();
+      if (!schemaResult.success) {
+        throw new Error(schemaResult.error);
+      }
+      
+      toast({
+        title: "Database Setup Complete!",
+        description: `${formData.database.database} is ready for use.`,
+      });
+      
     } catch (error) {
       toast({
-        title: "Connection Error",
+        title: "Database Setup Failed",
         description: error instanceof Error ? error.message : "Unknown error",
         variant: "destructive",
       });
@@ -391,6 +417,9 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
                     database: { ...formData.database!, database: e.target.value }
                   })}
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Database will be created automatically if it doesn't exist
+                </p>
               </div>
 
               <div>
@@ -445,16 +474,31 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
               <Label>Use SSL/TLS Encryption</Label>
             </div>
 
-            <div className="pt-4 border-t">
+            <div className="pt-4 border-t space-y-2">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  checked={formData.database?.autoCreateDatabase !== false}
+                  onCheckedChange={(checked) => setFormData({
+                    ...formData,
+                    database: { ...formData.database!, autoCreateDatabase: checked }
+                  })}
+                />
+                <Label>Automatically create database if it doesn't exist</Label>
+              </div>
+              
               <Button 
-                onClick={testDatabaseConnection}
+                onClick={setupDatabase}
                 disabled={isTestingConnection}
-                variant="outline"
+                variant="default"
                 className="w-full"
               >
                 <TestTube className="h-4 w-4 mr-2" />
-                {isTestingConnection ? 'Testing Connection...' : 'Test Database Connection'}
+                {isTestingConnection ? 'Setting up Database...' : 'Test & Setup Database'}
               </Button>
+              
+              <p className="text-xs text-muted-foreground">
+                This will test the connection, create the database if needed, and initialize all tables.
+              </p>
             </div>
           </CardContent>
         </Card>
