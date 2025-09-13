@@ -10,12 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   Shield, 
   Lock, 
-  Key, 
   AlertTriangle,
   CheckCircle,
-  Settings,
-  Eye,
-  EyeOff
+  Settings
 } from "lucide-react";
 
 interface SecurityConfig {
@@ -57,8 +54,6 @@ export function SecuritySettings() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKey] = useState('sk-prod-1a2b3c4d5e6f7g8h9i0j');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -301,7 +296,7 @@ export function SecuritySettings() {
       <Card className="card-enterprise">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
+            <Lock className="w-5 h-5" />
             Password Policy
           </CardTitle>
         </CardHeader>
@@ -370,57 +365,6 @@ export function SecuritySettings() {
               />
               <Label htmlFor="require-special">Require special characters</Label>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* API Security */}
-      <Card className="card-enterprise">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Key className="w-5 h-5" />
-            API Security
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label htmlFor="audit-logging">Enable audit logging</Label>
-              <p className="text-sm text-muted-foreground">
-                Log all user actions and system changes
-              </p>
-            </div>
-            <Switch
-              id="audit-logging"
-              checked={config.audit_logging}
-              onCheckedChange={(checked) => setConfig(prev => ({ ...prev, audit_logging: checked }))}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="api-key">API Access Key</Label>
-            <div className="flex items-center gap-2 mt-1">
-              <Input
-                id="api-key"
-                type={showApiKey ? "text" : "password"}
-                value={apiKey}
-                readOnly
-                className="font-mono"
-              />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowApiKey(!showApiKey)}
-              >
-                {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-              <Button variant="outline" size="sm">
-                Regenerate
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              Used for API access and external integrations
-            </p>
           </div>
         </CardContent>
       </Card>
