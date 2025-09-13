@@ -487,6 +487,71 @@ export type Database = {
         }
         Relationships: []
       }
+      maintenance_windows: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          datacenter_id: string | null
+          description: string | null
+          end_time: string
+          id: string
+          max_concurrent_updates: number | null
+          metadata: Json | null
+          name: string
+          next_occurrence: string | null
+          notification_hours_before: number | null
+          recurrence: string | null
+          scheduled_date: string
+          start_time: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          datacenter_id?: string | null
+          description?: string | null
+          end_time: string
+          id?: string
+          max_concurrent_updates?: number | null
+          metadata?: Json | null
+          name: string
+          next_occurrence?: string | null
+          notification_hours_before?: number | null
+          recurrence?: string | null
+          scheduled_date: string
+          start_time: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          datacenter_id?: string | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          max_concurrent_updates?: number | null
+          metadata?: Json | null
+          name?: string
+          next_occurrence?: string | null
+          notification_hours_before?: number | null
+          recurrence?: string | null
+          scheduled_date?: string
+          start_time?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "maintenance_windows_datacenter_id_fkey"
+            columns: ["datacenter_id"]
+            isOneToOne: false
+            referencedRelation: "datacenters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       os_compatibility: {
         Row: {
           created_at: string
