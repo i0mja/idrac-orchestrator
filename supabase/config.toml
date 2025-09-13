@@ -82,6 +82,12 @@ verify_jwt = true
 [functions.test-vcenter-connection]
 verify_jwt = true
 
+[functions.maintenance-orchestrator]
+verify_jwt = false
+
+[functions.maintenance-scheduler] 
+verify_jwt = false
+
 [functions.auto-orchestration]
 verify_jwt = false
 
