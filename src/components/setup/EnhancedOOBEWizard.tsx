@@ -555,192 +555,7 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
       </div>
 
       <div className="space-y-6">
-        {/* Datacenters Section */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Datacenters
-              </CardTitle>
-              <Button onClick={addDatacenter} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Datacenter
-              </Button>
-            </div>
-            <CardDescription>
-              Define your datacenter locations and IP scopes for automatic server assignment
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {formData.infrastructure?.datacenters.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
-                No datacenters configured. Add one to get started.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                 {formData.infrastructure?.datacenters.map((dc, index) => (
-                   <Card key={index} className="p-4 space-y-4">
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                         <Label htmlFor={`dc-name-${index}`}>Datacenter Name *</Label>
-                         <Input 
-                           id={`dc-name-${index}`}
-                           placeholder="e.g., NYC-DC1, West Coast"
-                           value={dc.name}
-                           onChange={(e) => {
-                             const newDatacenters = [...formData.infrastructure!.datacenters];
-                             newDatacenters[index].name = e.target.value;
-                             setFormData({
-                               ...formData,
-                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                             });
-                           }}
-                         />
-                       </div>
-                       <div className="space-y-1">
-                         <Label htmlFor={`dc-location-${index}`}>Physical Location *</Label>
-                         <Input 
-                           id={`dc-location-${index}`}
-                           placeholder="e.g., New York, NY"
-                           value={dc.location}
-                           onChange={(e) => {
-                             const newDatacenters = [...formData.infrastructure!.datacenters];
-                             newDatacenters[index].location = e.target.value;
-                             setFormData({
-                               ...formData,
-                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                             });
-                           }}
-                         />
-                       </div>
-                     </div>
-
-                     <div className="space-y-3">
-                       <Label>Network Configuration</Label>
-                       <div className="grid grid-cols-2 gap-4">
-                         <div className="space-y-1">
-                           <Label htmlFor={`dc-subnet-${index}`}>IP Subnet Range *</Label>
-                           <Input 
-                             id={`dc-subnet-${index}`}
-                             placeholder="e.g., 192.168.1.0/24"
-                             value={dc.ipScopes[0]?.subnet || ''}
-                             onChange={(e) => {
-                               const newDatacenters = [...formData.infrastructure!.datacenters];
-                               if (!newDatacenters[index].ipScopes[0]) {
-                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
-                               }
-                               newDatacenters[index].ipScopes[0].subnet = e.target.value;
-                               setFormData({
-                                 ...formData,
-                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                               });
-                             }}
-                           />
-                           <p className="text-xs text-muted-foreground">
-                             Servers in this range will be auto-assigned to this datacenter
-                           </p>
-                         </div>
-                         <div className="space-y-1">
-                           <Label htmlFor={`dc-credentials-${index}`}>Default Credential Profile</Label>
-                           <select 
-                             id={`dc-credentials-${index}`}
-                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                             value={dc.ipScopes[0]?.credentialProfileId || ''}
-                             onChange={(e) => {
-                               const newDatacenters = [...formData.infrastructure!.datacenters];
-                               if (!newDatacenters[index].ipScopes[0]) {
-                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
-                               }
-                               newDatacenters[index].ipScopes[0].credentialProfileId = e.target.value;
-                               setFormData({
-                                 ...formData,
-                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                               });
-                             }}
-                           >
-                             <option value="">Select credential profile...</option>
-                             {formData.infrastructure?.credentialProfiles.map((profile) => (
-                               <option key={profile.id} value={profile.id}>
-                                 {profile.name} ({profile.username})
-                               </option>
-                             ))}
-                           </select>
-                           <p className="text-xs text-muted-foreground">
-                             Credentials to use for servers in this IP range
-                           </p>
-                         </div>
-                       </div>
-                     </div>
-
-                     <div className="space-y-3">
-                       <Label>Maintenance Window</Label>
-                       <div className="flex gap-4 items-center">
-                         <div className="space-y-1">
-                           <Label htmlFor={`dc-start-${index}`}>Start Time *</Label>
-                           <Input 
-                             id={`dc-start-${index}`}
-                             placeholder="02:00"
-                             value={dc.maintenanceWindow.start}
-                             onChange={(e) => {
-                               const newDatacenters = [...formData.infrastructure!.datacenters];
-                               newDatacenters[index].maintenanceWindow.start = e.target.value;
-                               setFormData({
-                                 ...formData,
-                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                               });
-                             }}
-                           />
-                         </div>
-                         <div className="flex items-center pt-6">
-                           <span className="text-muted-foreground">to</span>
-                         </div>
-                         <div className="space-y-1">
-                           <Label htmlFor={`dc-end-${index}`}>End Time *</Label>
-                           <Input 
-                             id={`dc-end-${index}`}
-                             placeholder="04:00"
-                             value={dc.maintenanceWindow.end}
-                             onChange={(e) => {
-                               const newDatacenters = [...formData.infrastructure!.datacenters];
-                               newDatacenters[index].maintenanceWindow.end = e.target.value;
-                               setFormData({
-                                 ...formData,
-                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                               });
-                             }}
-                           />
-                         </div>
-                       </div>
-                       <p className="text-xs text-muted-foreground">
-                         Daily window when maintenance operations can be performed (24-hour format)
-                       </p>
-                     </div>
-
-                     <div className="flex justify-end">
-                       <Button 
-                         variant="outline" 
-                         size="sm"
-                         onClick={() => {
-                           const newDatacenters = formData.infrastructure!.datacenters.filter((_, i) => i !== index);
-                           setFormData({
-                             ...formData,
-                             infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
-                           });
-                         }}
-                       >
-                         <X className="h-4 w-4 mr-2" />
-                         Remove
-                       </Button>
-                     </div>
-                   </Card>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Credential Profiles Section */}
+        {/* Credential Profiles Section - Show First */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -754,17 +569,25 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
               </Button>
             </div>
             <CardDescription>
-              Configure credential profiles for connecting to Dell iDRAC interfaces. These can be assigned to specific IP ranges.
+              Configure credential profiles for connecting to Dell iDRAC interfaces. Create these first, then assign them to datacenters.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {formData.infrastructure?.credentialProfiles.length === 0 ? (
-              <p className="text-muted-foreground text-center py-4">
-                No credential profiles configured. Add one to connect to Dell servers.
-              </p>
+              <div className="text-center py-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-medium mb-2">No credential profiles configured</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Create at least one credential profile to connect to Dell servers and assign to IP ranges.
+                </p>
+                <Button onClick={addCredentialProfile} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Profile
+                </Button>
+              </div>
             ) : (
-               <div className="space-y-4">
-                 {formData.infrastructure?.credentialProfiles.map((profile, index) => (
+              <div className="space-y-4">
+                {formData.infrastructure?.credentialProfiles.map((profile, index) => (
                    <Card key={index} className="p-4 space-y-4">
                      <div className="grid grid-cols-2 gap-4">
                        <div className="space-y-1">
@@ -926,10 +749,217 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
                      </div>
                    </Card>
                  ))}
-               </div>
+              </div>
             )}
           </CardContent>
         </Card>
+
+        {/* Datacenters Section - Show After Credentials */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Datacenters
+              </CardTitle>
+              <Button 
+                onClick={addDatacenter} 
+                size="sm"
+                disabled={formData.infrastructure?.credentialProfiles.length === 0}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Datacenter
+              </Button>
+            </div>
+            <CardDescription>
+              Define your datacenter locations and IP scopes. Servers will be automatically assigned based on IP ranges.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {formData.infrastructure?.credentialProfiles.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-medium mb-2">Create credential profiles first</p>
+                <p className="text-sm text-muted-foreground">
+                  You need to create at least one credential profile before configuring datacenters.
+                </p>
+              </div>
+            ) : formData.infrastructure?.datacenters.length === 0 ? (
+              <div className="text-center py-8 border-2 border-dashed border-muted-foreground/25 rounded-lg">
+                <Building className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground font-medium mb-2">No datacenters configured</p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Add your first datacenter to organize servers by location and IP ranges.
+                </p>
+                <Button onClick={addDatacenter} variant="outline">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create First Datacenter
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                 {formData.infrastructure?.datacenters.map((dc, index) => (
+                   <Card key={index} className="p-4 space-y-4">
+                     <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                         <Label htmlFor={`dc-name-${index}`}>Datacenter Name *</Label>
+                         <Input 
+                           id={`dc-name-${index}`}
+                           placeholder="e.g., NYC-DC1, West Coast"
+                           value={dc.name}
+                           onChange={(e) => {
+                             const newDatacenters = [...formData.infrastructure!.datacenters];
+                             newDatacenters[index].name = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                             });
+                           }}
+                         />
+                       </div>
+                       <div className="space-y-1">
+                         <Label htmlFor={`dc-location-${index}`}>Physical Location *</Label>
+                         <Input 
+                           id={`dc-location-${index}`}
+                           placeholder="e.g., New York, NY"
+                           value={dc.location}
+                           onChange={(e) => {
+                             const newDatacenters = [...formData.infrastructure!.datacenters];
+                             newDatacenters[index].location = e.target.value;
+                             setFormData({
+                               ...formData,
+                               infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                             });
+                           }}
+                         />
+                       </div>
+                     </div>
+
+                     <div className="space-y-3">
+                       <Label>Network Configuration</Label>
+                       <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-subnet-${index}`}>IP Subnet Range *</Label>
+                           <Input 
+                             id={`dc-subnet-${index}`}
+                             placeholder="e.g., 192.168.1.0/24"
+                             value={dc.ipScopes[0]?.subnet || ''}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               if (!newDatacenters[index].ipScopes[0]) {
+                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
+                               }
+                               newDatacenters[index].ipScopes[0].subnet = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                           <p className="text-xs text-muted-foreground">
+                             Servers in this range will be auto-assigned to this datacenter
+                           </p>
+                         </div>
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-credentials-${index}`}>Default Credential Profile *</Label>
+                           <select 
+                             id={`dc-credentials-${index}`}
+                             className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                             value={dc.ipScopes[0]?.credentialProfileId || ''}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               if (!newDatacenters[index].ipScopes[0]) {
+                                 newDatacenters[index].ipScopes[0] = { subnet: '', description: '', credentialProfileId: '' };
+                               }
+                               newDatacenters[index].ipScopes[0].credentialProfileId = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           >
+                             <option value="">Choose a credential profile...</option>
+                             {formData.infrastructure?.credentialProfiles.map((profile) => (
+                               <option key={profile.id} value={profile.id}>
+                                 {profile.name} - {profile.username}@{profile.protocol}:{profile.port}
+                                 {profile.isDefault ? ' (Default)' : ''}
+                               </option>
+                             ))}
+                           </select>
+                           <p className="text-xs text-muted-foreground">
+                             Which credential profile to use for connecting to servers in this IP range
+                           </p>
+                         </div>
+                       </div>
+                     </div>
+
+                     <div className="space-y-3">
+                       <Label>Maintenance Window</Label>
+                       <div className="flex gap-4 items-center">
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-start-${index}`}>Start Time *</Label>
+                           <Input 
+                             id={`dc-start-${index}`}
+                             placeholder="02:00"
+                             value={dc.maintenanceWindow.start}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               newDatacenters[index].maintenanceWindow.start = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                         </div>
+                         <div className="flex items-center pt-6">
+                           <span className="text-muted-foreground">to</span>
+                         </div>
+                         <div className="space-y-1">
+                           <Label htmlFor={`dc-end-${index}`}>End Time *</Label>
+                           <Input 
+                             id={`dc-end-${index}`}
+                             placeholder="04:00"
+                             value={dc.maintenanceWindow.end}
+                             onChange={(e) => {
+                               const newDatacenters = [...formData.infrastructure!.datacenters];
+                               newDatacenters[index].maintenanceWindow.end = e.target.value;
+                               setFormData({
+                                 ...formData,
+                                 infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                               });
+                             }}
+                           />
+                         </div>
+                       </div>
+                       <p className="text-xs text-muted-foreground">
+                         Daily window when maintenance operations can be performed (24-hour format)
+                       </p>
+                     </div>
+
+                     <div className="flex justify-end">
+                       <Button 
+                         variant="outline" 
+                         size="sm"
+                         onClick={() => {
+                           const newDatacenters = formData.infrastructure!.datacenters.filter((_, i) => i !== index);
+                           setFormData({
+                             ...formData,
+                             infrastructure: { ...formData.infrastructure!, datacenters: newDatacenters }
+                           });
+                         }}
+                       >
+                         <X className="h-4 w-4 mr-2" />
+                         Remove
+                       </Button>
+                     </div>
+                   </Card>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
     </div>
   );
