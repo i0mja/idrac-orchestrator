@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdmConfiguration } from "./IdmConfiguration";
 import { SecuritySettings } from "./SecuritySettings";
 import { SetupDebug } from "@/components/debug/SetupDebug";
-import { ApiDocumentation } from "./ApiDocumentation";
 
 export function SettingsPage() {
   return (
@@ -16,10 +15,9 @@ export function SettingsPage() {
       </div>
 
       <Tabs defaultValue="security" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="security">Security & Authentication</TabsTrigger>
           <TabsTrigger value="identity">Identity Management</TabsTrigger>
-          <TabsTrigger value="api">API Documentation</TabsTrigger>
           <TabsTrigger value="debug">Setup Debug</TabsTrigger>
         </TabsList>
         
@@ -29,10 +27,6 @@ export function SettingsPage() {
         
         <TabsContent value="identity" className="space-y-4">
           <IdmConfiguration />
-        </TabsContent>
-        
-        <TabsContent value="api" className="space-y-4">
-          <ApiDocumentation />
         </TabsContent>
         
         <TabsContent value="debug" className="space-y-4">
