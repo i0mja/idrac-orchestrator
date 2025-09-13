@@ -23,41 +23,25 @@ export function useSetupStatus() {
         return;
       }
 
-      // Check database for setup completion
+      // Check database for setup completion using the same key as useFirstRun
       const { data, error } = await supabase
         .from('system_config')
-        .select('key, value')
-        .eq('key', 'setup_completed')
+        .select('value')
+        .eq('key', 'initial_setup')
         .single();
 
-      if (error || !data) {
-        // No setup found, first run
-        setIsSetupComplete(false);
-        setLoading(false);
-        return;
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned, which is expected for first run
+        throw error;
       }
 
-      const setupCompleted = data.value as boolean;
-      setIsSetupComplete(setupCompleted);
-      
-      if (setupCompleted) {
-        // Load full config from database
-        const { data: configData } = await supabase
-          .from('system_config')
-          .select('key, value')
-          .in('key', ['backend_mode', 'organization_name', 'admin_email', 'deployment_type', 'setup_completed_at']);
-        
-        if (configData) {
-          const configMap = new Map(configData.map(item => [item.key, item.value]));
-          setSetupConfig({
-            backend_mode: (configMap.get('backend_mode') as 'supabase' | 'on_premise') || 'supabase',
-            organization_name: (configMap.get('organization_name') as string) || '',
-            admin_email: (configMap.get('admin_email') as string) || '',
-            deployment_type: (configMap.get('deployment_type') as 'cloud' | 'on_premise' | 'hybrid') || 'cloud',
-            setup_completed: true,
-            setup_completed_at: (configMap.get('setup_completed_at') as string) || new Date().toISOString()
-          });
-        }
+      if (data && data.value) {
+        const config = data.value as unknown as CompletedSetupConfig;
+        setSetupConfig(config);
+        setIsSetupComplete(config.setup_completed);
+      } else {
+        setIsSetupComplete(false);
+        setSetupConfig(null);
       }
       
       setLoading(false);
@@ -87,17 +71,14 @@ export function useSetupStatus() {
 
   const initializeSystem = async (config: CompletedSetupConfig) => {
     try {
-      // Store setup config in database for future reference
+      // Store setup config in database using the same key as useFirstRun
       await supabase
         .from('system_config')
-        .upsert([
-          { key: 'setup_completed', value: true, description: 'Initial setup completion status' },
-          { key: 'backend_mode', value: config.backend_mode, description: 'Backend deployment mode' },
-          { key: 'organization_name', value: config.organization_name, description: 'Organization name' },
-          { key: 'admin_email', value: config.admin_email, description: 'Administrator email' },
-          { key: 'deployment_type', value: config.deployment_type, description: 'Deployment type' },
-          { key: 'setup_completed_at', value: config.setup_completed_at, description: 'Setup completion timestamp' }
-        ]);
+        .upsert({
+          key: 'initial_setup',
+          value: config as any,
+          description: 'Initial system setup configuration'
+        });
 
       // Clean up localStorage after successful database storage
       localStorage.removeItem('idrac_setup_config');
@@ -110,12 +91,12 @@ export function useSetupStatus() {
   const clearSetup = async () => {
     localStorage.removeItem('idrac_setup_config');
     
-    // Also clear from database
+    // Also clear from database using the same key as useFirstRun
     try {
       await supabase
         .from('system_config')
         .delete()
-        .in('key', ['setup_completed', 'backend_mode', 'organization_name', 'admin_email', 'deployment_type', 'setup_completed_at']);
+        .eq('key', 'initial_setup');
     } catch (error) {
       console.error('Failed to clear setup from database:', error);
     }
