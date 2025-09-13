@@ -6,9 +6,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { CampaignCreationDialog } from "./CampaignCreationDialog";
+import { CampaignFilters, type CampaignFilters as CampaignFiltersType } from "./CampaignFilters";
+import { CampaignDetailsModal } from "./CampaignDetailsModal";
+import { CampaignTemplatesModal } from "./CampaignTemplatesModal";
+import { BulkCampaignActions } from "./BulkCampaignActions";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings,
@@ -26,7 +31,11 @@ import {
   Plus,
   Zap,
   ExternalLink,
-  Eye
+  Eye,
+  FileText,
+  Filter,
+  RefreshCw,
+  Calendar
 } from "lucide-react";
 
 interface UpdateCampaign {
@@ -52,7 +61,18 @@ export function EnhancedCommandControl() {
   const [orchestrationPlans, setOrchestrationPlans] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false);
-  
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [filters, setFilters] = useState<CampaignFiltersType>({
+    search: '',
+    status: 'all',
+    priority: 'all',
+    datacenter: 'all',
+    dateRange: {},
+    tags: [],
+    createdBy: 'all'
+  });
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
 
@@ -299,6 +319,80 @@ export function EnhancedCommandControl() {
     }
   };
 
+  // Apply filters to campaigns
+  const filteredCampaigns = campaigns.filter(campaign => {
+    // Search filter
+    if (filters.search && !campaign.name.toLowerCase().includes(filters.search.toLowerCase())) {
+      return false;
+    }
+    
+    // Status filter
+    if (filters.status !== 'all' && campaign.status !== filters.status) {
+      return false;
+    }
+    
+    // Priority filter
+    if (filters.priority !== 'all' && campaign.priority !== filters.priority) {
+      return false;
+    }
+    
+    // Date range filter
+    if (filters.dateRange.from || filters.dateRange.to) {
+      const campaignDate = new Date(campaign.start_date);
+      if (filters.dateRange.from && campaignDate < filters.dateRange.from) {
+        return false;
+      }
+      if (filters.dateRange.to && campaignDate > filters.dateRange.to) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  const activeCampaigns = filteredCampaigns.filter(c => c.status === 'in_progress').length;
+  const scheduledCampaigns = filteredCampaigns.filter(c => c.status === 'scheduled').length;
+  const totalServersInMaintenance = filteredCampaigns
+    .filter(c => c.status === 'in_progress')
+    .reduce((sum, c) => sum + c.total_servers, 0);
+
+  const handleTemplateSelect = (template: any) => {
+    // Pre-populate campaign dialog with template data
+    setIsCampaignDialogOpen(true);
+  };
+
+  const handleCampaignSelect = (campaignId: string, selected: boolean) => {
+    if (selected) {
+      setSelectedCampaigns(prev => [...prev, campaignId]);
+    } else {
+      setSelectedCampaigns(prev => prev.filter(id => id !== campaignId));
+    }
+  };
+
+  // Real-time updates
+  useEffect(() => {
+    if (!isLoading) {
+      const channel = supabase
+        .channel('campaign-updates')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'update_orchestration_plans'
+          },
+          () => {
+            loadData(); // Refresh data on changes
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [isLoading]);
+
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-in">
@@ -312,12 +406,6 @@ export function EnhancedCommandControl() {
     );
   }
 
-  const activeCampaigns = campaigns.filter(c => c.status === 'in_progress').length;
-  const scheduledCampaigns = campaigns.filter(c => c.status === 'scheduled').length;
-  const totalServersInMaintenance = campaigns
-    .filter(c => c.status === 'in_progress')
-    .reduce((sum, c) => sum + c.total_servers, 0);
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -329,12 +417,34 @@ export function EnhancedCommandControl() {
           <p className="text-muted-foreground">Enterprise Dell server update campaigns and maintenance orchestration</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsTemplatesModalOpen(true)}>
+            <FileText className="w-4 h-4 mr-2" />
+            Templates
+          </Button>
+          <Button variant="outline" onClick={loadData}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
           <Button onClick={() => setIsCampaignDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Campaign
           </Button>
         </div>
       </div>
+
+      {/* Campaign Filters */}
+      <CampaignFilters 
+        onFiltersChange={setFilters}
+        datacenters={datacenters}
+      />
+
+      {/* Bulk Actions */}
+      <BulkCampaignActions
+        campaigns={filteredCampaigns}
+        selectedCampaigns={selectedCampaigns}
+        onSelectionChange={setSelectedCampaigns}
+        onCampaignsUpdate={loadData}
+      />
 
       {/* Update Management Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -382,91 +492,125 @@ export function EnhancedCommandControl() {
         </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <GitBranch className="w-5 h-5" />
-                Update Campaigns
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Campaign</TableHead>
-                    <TableHead>Priority</TableHead>
-                    <TableHead>Targets</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {campaigns.map((campaign) => (
-                    <TableRow key={campaign.id}>
-                      <TableCell className="font-medium">
-                        <div>
-                          <div className="font-medium">{campaign.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {campaign.components.join(', ')} • {campaign.rollout_strategy}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getPriorityBadge(campaign.priority)}
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{campaign.total_servers} servers</div>
-                          <div className="text-xs text-muted-foreground">
-                            {campaign.target_datacenters.join(', ')}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-2">
-                          <Progress value={campaign.progress} className="w-20" />
-                          <div className="text-xs text-muted-foreground">
-                            {campaign.completed_servers}/{campaign.total_servers}
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{getStatusBadge(campaign.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {campaign.status === 'in_progress' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleCampaignAction(campaign.id, 'pause')}
-                            >
-                              <PauseCircle className="w-3 h-3" />
-                            </Button>
-                          )}
-                          {campaign.status === 'paused' && (
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleCampaignAction(campaign.id, 'resume')}
-                            >
-                              <PlayCircle className="w-3 h-3" />
-                            </Button>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleCampaignAction(campaign.id, 'monitor')}
-                          >
-                            <Monitor className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <Card className="card-enterprise">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GitBranch className="w-5 h-5" />
+                  Update Campaigns ({filteredCampaigns.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={selectedCampaigns.length === filteredCampaigns.length && filteredCampaigns.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setSelectedCampaigns(filteredCampaigns.map(c => c.id));
+                            } else {
+                              setSelectedCampaigns([]);
+                            }
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Campaign</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Targets</TableHead>
+                      <TableHead>Progress</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredCampaigns.map((campaign) => (
+                      <TableRow 
+                        key={campaign.id}
+                        className={selectedCampaigns.includes(campaign.id) ? 'bg-muted/50' : ''}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedCampaigns.includes(campaign.id)}
+                            onCheckedChange={(checked) => handleCampaignSelect(campaign.id, !!checked)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div 
+                              className="font-medium cursor-pointer hover:text-primary"
+                              onClick={() => setSelectedCampaignId(campaign.id)}
+                            >
+                              {campaign.name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {campaign.components.join(', ')} • {campaign.rollout_strategy}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getPriorityBadge(campaign.priority)}
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{campaign.total_servers} servers</div>
+                            <div className="text-xs text-muted-foreground">
+                              {campaign.target_datacenters.join(', ')}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-2">
+                            <Progress value={campaign.progress} className="w-20" />
+                            <div className="text-xs text-muted-foreground">
+                              {campaign.completed_servers}/{campaign.total_servers}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(campaign.status)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {campaign.status === 'in_progress' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCampaignAction(campaign.id, 'pause')}
+                              >
+                                <PauseCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                            {campaign.status === 'paused' && (
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleCampaignAction(campaign.id, 'resume')}
+                              >
+                                <PlayCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => setSelectedCampaignId(campaign.id)}
+                            >
+                              <Eye className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                
+                {filteredCampaigns.length === 0 && (
+                  <div className="text-center text-muted-foreground py-12">
+                    <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">No campaigns found</h3>
+                    <p>Create your first update campaign to get started</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
         </TabsContent>
 
         <TabsContent value="emergency" className="space-y-6">
@@ -520,6 +664,19 @@ export function EnhancedCommandControl() {
           is_active: dc.is_active ?? true
         }))}
         onCampaignCreated={loadData}
+      />
+
+      <CampaignTemplatesModal
+        open={isTemplatesModalOpen}
+        onOpenChange={setIsTemplatesModalOpen}
+        onTemplateSelect={handleTemplateSelect}
+      />
+
+      <CampaignDetailsModal
+        open={!!selectedCampaignId}
+        onOpenChange={(open) => !open && setSelectedCampaignId(null)}
+        campaignId={selectedCampaignId}
+        onCampaignUpdate={loadData}
       />
 
     </div>
