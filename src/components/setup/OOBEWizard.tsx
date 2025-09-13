@@ -8,7 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, Server, Cloud, Building, AlertCircle, ArrowRight, ArrowLeft } from 'lucide-react';
-import { useFirstRun, type SystemSetup } from '@/hooks/useFirstRun';
+// Removed useFirstRun dependency for security isolation
 import { useToast } from '@/hooks/use-toast';
 
 const STEPS = [
@@ -19,21 +19,27 @@ const STEPS = [
   { id: 'complete', title: 'Complete', description: 'Finish setup and start using the system' }
 ];
 
+interface SetupConfig {
+  backend_mode: 'supabase' | 'on_premise';
+  organization_name: string;
+  admin_email: string;
+  deployment_type: 'cloud' | 'on_premise' | 'hybrid';
+}
+
 interface OOBEWizardProps {
-  onComplete: () => void;
+  onComplete: (config: SetupConfig) => void;
 }
 
 export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
   const [currentStep, setCurrentStep] = useState(0);
   const [isCompleting, setIsCompleting] = useState(false);
-  const { completeSetup } = useFirstRun();
   const { toast } = useToast();
 
-  const [formData, setFormData] = useState<Omit<SystemSetup, 'setup_completed' | 'setup_completed_at'>>({
+  const [formData, setFormData] = useState<SetupConfig>({
     backend_mode: 'supabase',
     organization_name: '',
     admin_email: '',
-    deployment_type: 'development'
+    deployment_type: 'cloud'
   });
 
   const handleNext = () => {
@@ -60,27 +66,17 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
 
     setIsCompleting(true);
     try {
-      const result = await completeSetup(formData);
-      if (result.success) {
-        toast({
-          title: "Setup Complete!",
-          description: "Your iDRAC Updater Orchestrator is ready to use"
-        });
-        onComplete();
-      } else {
-        toast({
-          title: "Setup Failed",
-          description: "There was an error completing the setup. Please try again.",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Setup Complete!",
+        description: "Your iDRAC Updater Orchestrator is ready to use"
+      });
+      onComplete(formData);
     } catch (error) {
       toast({
         title: "Setup Error",
         description: "An unexpected error occurred during setup",
         variant: "destructive"
       });
-    } finally {
       setIsCompleting(false);
     }
   };
@@ -144,7 +140,7 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
 
       <RadioGroup 
         value={formData.backend_mode} 
-        onValueChange={(value: 'supabase' | 'onprem') => 
+        onValueChange={(value: 'supabase' | 'on_premise') => 
           setFormData({ ...formData, backend_mode: value })
         }
         className="space-y-4"
@@ -184,14 +180,14 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
           </CardContent>
         </Card>
 
-        <Card className={`cursor-pointer transition-all ${formData.backend_mode === 'onprem' ? 'ring-2 ring-primary' : ''}`}>
+        <Card className={`cursor-pointer transition-all ${formData.backend_mode === 'on_premise' ? 'ring-2 ring-primary' : ''}`}>
           <CardContent className="p-6">
             <div className="flex items-start space-x-4">
-              <RadioGroupItem value="onprem" id="onprem" className="mt-1" />
+              <RadioGroupItem value="on_premise" id="on_premise" className="mt-1" />
               <div className="flex-1">
                 <div className="flex items-center space-x-3">
                   <Server className="h-5 w-5 text-primary" />
-                  <Label htmlFor="onprem" className="text-lg font-semibold cursor-pointer">
+                  <Label htmlFor="on_premise" className="text-lg font-semibold cursor-pointer">
                     On-Premises
                   </Label>
                   <Badge variant="outline">Enterprise Ready</Badge>
@@ -214,7 +210,7 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
                     Air-gapped deployment support
                   </div>
                 </div>
-                {formData.backend_mode === 'onprem' && (
+                {formData.backend_mode === 'on_premise' && (
                   <Alert className="mt-4">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
@@ -282,7 +278,7 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
           <Label htmlFor="deployment-type">Deployment Type</Label>
           <Select 
             value={formData.deployment_type} 
-            onValueChange={(value: 'development' | 'staging' | 'production') => 
+            onValueChange={(value: 'cloud' | 'on_premise' | 'hybrid') => 
               setFormData({ ...formData, deployment_type: value })
             }
           >
@@ -290,9 +286,9 @@ export const OOBEWizard = ({ onComplete }: OOBEWizardProps) => {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="development">Development</SelectItem>
-              <SelectItem value="staging">Staging</SelectItem>
-              <SelectItem value="production">Production</SelectItem>
+              <SelectItem value="cloud">Cloud</SelectItem>
+              <SelectItem value="on_premise">On-Premise</SelectItem>
+              <SelectItem value="hybrid">Hybrid</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground">
