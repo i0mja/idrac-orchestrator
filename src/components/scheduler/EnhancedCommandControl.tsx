@@ -9,11 +9,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { CampaignCreationDialog } from "./CampaignCreationDialog";
-import { MaintenanceSchedulingDialog } from "./MaintenanceSchedulingDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings,
-  Calendar,
   Building2,
   Clock,
   CheckCircle,
@@ -48,25 +46,12 @@ interface UpdateCampaign {
   priority: 'critical' | 'high' | 'medium' | 'low';
 }
 
-interface MaintenanceWindow {
-  id: string;
-  name: string;
-  datacenter_id: string;
-  start_time: string;
-  end_time: string;
-  timezone: string;
-  max_concurrent_updates: number;
-  status: 'upcoming' | 'active' | 'completed';
-  campaigns_scheduled: number;
-}
 
 export function EnhancedCommandControl() {
   const [campaigns, setCampaigns] = useState<UpdateCampaign[]>([]);
   const [orchestrationPlans, setOrchestrationPlans] = useState<any[]>([]);
-  const [maintenanceWindows, setMaintenanceWindows] = useState<MaintenanceWindow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCampaignDialogOpen, setIsCampaignDialogOpen] = useState(false);
-  const [isMaintenanceDialogOpen, setIsMaintenanceDialogOpen] = useState(false);
   
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
@@ -130,21 +115,6 @@ export function EnhancedCommandControl() {
       });
 
       setCampaigns(transformedCampaigns);
-
-      // Create maintenance windows from datacenters
-      const maintenanceWindowsData: MaintenanceWindow[] = datacenters.map(dc => ({
-        id: dc.id,
-        name: `${dc.name} Maintenance Window`,
-        datacenter_id: dc.id,
-        start_time: dc.maintenance_window_start?.slice(0, 5) || '02:00',
-        end_time: dc.maintenance_window_end?.slice(0, 5) || '06:00',
-        timezone: dc.timezone || 'UTC',
-        max_concurrent_updates: 3,
-        status: 'upcoming' as const,
-        campaigns_scheduled: transformedCampaigns.filter(c => c.status === 'scheduled').length
-      }));
-
-      setMaintenanceWindows(maintenanceWindowsData);
 
     } catch (error) {
       console.error('Error loading data:', error);
@@ -359,10 +329,6 @@ export function EnhancedCommandControl() {
           <p className="text-muted-foreground">Enterprise Dell server update campaigns and maintenance orchestration</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsMaintenanceDialogOpen(true)}>
-            <Calendar className="w-4 h-4 mr-2" />
-            Schedule Maintenance
-          </Button>
           <Button onClick={() => setIsCampaignDialogOpen(true)}>
             <Plus className="w-4 h-4 mr-2" />
             New Campaign
@@ -396,16 +362,6 @@ export function EnhancedCommandControl() {
           </CardContent>
         </Card>
 
-        <Card className="card-enterprise">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Maintenance Windows</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{maintenanceWindows.length}</div>
-            <p className="text-xs text-muted-foreground">Configured windows</p>
-          </CardContent>
-        </Card>
 
         <Card className="card-enterprise">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -422,7 +378,6 @@ export function EnhancedCommandControl() {
       <Tabs defaultValue="campaigns" className="space-y-6">
         <TabsList>
           <TabsTrigger value="campaigns">Update Campaigns</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance Windows</TabsTrigger>
           <TabsTrigger value="emergency">Emergency Actions</TabsTrigger>
         </TabsList>
 
@@ -514,34 +469,6 @@ export function EnhancedCommandControl() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="maintenance" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
-                Maintenance Windows
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {maintenanceWindows.map((window) => (
-                  <div key={window.id} className="p-4 rounded-lg bg-gradient-subtle border border-border/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-medium">{window.name}</div>
-                      <Badge variant="outline">{window.status}</Badge>
-                    </div>
-                    <div className="space-y-1 text-sm text-muted-foreground">
-                      <div>Time: {window.start_time} - {window.end_time} ({window.timezone})</div>
-                      <div>Max Concurrent: {window.max_concurrent_updates}</div>
-                      <div>Scheduled Campaigns: {window.campaigns_scheduled}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         <TabsContent value="emergency" className="space-y-6">
           <Card className="card-enterprise">
             <CardHeader>
@@ -595,12 +522,6 @@ export function EnhancedCommandControl() {
         onCampaignCreated={loadData}
       />
 
-      <MaintenanceSchedulingDialog
-        open={isMaintenanceDialogOpen}
-        onOpenChange={setIsMaintenanceDialogOpen}
-        datacenters={datacenters}
-        onWindowCreated={loadData}
-      />
     </div>
   );
 }
