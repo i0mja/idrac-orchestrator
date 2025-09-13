@@ -50,6 +50,124 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_approvals: {
+        Row: {
+          approval_level: number | null
+          approver_id: string
+          approver_name: string
+          campaign_id: string
+          comments: string | null
+          created_at: string | null
+          id: string
+          status: string
+        }
+        Insert: {
+          approval_level?: number | null
+          approver_id: string
+          approver_name: string
+          campaign_id: string
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          status: string
+        }
+        Update: {
+          approval_level?: number | null
+          approver_id?: string
+          approver_name?: string
+          campaign_id?: string
+          comments?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_approvals_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "update_orchestration_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_execution_logs: {
+        Row: {
+          campaign_id: string
+          created_at: string | null
+          id: string
+          log_level: string
+          message: string
+          metadata: Json | null
+          server_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string | null
+          id?: string
+          log_level?: string
+          message: string
+          metadata?: Json | null
+          server_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string | null
+          id?: string
+          log_level?: string
+          message?: string
+          metadata?: Json | null
+          server_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_execution_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "update_orchestration_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_templates: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_system_template: boolean | null
+          name: string
+          template_data: Json
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system_template?: boolean | null
+          name: string
+          template_data: Json
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_system_template?: boolean | null
+          name?: string
+          template_data?: Json
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       compatibility_matrix: {
         Row: {
           bios_version: string | null
@@ -998,66 +1116,99 @@ export type Database = {
       }
       update_orchestration_plans: {
         Row: {
+          actual_duration: unknown | null
+          approval_comments: string | null
+          approval_required: boolean | null
+          approved_at: string | null
+          approved_by: string | null
           cluster_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
           current_step: number | null
+          estimated_duration: unknown | null
           execution_interval_months: number | null
+          failure_reason: string | null
           id: string
           is_auto_generated: boolean | null
+          max_retries: number | null
           name: string
           next_execution_date: string | null
           overwritten_plan_id: string | null
+          retry_count: number | null
           rollback_plan: Json | null
           safety_checks: Json
           server_ids: string[]
           started_at: string | null
           status: string | null
+          tags: string[] | null
+          template_id: string | null
           total_steps: number | null
           update_sequence: Json
           updated_at: string
           vmware_settings: Json | null
         }
         Insert: {
+          actual_duration?: unknown | null
+          approval_comments?: string | null
+          approval_required?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           cluster_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           current_step?: number | null
+          estimated_duration?: unknown | null
           execution_interval_months?: number | null
+          failure_reason?: string | null
           id?: string
           is_auto_generated?: boolean | null
+          max_retries?: number | null
           name: string
           next_execution_date?: string | null
           overwritten_plan_id?: string | null
+          retry_count?: number | null
           rollback_plan?: Json | null
           safety_checks: Json
           server_ids: string[]
           started_at?: string | null
           status?: string | null
+          tags?: string[] | null
+          template_id?: string | null
           total_steps?: number | null
           update_sequence: Json
           updated_at?: string
           vmware_settings?: Json | null
         }
         Update: {
+          actual_duration?: unknown | null
+          approval_comments?: string | null
+          approval_required?: boolean | null
+          approved_at?: string | null
+          approved_by?: string | null
           cluster_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           current_step?: number | null
+          estimated_duration?: unknown | null
           execution_interval_months?: number | null
+          failure_reason?: string | null
           id?: string
           is_auto_generated?: boolean | null
+          max_retries?: number | null
           name?: string
           next_execution_date?: string | null
           overwritten_plan_id?: string | null
+          retry_count?: number | null
           rollback_plan?: Json | null
           safety_checks?: Json
           server_ids?: string[]
           started_at?: string | null
           status?: string | null
+          tags?: string[] | null
+          template_id?: string | null
           total_steps?: number | null
           update_sequence?: Json
           updated_at?: string
