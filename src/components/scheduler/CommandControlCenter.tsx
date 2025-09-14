@@ -155,36 +155,59 @@ export function CommandControlCenter() {
       
       setHostGroups(Object.values(hostGroupData || {}));
 
-      // Load mock commands and policies
-      setCommands([
-        {
-          id: '1',
-          name: 'Production Cluster Firmware Update',
-          target_type: 'cluster',
-          target_names: ['Production'],
-          command_type: 'update_firmware',
-          command_parameters: { version_target: 'latest', reboot_required: true },
-          status: 'pending',
-          scheduled_at: new Date(Date.now() + 86400000).toISOString(),
-          created_by: 'admin',
-          created_at: new Date().toISOString()
-        }
-      ]);
+      // Load actual commands from database
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('update_jobs')
+        .select(`
+          *,
+          server:servers(hostname, datacenter),
+          firmware_package:firmware_packages(name, version)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20);
 
-      setRotationPolicies([
-        {
-          id: '1',
-          name: 'Quarterly Cluster Updates',
-          target_type: 'cluster',
-          target_groups: ['Production', 'Staging', 'Development'],
-          rotation_interval_days: 90,
-          maintenance_window_start: '02:00',
-          maintenance_window_end: '06:00',
-          command_template: { command_type: 'update_firmware', version_target: 'latest' },
-          enabled: true,
-          next_execution: new Date(Date.now() + 2592000000).toISOString()
-        }
-      ]);
+      if (jobsError) throw jobsError;
+
+      const commands: UpdateCommand[] = (jobsData || []).map(job => ({
+        id: job.id,
+        name: `${job.server?.hostname} - ${job.firmware_package?.name || 'Remote Command'}`,
+        target_type: 'individual',
+        target_names: [job.server?.hostname || 'Unknown'],
+        command_type: 'update_firmware',
+        command_parameters: { 
+          package_id: job.firmware_package_id,
+          version_target: job.firmware_package?.version || 'latest',
+          reboot_required: true 
+        },
+        status: job.status === 'running' ? 'executing' : job.status as 'pending' | 'executing' | 'completed' | 'failed' | 'cancelled',
+        scheduled_at: job.scheduled_at || job.created_at,
+        created_by: job.created_by || 'system',
+        created_at: job.created_at
+      }));
+
+      setCommands(commands);
+
+      // Load rotation policies from database 
+      const { data: policiesData, error: policiesError } = await supabase
+        .from('auto_orchestration_config')
+        .select('*');
+
+      if (policiesError) throw policiesError;
+
+      const rotationPolicies: RotationPolicy[] = (policiesData || []).map(config => ({
+        id: config.id,
+        name: `Auto Orchestration Policy`,
+        target_type: 'cluster',
+        target_groups: ['All Datacenters'],
+        rotation_interval_days: (config.execution_interval_months || 6) * 30,
+        maintenance_window_start: config.maintenance_window_start?.slice(0, 5) || '02:00',
+        maintenance_window_end: config.maintenance_window_end?.slice(0, 5) || '06:00',
+        command_template: { command_type: 'update_firmware', version_target: 'latest' },
+        enabled: config.enabled,
+        next_execution: new Date(Date.now() + (config.execution_interval_months || 6) * 30 * 24 * 60 * 60 * 1000).toISOString()
+      }));
+
+      setRotationPolicies(rotationPolicies);
 
     } catch (error) {
       console.error('Error loading data:', error);

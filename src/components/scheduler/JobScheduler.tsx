@@ -56,46 +56,56 @@ export function JobScheduler() {
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock cron jobs data (in a real implementation, this would come from your cron system)
+  // Load actual system jobs and automation config
   useEffect(() => {
-    const mockCronJobs: CronJob[] = [
-      {
-        id: "auto-orchestration",
-        name: "Auto-Orchestration",
-        schedule: autoConfig?.enabled ? `0 0 1 */${autoConfig.execution_interval_months || 6} *` : "disabled",
-        function_name: "auto-orchestration",
-        enabled: autoConfig?.enabled || false,
-        last_run: "2024-01-15T02:00:00Z",
-        next_run: autoConfig?.enabled ? "2024-07-01T02:00:00Z" : undefined,
-        success_count: 12,
-        failure_count: 1
-      },
-      {
-        id: "health-check",
-        name: "System Health Check",
-        schedule: "0 */4 * * *", // Every 4 hours
-        function_name: "server-health-check",
-        enabled: true,
-        last_run: "2024-01-30T12:00:00Z",
-        next_run: "2024-01-30T16:00:00Z",
-        success_count: 180,
-        failure_count: 3
-      },
-      {
-        id: "firmware-scan",
-        name: "Firmware Availability Scan",
-        schedule: "0 2 * * 1", // Every Monday at 2 AM
-        function_name: "search-dell-firmware",
-        enabled: true,
-        last_run: "2024-01-29T02:00:00Z",
-        next_run: "2024-02-05T02:00:00Z",
-        success_count: 52,
-        failure_count: 0
+    const loadCronJobs = async () => {
+      try {
+        const { data: configData, error } = await supabase
+          .from('auto_orchestration_config')
+          .select('*')
+          .single();
+
+        if (error) throw error;
+
+        const cronJobs: CronJob[] = [
+          {
+            id: "auto-orchestration",
+            name: "Auto-Orchestration",
+            function_name: "auto-orchestration",
+            schedule: configData?.enabled ? `0 0 1 */${configData.execution_interval_months || 6} *` : "disabled",
+            enabled: configData?.enabled || false,
+            last_run: configData?.updated_at || null,
+            next_run: configData?.enabled 
+              ? new Date(Date.now() + (configData.execution_interval_months || 6) * 30 * 24 * 60 * 60 * 1000).toISOString()
+              : null,
+            success_count: 0,
+            failure_count: 0
+          },
+          {
+            id: "maintenance-window-sync",
+            name: "Maintenance Window Sync",
+            function_name: "maintenance-windows",
+            schedule: configData?.enabled ? `*/${configData.update_interval_minutes || 15} * * * *` : "disabled",
+            enabled: configData?.enabled || false,
+            last_run: configData?.updated_at || null,
+            next_run: configData?.enabled 
+              ? new Date(Date.now() + (configData.update_interval_minutes || 15) * 60 * 1000).toISOString()
+              : null,
+            success_count: 0,
+            failure_count: 0
+          }
+        ];
+        
+        setCronJobs(cronJobs);
+      } catch (error) {
+        console.error('Error loading cron jobs:', error);
+        setCronJobs([]);
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    setCronJobs(mockCronJobs);
-    setLoading(false);
+    };
+
+    loadCronJobs();
   }, [autoConfig]);
 
   const getStatusBadge = (job: CronJob) => {

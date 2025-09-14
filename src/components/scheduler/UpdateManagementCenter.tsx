@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { useToast } from "@/hooks/use-toast";
 import { useAutoOrchestration } from "@/hooks/useAutoOrchestration";
 import { useServers } from "@/hooks/useServers";
 import { useSystemEvents } from "@/hooks/useSystemEvents";
@@ -117,69 +118,96 @@ export function UpdateManagementCenter() {
   const loadUpdateData = async () => {
     setIsLoading(true);
     try {
-      // Generate mock update groups
-      const mockGroups: UpdateGroup[] = [
-        {
-          id: '1',
-          name: 'Critical Security Updates - January 2024',
-          description: 'Critical BIOS and iDRAC security patches',
-          updateCount: 8,
-          criticalCount: 8,
-          approvedCount: 6,
-          status: 'approved',
-          lastModified: new Date(Date.now() - 86400000).toISOString(),
-          targetGroups: ['Production', 'Development']
-        },
-        {
-          id: '2',
-          name: 'Quarterly Firmware Updates - Q1 2024',
-          description: 'Routine quarterly firmware updates for all components',
-          updateCount: 15,
-          criticalCount: 2,
-          approvedCount: 0,
-          status: 'pending',
-          lastModified: new Date(Date.now() - 3600000).toISOString(),
-          targetGroups: ['All Servers']
-        }
-      ];
+      // Load actual update jobs and campaigns from database
+      const { data: jobsData, error: jobsError } = await supabase
+        .from('update_jobs')
+        .select(`
+          *,
+          server:servers(hostname, datacenter),
+          firmware_package:firmware_packages(name, version, component_name)
+        `)
+        .order('created_at', { ascending: false });
 
-      // Generate mock policies
-      const mockPolicies: UpdatePolicy[] = [
-        {
-          id: '1',
-          name: 'Auto-Install Critical Security Updates',
-          description: 'Automatically approve and install critical security updates',
-          targetType: 'all',
-          targets: [],
-          schedule: {
-            type: 'automatic',
-            frequency: 'weekly',
-            time: '02:00',
-            maintenanceWindow: true
-          },
-          approvalRequired: false,
-          testingRequired: true,
-          rollbackEnabled: true,
-          isActive: true,
-          lastRun: new Date(Date.now() - 86400000 * 7).toISOString(),
-          nextRun: new Date(Date.now() + 86400000).toISOString()
-        }
-      ];
+      if (jobsError) throw jobsError;
 
-      // Generate server status
-      const mockServerStatus: ServerUpdateStatus[] = servers.map(server => ({
-        serverId: server.id,
-        hostname: server.hostname,
-        status: Math.random() > 0.7 ? 'compliant' : 'missing_updates',
-        availableUpdates: Math.floor(Math.random() * 5),
-        criticalUpdates: Math.floor(Math.random() * 2),
-        lastChecked: new Date(Date.now() - Math.random() * 86400000).toISOString(),
-        lastInstalled: Math.random() > 0.5 ? new Date(Date.now() - Math.random() * 86400000 * 7).toISOString() : undefined
+      // Load orchestration plans
+      const { data: plansData, error: plansError } = await supabase
+        .from('update_orchestration_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (plansError) throw plansError;
+
+      // Transform jobs to update groups
+      const updateGroupsMap = new Map<string, UpdateGroup>();
+      (jobsData || []).forEach(job => {
+        const groupKey = `${job.firmware_package?.component_name || 'Unknown'}-${job.created_at?.split('T')[0]}`;
+        if (!updateGroupsMap.has(groupKey)) {
+          updateGroupsMap.set(groupKey, {
+            id: groupKey,
+            name: `${job.firmware_package?.component_name || 'Unknown'} Updates - ${new Date(job.created_at).toLocaleDateString()}`,
+            description: `${job.firmware_package?.name || 'Update package'} deployment`,
+          status: job.status === 'completed' ? 'completed' : 
+                  job.status === 'failed' ? 'failed' : 
+                  job.status === 'pending' ? 'scheduled' : 'pending',
+          startDate: job.scheduled_at || job.created_at,
+            startDate: job.scheduled_at || job.created_at,
+            targetGroups: [job.server?.datacenter || 'Unknown']
+          });
+        }
+      });
+
+      // Transform orchestration plans to policies
+      const updatePolicies: UpdatePolicy[] = (plansData || []).map(plan => ({
+        id: plan.id,
+        name: plan.name,
+        description: `Automated update orchestration plan`,
+        targetType: 'cluster',
+        targets: ['All Datacenters'],
+        schedule: 'manual',
+        enabled: plan.status !== 'cancelled',
+        approvalRequired: plan.approval_required || false,
+        priority: plan.approval_required ? 'high' : 'medium',
+        actions: [{
+          type: 'firmware_update',
+          parameters: {
+            component_types: ['BIOS', 'iDRAC'],
+            rollback_enabled: true,
+            maintenance_window_required: true
+          }
+        }],
+        rollbackEnabled: true,
+        testingRequired: false,
+        isActive: plan.status !== 'cancelled',
+        metadata: {
+          server_count: plan.server_ids?.length || 0,
+          estimated_duration: plan.estimated_duration,
+          approval_required: plan.approval_required
+        }
       }));
 
-      setUpdateGroups(mockGroups);
-      setUpdatePolicies(mockPolicies);
-      setServerStatus(mockServerStatus);
+      // Generate server status from actual servers
+      const serverStatus: ServerUpdateStatus[] = servers.map(server => {
+        const serverJobs = (jobsData || []).filter(job => job.server_id === server.id);
+        const hasRecentUpdates = serverJobs.some(job => 
+          job.completed_at && 
+          new Date(job.completed_at) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+        );
+        
+        return {
+          serverId: server.id,
+          hostname: server.hostname,
+          status: hasRecentUpdates ? 'compliant' : 'missing_updates',
+          availableUpdates: serverJobs.filter(job => job.status === 'pending').length,
+          criticalUpdates: serverJobs.filter(job => job.status === 'pending' && job.firmware_package?.component_name === 'BIOS').length,
+          lastChecked: server.last_updated || server.created_at,
+          lastInstalled: serverJobs.find(job => job.status === 'completed')?.completed_at
+        };
+      });
+
+      setUpdateGroups(Array.from(updateGroupsMap.values()));
+      setUpdatePolicies(updatePolicies);
+      setServerStatus(serverStatus);
     } catch (error) {
       console.error('Failed to load update data:', error);
       toast({

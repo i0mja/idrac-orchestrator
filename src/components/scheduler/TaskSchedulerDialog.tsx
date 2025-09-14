@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +36,7 @@ interface TaskSchedulerDialogProps {
 }
 
 export function TaskSchedulerDialog({ open, onOpenChange }: TaskSchedulerDialogProps) {
+  const { toast } = useToast();
   const { servers: basicServers } = useServers();
   const { servers: integratedServers, getVCenterManagedServers, getStandaloneServers } = useVCenterIntegratedServers();
   const { vcenters, clusters } = useVCenterService();
@@ -80,13 +83,44 @@ export function TaskSchedulerDialog({ open, onOpenChange }: TaskSchedulerDialogP
   const uniqueDatacenters = [...new Set(servers.map(s => (s as any).datacenter || (s as any).site_id).filter(Boolean))];
   const osTypes = [...new Set(servers.map(s => s.operating_system).filter(Boolean))];
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!newTask.name || !newTask.target_names.length) return;
     
-    // Mock submit - in real app this would create the task
-    console.log('Creating task:', newTask);
-    
-    onOpenChange(false);
+    try {
+      // Create actual task in database
+        const { error } = await supabase
+          .from('update_orchestration_plans')
+          .insert({
+            name: newTask.name,
+            server_ids: [], // Would be populated based on target selection
+            update_sequence: {
+              command_type: newTask.command_type,
+              command_parameters: newTask.command_parameters
+            },
+            safety_checks: {
+              requires_approval: false,
+              max_concurrent_updates: 1
+            },
+            status: 'planned',
+            total_steps: 1
+          });
+
+      if (error) throw error;
+
+      toast({
+        title: "Task Created",
+        description: `${newTask.name} has been scheduled successfully`,
+      });
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create task",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

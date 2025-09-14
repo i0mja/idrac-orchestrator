@@ -151,28 +151,47 @@ export function UpdateSchedulingCenter() {
       if (packagesError) throw packagesError;
       setFirmwarePackages(packagesData || []);
 
-      // Load scheduled updates (mock for now)
-      const mockScheduledUpdates: ScheduledUpdate[] = [
-        {
-          id: '1',
-          name: 'Production Cluster BIOS Update',
-          type: 'cluster',
-          target_ids: ['production'],
-          target_names: ['Production'],
-          firmware_package_id: '1',
-          firmware_package_name: 'Dell PowerEdge BIOS v2.15.0',
-          scheduled_at: new Date(Date.now() + 86400000).toISOString(),
-          status: 'scheduled',
-          created_by: 'admin',
-          created_at: new Date().toISOString(),
-          maintenance_window: {
-            start: '02:00',
-            end: '06:00'
-          }
+      // Load scheduled updates from database
+      const { data: scheduledData, error: scheduledError } = await supabase
+        .from('update_jobs')
+        .select(`
+          *,
+          server:servers(hostname, datacenter),
+          firmware_package:firmware_packages(name, version)
+        `)
+        .eq('status', 'pending')
+        .not('scheduled_at', 'is', null)
+        .order('scheduled_at', { ascending: true });
+
+      if (scheduledError) throw scheduledError;
+
+      const scheduledUpdates: ScheduledUpdate[] = (scheduledData || []).map(job => ({
+        id: job.id,
+        name: `${job.server?.hostname} - ${job.firmware_package?.name}`,
+        type: 'individual',
+        target: job.server?.hostname || 'Unknown Server',
+        target_ids: [job.server_id],
+        target_names: [job.server?.hostname || 'Unknown Server'],
+        scheduledDate: job.scheduled_at,
+        scheduled_at: job.scheduled_at,
+        updateType: 'firmware',
+        package: job.firmware_package?.name || 'Unknown Package',
+        version: job.firmware_package?.version || 'Unknown Version',
+        firmware_package_id: job.firmware_package_id,
+        firmware_package_name: job.firmware_package?.name || 'Unknown Package',
+        firmware_package_version: job.firmware_package?.version || 'Unknown Version',
+        status: 'scheduled',
+        rollout_strategy: 'sequential',
+        created_by: job.created_by || 'system',
+        created_at: job.created_at,
+        metadata: {
+          serverId: job.server_id,
+          firmwarePackageId: job.firmware_package_id,
+          datacenter: job.server?.datacenter
         }
-      ];
+      }));
       
-      setScheduledUpdates(mockScheduledUpdates);
+      setScheduledUpdates(scheduledUpdates);
 
     } catch (error) {
       console.error('Error loading data:', error);

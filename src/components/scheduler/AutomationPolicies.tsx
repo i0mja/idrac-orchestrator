@@ -144,79 +144,52 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
   const loadAutomationPolicies = async () => {
     setIsLoading(true);
     try {
-      // Mock data for now - in real implementation this would be stored in database
-      const mockPolicies: AutomationPolicy[] = [
-        {
-          id: '1',
-          name: 'Weekly Security Scan',
-          description: 'Check for critical security firmware updates weekly - BIOS and iDRAC',
-          cluster_name: 'Production',
-          policy_type: 'firmware_check',
-          target_components: ['bios', 'idrac'],
-          start_date: new Date().toISOString().split('T')[0],
-          schedule: {
-            frequency: 'weekly',
-            day_of_week: 1,
-            time: '02:00'
-          },
-          update_strategy: {
-            type: 'rolling',
-            batch_size: 1,
-            wait_between_batches: 30,
-            max_concurrent: 1
-          },
-          safety_checks: {
-            min_healthy_hosts: 2,
-            require_maintenance_mode: true,
-            verify_vm_migration: true,
-            rollback_on_failure: true,
-            max_downtime_minutes: 60
-          },
-          filters: {
-            criticality_levels: ['critical'],
-            exclude_hosts: []
-          },
-          is_active: true,
-          last_run: new Date(Date.now() - 86400000 * 2).toISOString(),
-          next_run: new Date(Date.now() + 86400000 * 5).toISOString(),
-          created_at: new Date(Date.now() - 86400000 * 30).toISOString()
+      // Load automation policies from database
+      const { data: policiesData, error } = await supabase
+        .from('auto_orchestration_config')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform database data to policies format
+      const transformedPolicies: AutomationPolicy[] = (policiesData || []).map(config => ({
+        id: config.id,
+        name: `Auto Orchestration - ${config.execution_interval_months} months`,
+        description: `Automatic server updates every ${config.execution_interval_months} months during maintenance window`,
+        policy_type: 'maintenance_automation',
+        target_components: ['BIOS', 'iDRAC'],
+        start_date: config.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+        schedule: `0 ${config.maintenance_window_start} * * *`,
+        enabled: config.enabled,
+        priority: 'high',
+        notification_settings: {
+          email_enabled: true,
+          sms_enabled: false
         },
-        {
-          id: '2',
-          name: 'Quarterly Firmware Updates',
-          description: 'Automated quarterly firmware updates with full cluster coordination - All Components',
-          policy_type: 'quarterly_update',
-          target_components: ['bios', 'idrac', 'storage', 'nic'],
-          start_date: new Date(Date.now() + 86400000 * 30).toISOString().split('T')[0],
-          schedule: {
-            frequency: 'quarterly',
-            day_of_month: 15,
-            time: '01:00'
-          },
-          update_strategy: {
-            type: 'rolling',
-            batch_size: 1,
-            wait_between_batches: 60,
-            max_concurrent: 1
-          },
-          safety_checks: {
-            min_healthy_hosts: 3,
-            require_maintenance_mode: true,
-            verify_vm_migration: true,
-            rollback_on_failure: true,
-            max_downtime_minutes: 120
-          },
-          filters: {
-            criticality_levels: ['critical', 'high', 'medium'],
-            exclude_hosts: []
-          },
-          is_active: true,
-          next_run: new Date(Date.now() + 86400000 * 45).toISOString(),
-          created_at: new Date(Date.now() - 86400000 * 60).toISOString()
-        }
-      ];
+        rollback_settings: {
+          enabled: true,
+          threshold: 10
+        },
+        triggers: [{
+          type: 'time_based',
+          schedule: `0 ${config.maintenance_window_start} * * *`,
+          conditions: {
+            maintenance_window: true,
+            cluster_priority: config.cluster_priority_order || ['production', 'staging', 'development']
+          }
+        }],
+        metadata: {
+          execution_interval_months: config.execution_interval_months,
+          update_interval_minutes: config.update_interval_minutes,
+          maintenance_window_start: config.maintenance_window_start,
+          maintenance_window_end: config.maintenance_window_end
+        },
+        created_at: config.created_at,
+        updated_at: config.updated_at
+      }));
       
-      setPolicies(mockPolicies);
+      setPolicies(transformedPolicies);
     } catch (error) {
       console.error('Failed to load automation policies:', error);
       toast({

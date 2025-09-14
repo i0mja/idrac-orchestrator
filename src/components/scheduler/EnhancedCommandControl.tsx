@@ -407,15 +407,21 @@ export function EnhancedCommandControl() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Layers className="w-6 h-6" />
-            Update Management Center
-          </h2>
-          <p className="text-muted-foreground">Enterprise Dell server update campaigns and maintenance orchestration</p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <Calendar className="w-6 h-6 text-white" />
         </div>
+        <div>
+          <h1 className="text-4xl font-bold text-gradient">Command & Control</h1>
+          <p className="text-muted-foreground text-lg">
+            Enterprise update campaigns and maintenance orchestration
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between">
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setIsTemplatesModalOpen(true)}>
             <FileText className="w-4 h-4 mr-2" />
