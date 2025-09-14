@@ -3,7 +3,18 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
-type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery";
+type PageType =
+  | "dashboard"
+  | "global-inventory"
+  | "enterprise"
+  | "health"
+  | "users"
+  | "settings"
+  | "alerts"
+  | "vcenter"
+  | "scheduler"
+  | "discovery"
+  | "ome";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -21,6 +32,8 @@ export function AppLayout() {
         return "global-inventory";
       case "/discovery":
         return "discovery";
+      case "/ome":
+        return "ome";
       case "/scheduler":
         return "scheduler";
       case "/enterprise":
@@ -51,6 +64,9 @@ export function AppLayout() {
         break;
       case "discovery":
         navigate("/discovery");
+        break;
+      case "ome":
+        navigate("/ome");
         break;
       case "scheduler":
         navigate("/scheduler");
