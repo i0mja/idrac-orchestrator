@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +74,14 @@ export function HealthChecks() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRunningCheck, setIsRunningCheck] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const c = searchParams.get('category');
+    if (c) setCategoryFilter(c);
+  }, [searchParams]);
 
   const fetchHealthData = async () => {
     try {
@@ -516,6 +524,7 @@ export function HealthChecks() {
       {metrics && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Server Health */}
+          {(!categoryFilter || categoryFilter === 'server') && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -537,8 +546,10 @@ export function HealthChecks() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Security Health */}
+          {(!categoryFilter || categoryFilter === 'security') && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -555,8 +566,10 @@ export function HealthChecks() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Infrastructure Health */}
+          {(!categoryFilter || categoryFilter === 'infrastructure') && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -573,8 +586,10 @@ export function HealthChecks() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Operational Health */}
+          {(!categoryFilter || categoryFilter === 'operational') && (
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -591,6 +606,7 @@ export function HealthChecks() {
               </div>
             </CardContent>
           </Card>
+          )}
         </div>
       )}
 

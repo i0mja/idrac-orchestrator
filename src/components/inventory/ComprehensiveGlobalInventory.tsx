@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,7 @@ interface ServerWithMetrics {
   last_discovered?: string;
   created_at: string;
   updated_at: string;
+  tags?: string[];
 }
 
 interface AssetMetrics {
@@ -174,14 +176,36 @@ export function ComprehensiveGlobalInventory() {
     environment: "all",
     datacenter: "all",
     status: "all",
+    cluster: "all",
     hostType: "all",
     os: "all",
     criticality: "all",
     compliance: "all",
     riskLevel: "all",
     warrantyStatus: "all",
-    lastSeen: "all"
+    lastSeen: "all",
+    tag: "all"
   });
+
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    const datacenterParam = searchParams.get('datacenter');
+    const clusterParam = searchParams.get('cluster');
+    const osParam = searchParams.get('os');
+    const idsParam = searchParams.get('ids');
+    const tagParam = searchParams.get('tag');
+    setFilters(prev => ({
+      ...prev,
+      status: status ?? prev.status,
+      datacenter: datacenterParam ?? prev.datacenter,
+      cluster: clusterParam ?? prev.cluster,
+      os: osParam ?? prev.os,
+      tag: tagParam ?? prev.tag,
+    }));
+    if (idsParam) setSelectedServers(idsParam.split(','));
+  }, [searchParams]);
   
   // Advanced features
   const [savedFilters, setSavedFilters] = useState<any[]>([]);
@@ -428,6 +452,7 @@ export function ComprehensiveGlobalInventory() {
       // Filter matches
       const environmentMatch = filters.environment === "all" || server.environment === filters.environment;
       const datacenterMatch = filters.datacenter === "all" || server.datacenter === filters.datacenter;
+      const clusterMatch = filters.cluster === "all" || server.cluster_name === filters.cluster;
       const statusMatch = filters.status === "all" || server.status === filters.status;
       const hostTypeMatch = filters.hostType === "all" || server.host_type === filters.hostType;
       const osMatch = filters.os === "all" || server.operating_system === filters.os;
@@ -462,8 +487,9 @@ export function ComprehensiveGlobalInventory() {
         }
       }
 
-      return searchMatch && environmentMatch && datacenterMatch && statusMatch && 
-             hostTypeMatch && osMatch && criticalityMatch && warrantyMatch && lastSeenMatch;
+      const tagMatch = filters.tag === "all" || server.tags?.includes(filters.tag);
+      return searchMatch && environmentMatch && datacenterMatch && clusterMatch && statusMatch &&
+             hostTypeMatch && osMatch && criticalityMatch && warrantyMatch && lastSeenMatch && tagMatch;
     });
   }, [servers, searchQuery, filters]);
 

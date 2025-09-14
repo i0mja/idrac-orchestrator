@@ -14,13 +14,14 @@ import {
   AlertCircle
 } from "lucide-react";
 
-export function VCenterInfrastructure() {
+export function VCenterInfrastructure({ hostFilter }: { hostFilter?: string }) {
   const { vcenters, clusters, lastSync } = useVCenterService();
+  const filteredClusters = hostFilter ? clusters.filter(c => c.hosts?.some(h => h.name === hostFilter || h.id === hostFilter)) : clusters;
 
   const totalStats = {
-    clusters: clusters.length,
-    totalHosts: clusters.reduce((sum, c) => sum + c.total_hosts, 0),
-    activeHosts: clusters.reduce((sum, c) => sum + c.active_hosts, 0),
+    clusters: filteredClusters.length,
+    totalHosts: filteredClusters.reduce((sum, c) => sum + c.total_hosts, 0),
+    activeHosts: filteredClusters.reduce((sum, c) => sum + c.active_hosts, 0),
     vms: 0 // This would come from virtual_machines table
   };
 
@@ -104,7 +105,7 @@ export function VCenterInfrastructure() {
           </Card>
         ) : (
           vcenters.map((vcenter) => {
-            const vcenterClusters = clusters.filter(c => c.vcenter_id === vcenter.id);
+            const vcenterClusters = filteredClusters.filter(c => c.vcenter_id === vcenter.id);
             const lastSyncTime = lastSync[vcenter.id];
             const isRecent = lastSyncTime && 
               Date.now() - new Date(lastSyncTime).getTime() < 60 * 60 * 1000;

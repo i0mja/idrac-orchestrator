@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,9 @@ export function EnhancedCommandControl() {
   const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
   const [selectedCampaigns, setSelectedCampaigns] = useState<string[]>([]);
+  const [tab, setTab] = useState('campaigns');
+  const [preset, setPreset] = useState<string | null>(null);
+  const [presetHostIds, setPresetHostIds] = useState<string[]>([]);
   const [filters, setFilters] = useState<CampaignFiltersType>({
     search: '',
     status: 'all',
@@ -75,6 +79,24 @@ export function EnhancedCommandControl() {
   });
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    const presetParam = searchParams.get('preset');
+    const jobId = searchParams.get('jobId');
+    const newParam = searchParams.get('new');
+    const hostIdsParam = searchParams.get('hostIds');
+    if (tabParam) setTab(tabParam);
+    if (presetParam) setPreset(presetParam);
+    if (jobId) setSelectedCampaignId(jobId);
+    if (newParam) setIsCampaignDialogOpen(true);
+    if (hostIdsParam) setPresetHostIds(hostIdsParam.split(','));
+  }, [searchParams]);
+
+  useEffect(() => {
+    // values parsed for future preset functionality
+  }, [preset, presetHostIds]);
 
   useEffect(() => {
     loadData();
@@ -493,7 +515,7 @@ export function EnhancedCommandControl() {
         </Card>
       </div>
 
-      <Tabs defaultValue="campaigns" className="space-y-6">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
         <TabsList>
           <TabsTrigger value="campaigns">Update Campaigns</TabsTrigger>
           <TabsTrigger value="emergency">Emergency Actions</TabsTrigger>
