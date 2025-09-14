@@ -232,7 +232,7 @@ export function EnhancedCommandControl() {
           name: `${actionName} - ${new Date().toISOString().split('T')[0]}`,
           server_ids: [], // Would be populated based on selection
           update_sequence: {
-            update_type: actionType,
+            update_type: actionType === 'security_patch' ? 'security_patch' : 'idrac',
             components: actionType === 'security_patch' ? ['BIOS', 'iDRAC', 'System CPLD'] : ['iDRAC'],
             rollout_strategy: 'parallel',
             priority: 'critical'
@@ -254,13 +254,15 @@ export function EnhancedCommandControl() {
       await supabase.functions.invoke('execute-remote-command', {
         body: {
           command: {
+            id: crypto.randomUUID(),
             name: actionName,
             target_type: 'datacenter',
             target_names: datacenters.map(dc => dc.name),
             command_type: actionType === 'security_patch' ? 'security_patch' : 'idrac_update',
             command_parameters: {
               emergency_mode: true,
-              priority: 'critical'
+              priority: 'critical',
+              update_category: actionType
             }
           },
           immediate_execution: true,
