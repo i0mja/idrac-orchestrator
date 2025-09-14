@@ -250,11 +250,20 @@ export function CredentialManagement() {
                     <Label htmlFor="is_default">Set as default profile</Label>
                   </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateProfile(false)}>
+                <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCreateProfile(false)}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateProfile}>Create Profile</Button>
+                  <Button 
+                    onClick={handleCreateProfile}
+                    className="w-full sm:w-auto"
+                  >
+                    Create Profile
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -393,10 +402,19 @@ export function CredentialManagement() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateAssignment(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCreateAssignment(false)}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateAssignment}>Create Assignment</Button>
+                  <Button 
+                    onClick={handleCreateAssignment}
+                    className="w-full sm:w-auto"
+                  >
+                    Create Assignment
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -491,10 +509,19 @@ export function CredentialManagement() {
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setShowCreateOverride(false)}>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCreateOverride(false)}
+                    className="w-full sm:w-auto"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateOverride}>Create Override</Button>
+                  <Button 
+                    onClick={handleCreateOverride}
+                    className="w-full sm:w-auto"
+                  >
+                    Create Override
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

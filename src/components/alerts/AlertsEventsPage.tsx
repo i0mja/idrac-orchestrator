@@ -84,23 +84,25 @@ const AlertsEventsPage = () => {
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Button 
             onClick={triggerAutoOrchestration}
-            className="flex items-center space-x-2"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto"
             disabled={loading}
           >
             <Play className="h-4 w-4" />
-            <span>Trigger Auto-Orchestration</span>
+            <span className="hidden sm:inline">Trigger Auto-Orchestration</span>
+            <span className="sm:hidden">Trigger</span>
           </Button>
           {unacknowledgedCount > 0 && (
             <Button 
               onClick={acknowledgeAllEvents}
               variant="outline"
-              className="flex items-center space-x-2"
+              className="flex items-center justify-center gap-2 w-full sm:w-auto"
             >
               <BellOff className="h-4 w-4" />
-              <span>Acknowledge All ({unacknowledgedCount})</span>
+              <span className="hidden sm:inline">Acknowledge All ({unacknowledgedCount})</span>
+              <span className="sm:hidden">Ack All ({unacknowledgedCount})</span>
             </Button>
           )}
         </div>
@@ -188,14 +190,14 @@ const AlertsEventsPage = () => {
                           <p className="text-sm text-muted-foreground">{event.description}</p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         {getSeverityBadge(event.severity)}
                         {!event.acknowledged && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => acknowledgeEvent(event.id)}
-                            className="flex items-center space-x-1"
+                            className="flex items-center justify-center gap-1 w-full sm:w-auto"
                           >
                             <CheckCircle className="h-3 w-3" />
                             <span>Acknowledge</span>

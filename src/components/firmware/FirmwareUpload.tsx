@@ -397,11 +397,20 @@ export function FirmwareUpload({ onClose }: FirmwareUploadProps) {
 
         {/* Upload Button */}
         {files.length > 0 && (
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={onClose} disabled={uploading}>
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <Button 
+              variant="outline" 
+              onClick={onClose} 
+              disabled={uploading}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button onClick={handleUpload} disabled={uploading} className="bg-gradient-primary">
+            <Button 
+              onClick={handleUpload} 
+              disabled={uploading} 
+              className="bg-gradient-primary w-full sm:w-auto"
+            >
               <Upload className="w-4 h-4 mr-2" />
               {uploading ? 'Uploading...' : `Upload ${files.length} Package(s)`}
             </Button>

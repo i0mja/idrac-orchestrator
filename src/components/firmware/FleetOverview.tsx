@@ -276,14 +276,16 @@ export function FleetOverview({ fleetStatus, onRefresh }: FleetOverviewProps) {
               <span className="font-medium text-blue-800">
                 {selectedServers.length} servers selected
               </span>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <Button variant="outline" size="sm" className="w-full sm:w-auto">
                   <Search className="w-4 h-4 mr-2" />
-                  Check All
+                  <span className="hidden sm:inline">Check All</span>
+                  <span className="sm:hidden">Check</span>
                 </Button>
-                <Button size="sm">
+                <Button size="sm" className="w-full sm:w-auto">
                   <Zap className="w-4 h-4 mr-2" />
-                  Plan Updates
+                  <span className="hidden sm:inline">Plan Updates</span>
+                  <span className="sm:hidden">Plan</span>
                 </Button>
               </div>
             </div>

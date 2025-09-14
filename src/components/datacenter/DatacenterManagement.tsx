@@ -407,11 +407,19 @@ function DatacenterForm({ datacenter, open, onOpenChange, onSuccess }: Datacente
               <Label htmlFor="is_active">Active datacenter</Label>
             </div>
 
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button 
+                type="submit"
+                className="w-full sm:w-auto"
+              >
                 {datacenter ? 'Update' : 'Create'} Datacenter
               </Button>
             </div>
