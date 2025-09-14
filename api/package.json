@@ -14,20 +14,23 @@
   },
   "dependencies": {
     "fastify": "^4",
-    "zod": "^3",
-    "undici": "^6",
+    "pino-pretty": "^11",
+    "@fastify/swagger": "^8",
+    "@fastify/swagger-ui": "^1",
     "bullmq": "^5",
-    "ioredis": "^5",
     "drizzle-orm": "^0.33",
+    "ioredis": "^5",
     "pg": "^8",
     "pino": "^9",
-    "pino-pretty": "^11",
-    "@fastify/swagger": "^8"
+    "undici": "^6",
+    "zod": "^3"
   },
   "devDependencies": {
+    "@types/node": "^20",
+    "@types/pg": "^8",
+    "drizzle-kit": "^0.24",
     "tsx": "^4",
     "typescript": "^5",
-    "drizzle-kit": "^0.24",
-    "@types/node": "^20"
+    "dotenv": "^16"
   }
 }

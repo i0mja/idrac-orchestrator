@@ -1,8 +1,5 @@
 export interface IdracCreds { username: string; password: string; }
-
-function auth(creds: IdracCreds) {
-  return 'Basic ' + Buffer.from(`${creds.username}:${creds.password}`).toString('base64');
-}
+const auth = (c: IdracCreds) => 'Basic ' + Buffer.from(`${c.username}:${c.password}`).toString('base64');
 
 export async function simpleUpdate(idracHost: string, creds: IdracCreds, imageUri: string) {
   const url = `https://${idracHost}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate`;
@@ -23,6 +20,18 @@ export async function getJob(jobLocation: string, creds: IdracCreds) {
   return res.json();
 }
 
+export async function waitForJob(jobLocation: string, creds: IdracCreds, timeoutMs = 15 * 60_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const j = await getJob(jobLocation, creds);
+    const state = j.TaskState || j.JobState || j.Status || '';
+    if (state === 'Completed') return j;
+    if (/(Exception|Failed|Error)/i.test(state)) throw new Error(`Job failed: ${state}`);
+    await new Promise(r => setTimeout(r, 5000));
+  }
+  throw new Error('Timeout waiting for Redfish job');
+}
+
 export async function softwareInventory(idracHost: string, creds: IdracCreds) {
   const res = await fetch(`https://${idracHost}/redfish/v1/UpdateService/SoftwareInventory`, {
     headers: { authorization: auth(creds) }
@@ -31,23 +40,11 @@ export async function softwareInventory(idracHost: string, creds: IdracCreds) {
   return res.json();
 }
 
-export async function waitForJob(jobLocation: string, creds: IdracCreds, timeoutMs = 300_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const job = await getJob(jobLocation, creds);
-    const state = job.TaskState || job.JobState || job.Status || '';
-    if (state === 'Completed') return job;
-    if (state === 'Exception' || state === 'Failed') throw new Error('Job failed');
-    await new Promise((r) => setTimeout(r, 5000));
-  }
-  throw new Error('Timeout waiting for job');
-}
-
-export async function waitForIdrac(idracHost: string, creds: IdracCreds, timeoutMs = 600_000) {
+export async function waitForIdrac(idracHost: string, creds: IdracCreds, timeoutMs = 10 * 60_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     try { await softwareInventory(idracHost, creds); return true; }
-    catch { await new Promise((r) => setTimeout(r, 5000)); }
+    catch { await new Promise(r => setTimeout(r, 5000)); }
   }
   throw new Error('iDRAC not responding within timeout');
 }

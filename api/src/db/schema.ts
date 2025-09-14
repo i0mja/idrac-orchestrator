@@ -1,5 +1,4 @@
 import { pgTable, uuid, text, varchar, jsonb, timestamp, integer } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
 
 export const hosts = pgTable('hosts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -19,7 +18,7 @@ export const hosts = pgTable('hosts', {
 export const credentials = pgTable('credentials', {
   id: uuid('id').primaryKey().defaultRandom(),
   hostId: uuid('host_id').references(() => hosts.id, { onDelete: 'cascade' }),
-  kind: text('kind').notNull(), // 'idrac' | 'vcenter'
+  kind: text('kind').notNull(),           // 'idrac' | 'vcenter'
   vaultPath: text('vault_path').notNull(),
   createdAt: timestamp('created_at').defaultNow()
 });
@@ -39,7 +38,7 @@ export const planTargets = pgTable('plan_targets', {
 export const artifacts = pgTable('artifacts', {
   id: uuid('id').primaryKey().defaultRandom(),
   planId: uuid('plan_id').references(() => updatePlans.id, { onDelete: 'cascade' }).notNull(),
-  component: text('component').notNull(), // BIOS | NIC | HBA | RAID | PSU | iDRAC | Other
+  component: text('component').notNull(), // BIOS | iDRAC | NIC | HBA | RAID | PSU | Other
   imageUri: text('image_uri').notNull()
 });
 
@@ -53,9 +52,3 @@ export const hostRuns = pgTable('host_runs', {
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 });
-
-// Relations (optional)
-export const hostsRelations = relations(hosts, ({ many }) => ({
-  runs: many(hostRuns)
-}));
-

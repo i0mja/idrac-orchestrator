@@ -1,32 +1,38 @@
 import { z } from 'zod';
 
-const schema = z.object({
-  API_PORT: z.string().default('8080').transform(Number),
-  API_BASE_URL: z.string().url().default('http://localhost:8080'),
+const envSchema = z.object({
+  API_PORT: z.coerce.number().default(8080),
+  API_BASE_URL: z.string().default('http://localhost:8080'),
+  API_KEY: z.string().default('dev-api-key'),
 
   PGHOST: z.string().default('localhost'),
-  PGPORT: z.string().default('5432').transform(Number),
+  PGPORT: z.coerce.number().default(5432),
   PGDATABASE: z.string().default('idrac_orchestrator'),
   PGUSER: z.string().default('idrac_admin'),
-  PGPASSWORD: z.string().default('change-me'),
+  PGPASSWORD: z.string().default('devpass'),
 
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
-  API_KEY: z.string().default('dev-api-key'),
   TLS_REJECT_UNAUTHORIZED: z
     .string()
-    .optional()
-    .transform((v) => v !== 'false'),
-  CA_BUNDLE_PATH: z.string().optional(),
+    .default('true')
+    .transform(v => v !== 'false'),
 
-  VCENTER_URL: z.string().optional(),
-  VCENTER_USERNAME: z.string().optional(),
-  VCENTER_PASSWORD: z.string().optional(),
+  CA_BUNDLE_PATH: z.string().optional().default(''),
 
+  // Defaults; per-host overrides live in DB/credentials
+  VCENTER_URL: z.string().optional().default(''),
+  VCENTER_USERNAME: z.string().optional().default(''),
+  VCENTER_PASSWORD: z.string().optional().default(''),
+
+  // Runner binaries
   RACADM_PATH: z.string().default('racadm'),
-  IPMITOOL_PATH: z.string().default('ipmitool'),
+  IPMITOOL_PATH: z.string().default('ipmitool')
 });
 
-export type Config = z.infer<typeof schema>;
-export const config: Config = schema.parse(process.env);
-export default config;
+const env = envSchema.parse(process.env);
+
+export default {
+  ...env
+};
+export type Config = typeof env;

@@ -5,7 +5,7 @@ function run(host: string, ...extra: string[]) {
   const user = process.env.IDRAC_USER ?? '';
   const pass = process.env.IDRAC_PASS ?? '';
   const { status, stderr, stdout } = spawnSync(config.IPMITOOL_PATH, ['-I','lanplus','-H',host,'-U',user,'-P',pass, ...extra], { timeout: 30_000 });
-  if (status !== 0) throw new Error(stderr.toString() || 'ipmitool error');
+  if (status !== 0) throw new Error(stderr?.toString() || 'ipmitool error');
   return stdout.toString();
 }
 
