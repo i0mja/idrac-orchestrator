@@ -19,27 +19,28 @@ export function DiscoveryPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <Button
-              key={tab.id}
-              variant={isActive ? "default" : "outline"}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex items-center gap-2 transition-all duration-200",
-                isActive 
-                  ? "bg-gradient-primary text-primary-foreground shadow-elegant" 
-                  : "hover:bg-muted/50 hover:scale-105"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {tab.label}
-            </Button>
-          );
-        })}
+      <div className="border-b border-border bg-card rounded-lg overflow-hidden">
+        <div className="flex">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex-1 flex items-center justify-center gap-2 px-6 py-4 text-sm font-medium transition-all duration-200 border-b-2",
+                  isActive 
+                    ? "bg-muted/50 text-primary border-primary shadow-sm" 
+                    : "text-muted-foreground border-transparent hover:text-foreground hover:bg-muted/30"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
       <div className="min-h-[600px]">
         {activeTab === 'network' && <NetworkDiscovery />}
