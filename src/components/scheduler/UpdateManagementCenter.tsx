@@ -147,11 +147,13 @@ export function UpdateManagementCenter() {
             id: groupKey,
             name: `${job.firmware_package?.component_name || 'Unknown'} Updates - ${new Date(job.created_at).toLocaleDateString()}`,
             description: `${job.firmware_package?.name || 'Update package'} deployment`,
-          status: job.status === 'completed' ? 'completed' : 
-                  job.status === 'failed' ? 'failed' : 
-                  job.status === 'pending' ? 'scheduled' : 'pending',
-          startDate: job.scheduled_at || job.created_at,
-            startDate: job.scheduled_at || job.created_at,
+            status: job.status === 'completed' ? 'completed' : 
+                    job.status === 'failed' ? 'failed' : 
+                    job.status === 'pending' ? 'scheduled' : 'pending',
+            updateCount: 1,
+            criticalCount: job.firmware_package?.component_name === 'BIOS' ? 1 : 0,
+            approvedCount: job.status === 'completed' ? 1 : 0,
+            lastModified: job.updated_at || job.created_at,
             targetGroups: [job.server?.datacenter || 'Unknown']
           });
         }
@@ -164,7 +166,12 @@ export function UpdateManagementCenter() {
         description: `Automated update orchestration plan`,
         targetType: 'cluster',
         targets: ['All Datacenters'],
-        schedule: 'manual',
+        schedule: {
+          type: 'manual',
+          time: '02:00',
+          frequency: 'monthly',
+          maintenanceWindow: true
+        },
         enabled: plan.status !== 'cancelled',
         approvalRequired: plan.approval_required || false,
         priority: plan.approval_required ? 'high' : 'medium',
@@ -179,6 +186,8 @@ export function UpdateManagementCenter() {
         rollbackEnabled: true,
         testingRequired: false,
         isActive: plan.status !== 'cancelled',
+        lastRun: plan.started_at,
+        nextRun: plan.next_execution_date,
         metadata: {
           server_count: plan.server_ids?.length || 0,
           estimated_duration: plan.estimated_duration,

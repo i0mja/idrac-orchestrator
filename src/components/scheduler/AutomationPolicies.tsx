@@ -157,10 +157,31 @@ export function AutomationPolicies({ servers = [] }: AutomationPoliciesProps) {
         id: config.id,
         name: `Auto Orchestration - ${config.execution_interval_months} months`,
         description: `Automatic server updates every ${config.execution_interval_months} months during maintenance window`,
-        policy_type: 'maintenance_automation',
+        policy_type: 'quarterly_update',
         target_components: ['BIOS', 'iDRAC'],
         start_date: config.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-        schedule: `0 ${config.maintenance_window_start} * * *`,
+        schedule: {
+          frequency: 'monthly',
+          time: config.maintenance_window_start?.slice(0, 5) || '02:00'
+        },
+        update_strategy: {
+          type: 'rolling',
+          batch_size: 5,
+          wait_between_batches: 30,
+          max_concurrent: 3
+        },
+        safety_checks: {
+          min_healthy_hosts: 1,
+          require_maintenance_mode: true,
+          verify_vm_migration: true,
+          rollback_on_failure: true,
+          max_downtime_minutes: 60
+        },
+        filters: {
+          criticality_levels: ['production', 'staging'],
+          exclude_hosts: []
+        },
+        is_active: config.enabled,
         enabled: config.enabled,
         priority: 'high',
         notification_settings: {
