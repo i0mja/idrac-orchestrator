@@ -11,7 +11,10 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:dev": "pnpm --filter @idrac/api dev",
+    "api:build": "pnpm --filter @idrac/api build",
+    "api:start": "pnpm --filter @idrac/api start"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

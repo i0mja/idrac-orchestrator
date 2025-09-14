@@ -1,0 +1,33 @@
+{
+  "name": "@idrac/api",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p .",
+    "start": "node dist/index.js",
+    "migrate": "drizzle-kit migrate",
+    "test": "tsx test/**/*.test.ts"
+  },
+  "dependencies": {
+    "fastify": "^4",
+    "zod": "^3",
+    "undici": "^6",
+    "bullmq": "^5",
+    "ioredis": "^5",
+    "drizzle-orm": "^0.33",
+    "pg": "^8",
+    "pino": "^9",
+    "pino-pretty": "^11",
+    "@fastify/swagger": "^8"
+  },
+  "devDependencies": {
+    "tsx": "^4",
+    "typescript": "^5",
+    "drizzle-kit": "^0.24",
+    "@types/node": "^20"
+  }
+}
