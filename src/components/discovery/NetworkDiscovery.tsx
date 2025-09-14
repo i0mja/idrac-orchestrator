@@ -1,19 +1,30 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { useCredentialProfiles } from "@/hooks/useCredentialProfiles";
-import { 
-  Search, 
-  Server, 
-  Network, 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useCredentialProfiles } from '@/hooks/useCredentialProfiles';
+import {
+  Search,
+  Server,
+  Network,
   Settings,
   CheckCircle,
   XCircle,
@@ -26,8 +37,8 @@ import {
   Info,
   Shield,
   Wifi,
-  Play
-} from "lucide-react";
+  Play,
+} from 'lucide-react';
 import { useSystemEvents } from '@/hooks/useSystemEvents';
 
 interface DiscoveryResult {
@@ -52,18 +63,18 @@ export function NetworkDiscovery() {
   const [discoveredServers, setDiscoveredServers] = useState<DiscoveryResult[]>([]);
   const [showCredentialForm, setShowCredentialForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Scan configuration
   const [scanConfig, setScanConfig] = useState({
     ipRange: '192.168.1.1-50',
     datacenterId: null as string | null,
-    useCredentialProfiles: true
+    useCredentialProfiles: true,
   });
 
   // Fallback credentials (only used if no profiles match)
   const [fallbackCredentials, setFallbackCredentials] = useState({
     username: 'root',
-    password: 'calvin'
+    password: 'calvin',
   });
 
   // Credential profile form
@@ -72,7 +83,7 @@ export function NetworkDiscovery() {
     description: '',
     username: 'root',
     password: 'calvin',
-    ipRange: ''
+    ipRange: '',
   });
 
   const [datacenters, setDatacenters] = useState<DatacenterInfo[]>([]);
@@ -93,10 +104,12 @@ export function NetworkDiscovery() {
         .order('name');
 
       if (error) throw error;
-      setDatacenters((data || []).map(dc => ({
-        ...dc,
-        ip_scopes: (dc.ip_scopes as any) || []
-      })));
+      setDatacenters(
+        (data || []).map((dc) => ({
+          ...dc,
+          ip_scopes: (dc.ip_scopes as any) || [],
+        })),
+      );
     } catch (error) {
       console.error('Error fetching datacenters:', error);
     }
@@ -105,9 +118,9 @@ export function NetworkDiscovery() {
   const handleCreateProfile = async () => {
     if (!newProfile.name.trim() || !newProfile.username.trim() || !newProfile.password.trim()) {
       toast({
-        title: "Validation Error",
-        description: "Name, username, and password are required",
-        variant: "destructive"
+        title: 'Validation Error',
+        description: 'Name, username, and password are required',
+        variant: 'destructive',
       });
       return;
     }
@@ -121,7 +134,7 @@ export function NetworkDiscovery() {
         port: 443,
         protocol: 'https' as const,
         is_default: false,
-        priority_order: 100
+        priority_order: 100,
       });
 
       // Create assignment if IP range specified
@@ -130,21 +143,27 @@ export function NetworkDiscovery() {
         // For now, just show success message
       }
 
-      setNewProfile({ name: '', description: '', username: 'root', password: 'calvin', ipRange: '' });
-      setShowCredentialForm(false);
-      
-      toast({
-        title: "Success",
-        description: "Credential profile created successfully"
+      setNewProfile({
+        name: '',
+        description: '',
+        username: 'root',
+        password: 'calvin',
+        ipRange: '',
       });
-      
+      setShowCredentialForm(false);
+
+      toast({
+        title: 'Success',
+        description: 'Credential profile created successfully',
+      });
+
       refreshData();
     } catch (error) {
       console.error('Error creating profile:', error);
       toast({
-        title: "Error",
-        description: "Failed to create credential profile",
-        variant: "destructive"
+        title: 'Error',
+        description: 'Failed to create credential profile',
+        variant: 'destructive',
       });
     }
   };
@@ -152,9 +171,9 @@ export function NetworkDiscovery() {
   const startNetworkScan = async () => {
     if (!scanConfig.ipRange.trim() && !scanConfig.datacenterId) {
       toast({
-        title: "Invalid Configuration",
-        description: "Please specify an IP range or select a datacenter to scan",
-        variant: "destructive"
+        title: 'Invalid Configuration',
+        description: 'Please specify an IP range or select a datacenter to scan',
+        variant: 'destructive',
       });
       return;
     }
@@ -166,7 +185,7 @@ export function NetworkDiscovery() {
     try {
       // Progress simulation
       const progressInterval = setInterval(() => {
-        setScanProgress(prev => Math.min(prev + 10, 95));
+        setScanProgress((prev) => Math.min(prev + 10, 95));
       }, 1000);
 
       const { data, error } = await supabase.functions.invoke('discover-servers', {
@@ -174,8 +193,8 @@ export function NetworkDiscovery() {
           ipRange: scanConfig.ipRange || undefined,
           datacenterId: scanConfig.datacenterId,
           credentials: scanConfig.useCredentialProfiles ? null : fallbackCredentials,
-          useCredentialProfiles: scanConfig.useCredentialProfiles
-        }
+          useCredentialProfiles: scanConfig.useCredentialProfiles,
+        },
       });
 
       clearInterval(progressInterval);
@@ -184,18 +203,17 @@ export function NetworkDiscovery() {
       if (error) throw error;
 
       setDiscoveredServers(data.servers || []);
-      
-      toast({
-        title: "Network Scan Complete",
-        description: `Discovered ${data.discovered || 0} Dell servers with iDRAC access`
-      });
 
+      toast({
+        title: 'Network Scan Complete',
+        description: `Discovered ${data.discovered || 0} Dell servers with iDRAC access`,
+      });
     } catch (error) {
       console.error('Network scan error:', error);
       toast({
-        title: "Scan Failed",
-        description: error.message || "Failed to complete network scan",
-        variant: "destructive"
+        title: 'Scan Failed',
+        description: error.message || 'Failed to complete network scan',
+        variant: 'destructive',
       });
     } finally {
       setIsScanning(false);
@@ -203,7 +221,7 @@ export function NetworkDiscovery() {
     }
   };
 
-  const selectedDatacenter = datacenters.find(dc => dc.id === scanConfig.datacenterId);
+  const selectedDatacenter = datacenters.find((dc) => dc.id === scanConfig.datacenterId);
 
   return (
     <div className="space-y-8">
@@ -230,9 +248,7 @@ export function NetworkDiscovery() {
                 <Network className="w-5 h-5" />
                 Network Configuration
               </CardTitle>
-              <CardDescription>
-                Configure the network range and scanning parameters
-              </CardDescription>
+              <CardDescription>Configure the network range and scanning parameters</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Datacenter Selection */}
@@ -240,16 +256,18 @@ export function NetworkDiscovery() {
                 <Label>Datacenter (Optional)</Label>
                 <select
                   value={scanConfig.datacenterId || ''}
-                  onChange={(e) => setScanConfig(prev => ({ 
-                    ...prev, 
-                    datacenterId: e.target.value || null,
-                    ipRange: e.target.value ? '' : prev.ipRange
-                  }))}
+                  onChange={(e) =>
+                    setScanConfig((prev) => ({
+                      ...prev,
+                      datacenterId: e.target.value || null,
+                      ipRange: e.target.value ? '' : prev.ipRange,
+                    }))
+                  }
                   className="w-full p-3 border rounded-lg bg-background"
                   disabled={isScanning}
                 >
                   <option value="">Select datacenter or use custom range</option>
-                  {datacenters.map(dc => (
+                  {datacenters.map((dc) => (
                     <option key={dc.id} value={dc.id}>
                       {dc.name} ({dc.ip_scopes.length} IP scopes)
                     </option>
@@ -273,7 +291,9 @@ export function NetworkDiscovery() {
                   <Label>IP Range</Label>
                   <Input
                     value={scanConfig.ipRange}
-                    onChange={(e) => setScanConfig(prev => ({ ...prev, ipRange: e.target.value }))}
+                    onChange={(e) =>
+                      setScanConfig((prev) => ({ ...prev, ipRange: e.target.value }))
+                    }
                     placeholder="192.168.1.1-50 or 192.168.1.100"
                     disabled={isScanning}
                   />
@@ -287,12 +307,18 @@ export function NetworkDiscovery() {
               <div className="space-y-4">
                 <Label className="text-base font-semibold">Authentication Method</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card className={`cursor-pointer border-2 transition-colors ${
-                    scanConfig.useCredentialProfiles ? 'border-primary bg-primary/5' : 'border-muted'
-                  }`}>
-                    <CardContent 
-                      className="p-4" 
-                      onClick={() => setScanConfig(prev => ({ ...prev, useCredentialProfiles: true }))}
+                  <Card
+                    className={`cursor-pointer border-2 transition-colors ${
+                      scanConfig.useCredentialProfiles
+                        ? 'border-primary bg-primary/5'
+                        : 'border-muted'
+                    }`}
+                  >
+                    <CardContent
+                      className="p-4"
+                      onClick={() =>
+                        setScanConfig((prev) => ({ ...prev, useCredentialProfiles: true }))
+                      }
                     >
                       <div className="flex items-center gap-3">
                         <Shield className="w-5 h-5 text-primary" />
@@ -306,12 +332,18 @@ export function NetworkDiscovery() {
                     </CardContent>
                   </Card>
 
-                  <Card className={`cursor-pointer border-2 transition-colors ${
-                    !scanConfig.useCredentialProfiles ? 'border-primary bg-primary/5' : 'border-muted'
-                  }`}>
-                    <CardContent 
+                  <Card
+                    className={`cursor-pointer border-2 transition-colors ${
+                      !scanConfig.useCredentialProfiles
+                        ? 'border-primary bg-primary/5'
+                        : 'border-muted'
+                    }`}
+                  >
+                    <CardContent
                       className="p-4"
-                      onClick={() => setScanConfig(prev => ({ ...prev, useCredentialProfiles: false }))}
+                      onClick={() =>
+                        setScanConfig((prev) => ({ ...prev, useCredentialProfiles: false }))
+                      }
                     >
                       <div className="flex items-center gap-3">
                         <Settings className="w-5 h-5 text-amber-600" />
@@ -339,7 +371,9 @@ export function NetworkDiscovery() {
                       <Label>Username</Label>
                       <Input
                         value={fallbackCredentials.username}
-                        onChange={(e) => setFallbackCredentials(prev => ({ ...prev, username: e.target.value }))}
+                        onChange={(e) =>
+                          setFallbackCredentials((prev) => ({ ...prev, username: e.target.value }))
+                        }
                         disabled={isScanning}
                       />
                     </div>
@@ -347,9 +381,14 @@ export function NetworkDiscovery() {
                       <Label>Password</Label>
                       <div className="relative">
                         <Input
-                          type={showPassword ? "text" : "password"}
+                          type={showPassword ? 'text' : 'password'}
                           value={fallbackCredentials.password}
-                          onChange={(e) => setFallbackCredentials(prev => ({ ...prev, password: e.target.value }))}
+                          onChange={(e) =>
+                            setFallbackCredentials((prev) => ({
+                              ...prev,
+                              password: e.target.value,
+                            }))
+                          }
                           disabled={isScanning}
                         />
                         <Button
@@ -359,7 +398,11 @@ export function NetworkDiscovery() {
                           className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 p-0"
                           onClick={() => setShowPassword(!showPassword)}
                         >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -376,15 +419,17 @@ export function NetworkDiscovery() {
                   </div>
                   <Progress value={scanProgress} className="h-2" />
                   <p className="text-sm text-muted-foreground">
-                    {scanProgress < 100 ? `Progress: ${Math.round(scanProgress)}%` : 'Processing results...'}
+                    {scanProgress < 100
+                      ? `Progress: ${Math.round(scanProgress)}%`
+                      : 'Processing results...'}
                   </p>
                 </div>
               )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  onClick={startNetworkScan} 
+                <Button
+                  onClick={startNetworkScan}
                   disabled={isScanning}
                   size="lg"
                   className="flex-1"
@@ -401,16 +446,31 @@ export function NetworkDiscovery() {
                     </>
                   )}
                 </Button>
-                
-                <Button 
-                  onClick={triggerAutoOrchestration}
-                  variant="outline"
-                  size="lg"
-                  className="flex-1 sm:flex-initial"
-                >
-                  <Play className="w-5 h-5 mr-2" />
-                  Trigger Auto-Orchestration
-                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" size="lg" className="flex-1 sm:flex-initial">
+                      <Play className="w-5 h-5 mr-2" />
+                      Trigger Auto-Orchestration
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Auto-Orchestration</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Auto-Orchestration analyzes discovered servers and automatically generates a
+                        firmware update plan that respects your maintenance policies. This may
+                        schedule update jobs across your infrastructure.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={triggerAutoOrchestration}>
+                        Start
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </CardContent>
           </Card>
@@ -441,7 +501,7 @@ export function NetworkDiscovery() {
                       Ready for inventory
                     </Badge>
                   </div>
-                  
+
                   <div className="grid gap-3 max-h-96 overflow-y-auto">
                     {discoveredServers.map((server, index) => (
                       <Card key={index} className="border-l-4 border-l-green-500">
@@ -486,11 +546,7 @@ export function NetworkDiscovery() {
                 <div className="text-center py-6">
                   <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
                   <p className="text-muted-foreground mb-3">No credential profiles configured</p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setShowCredentialForm(true)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => setShowCredentialForm(true)}>
                     <Plus className="w-4 h-4 mr-2" />
                     Create First Profile
                   </Button>
@@ -512,9 +568,9 @@ export function NetworkDiscovery() {
                       </div>
                     ))}
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="w-full"
                     onClick={() => setShowCredentialForm(true)}
                   >
@@ -529,46 +585,50 @@ export function NetworkDiscovery() {
                 <div className="space-y-3 p-4 border rounded-lg bg-background">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">New Profile</span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setShowCredentialForm(false)}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setShowCredentialForm(false)}>
                       ✕
                     </Button>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Input
                       placeholder="Profile name"
                       value={newProfile.name}
-                      onChange={(e) => setNewProfile(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setNewProfile((prev) => ({ ...prev, name: e.target.value }))}
                     />
                     <Input
                       placeholder="Description (optional)"
                       value={newProfile.description}
-                      onChange={(e) => setNewProfile(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) =>
+                        setNewProfile((prev) => ({ ...prev, description: e.target.value }))
+                      }
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <Input
                         placeholder="Username"
                         value={newProfile.username}
-                        onChange={(e) => setNewProfile(prev => ({ ...prev, username: e.target.value }))}
+                        onChange={(e) =>
+                          setNewProfile((prev) => ({ ...prev, username: e.target.value }))
+                        }
                       />
                       <Input
                         type="password"
                         placeholder="Password"
                         value={newProfile.password}
-                        onChange={(e) => setNewProfile(prev => ({ ...prev, password: e.target.value }))}
+                        onChange={(e) =>
+                          setNewProfile((prev) => ({ ...prev, password: e.target.value }))
+                        }
                       />
                     </div>
                     <Input
                       placeholder="IP Range (optional)"
                       value={newProfile.ipRange}
-                      onChange={(e) => setNewProfile(prev => ({ ...prev, ipRange: e.target.value }))}
+                      onChange={(e) =>
+                        setNewProfile((prev) => ({ ...prev, ipRange: e.target.value }))
+                      }
                     />
                   </div>
-                  
+
                   <Button size="sm" className="w-full" onClick={handleCreateProfile}>
                     Create Profile
                   </Button>
@@ -590,29 +650,23 @@ export function NetworkDiscovery() {
                 <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
                 <div>
                   <div className="font-medium text-sm">Redfish API</div>
-                  <div className="text-xs text-muted-foreground">
-                    Modern Dell PowerEdge servers
-                  </div>
+                  <div className="text-xs text-muted-foreground">Modern Dell PowerEdge servers</div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
                 <HardDrive className="w-5 h-5 text-blue-600 flex-shrink-0" />
                 <div>
                   <div className="font-medium text-sm">IPMI Protocol</div>
-                  <div className="text-xs text-muted-foreground">
-                    Legacy BMC access
-                  </div>
+                  <div className="text-xs text-muted-foreground">Legacy BMC access</div>
                 </div>
               </div>
-              
+
               <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg">
                 <Zap className="w-5 h-5 text-amber-600 flex-shrink-0" />
                 <div>
                   <div className="font-medium text-sm">Service Tags</div>
-                  <div className="text-xs text-muted-foreground">
-                    Dell warranty integration
-                  </div>
+                  <div className="text-xs text-muted-foreground">Dell warranty integration</div>
                 </div>
               </div>
             </CardContent>
