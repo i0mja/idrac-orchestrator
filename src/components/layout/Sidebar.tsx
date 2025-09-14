@@ -1,13 +1,11 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
-  Server,
   Users,
   Settings,
   Activity,
   Shield,
   Database,
-  Download,
   Building2,
   Bell,
   Network,
@@ -25,8 +23,7 @@ type PageType =
   | "alerts"
   | "vcenter"
   | "scheduler"
-  | "discovery"
-  | "ome";
+  | "discovery";
 
 interface SidebarProps {
   currentPage: PageType;
@@ -42,8 +39,7 @@ const menuItems: Array<{
 }> = [
   { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
-  { id: "discovery", label: "Network Discovery", icon: Search, roles: ["admin", "operator"] },
-  { id: "ome", label: "Discovery & Assets", icon: Server, roles: ["admin", "operator"] },
+  { id: "discovery", label: "Discovery", icon: Search, roles: ["admin", "operator"] },
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Infrastructure & Operations", icon: Building2, roles: ["admin", "operator"] },
   { id: "scheduler", label: "Command & Control", icon: Calendar, roles: ["admin", "operator"] },

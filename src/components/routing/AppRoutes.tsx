@@ -5,15 +5,12 @@ import NotFound from "@/pages/NotFound";
 import { EnhancedDashboard } from "@/components/dashboard/EnhancedDashboard";
 import { ComprehensiveGlobalInventory } from "@/components/inventory/ComprehensiveGlobalInventory";
 import { EnhancedCommandControl } from "@/components/scheduler/EnhancedCommandControl";
-import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import EnhancedAlertsEventsPage from "@/components/alerts/EnhancedAlertsEventsPage";
 import VCenterManagement from "@/pages/VCenterManagement";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
-import { OmePage } from "@/pages/ome/OmePage";
-
-import { NetworkDiscovery } from "@/components/discovery/NetworkDiscovery";
+import { DiscoveryPage } from "@/pages/DiscoveryPage";
 import { EnterpriseManagement } from "@/components/enterprise/EnterpriseManagement";
 
 export function AppRoutes() {
@@ -23,10 +20,9 @@ export function AppRoutes() {
       <Route path="/" element={<AppLayout />}>
         <Route index element={<EnhancedDashboard />} />
         <Route path="inventory" element={<ComprehensiveGlobalInventory />} />
-        <Route path="discovery" element={<NetworkDiscovery />} />
+        <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="scheduler" element={<EnhancedCommandControl />} />
         <Route path="enterprise" element={<EnterpriseManagement />} />
-        <Route path="ome" element={<OmePage />} />
         <Route path="alerts" element={<EnhancedAlertsEventsPage />} />
         <Route path="vcenter" element={<VCenterManagement />} />
         <Route path="health" element={<HealthChecks />} />
