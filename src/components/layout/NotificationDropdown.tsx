@@ -3,7 +3,6 @@ import { Bell, Check, CheckCheck, AlertTriangle, Info, AlertCircle, X } from 'lu
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useNotifications, type Notification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
@@ -125,46 +124,28 @@ export function NotificationDropdown() {
           )}
         </div>
         
-        <div className="max-h-96">
-          {loading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              Loading notifications...
+        {loading ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            Loading notifications...
+          </div>
+        ) : notifications.length === 0 ? (
+          <div className="p-4 text-center text-sm text-muted-foreground">
+            <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
+            No notifications
+          </div>
+        ) : (
+          <ScrollArea className="max-h-96">
+            <div className="p-2 space-y-2">
+              {notifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onAcknowledge={acknowledgeNotification}
+                />
+              ))}
             </div>
-          ) : notifications.length === 0 ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">
-              <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-              No notifications
-            </div>
-          ) : (
-            <ScrollArea className="h-full">
-              <div className="p-2 space-y-2">
-                {notifications.slice(0, 10).map((notification) => (
-                  <NotificationItem
-                    key={notification.id}
-                    notification={notification}
-                    onAcknowledge={acknowledgeNotification}
-                  />
-                ))}
-                
-                {notifications.length > 10 && (
-                  <>
-                    <Separator />
-                    <div className="text-center p-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        View all notifications in alerts page
-                      </Button>
-                    </div>
-                  </>
-                )}
-              </div>
-            </ScrollArea>
-          )}
-        </div>
+          </ScrollArea>
+        )}
       </PopoverContent>
     </Popover>
   );
