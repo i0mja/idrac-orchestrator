@@ -16,6 +16,7 @@ import SetupWizard from "@/components/setup/SetupWizard";
 import { CommandControlCenter } from "@/components/scheduler/CommandControlCenter";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
+import { Globe } from "lucide-react";
 
 type UserRole = "admin" | "operator" | "viewer";
 type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler";
@@ -98,7 +99,13 @@ export default function IdracUpdater() {
       case "alerts":
         return <AlertsEventsPage />;
       case "vcenter":
-        return <div className="text-center py-12">vCenter Management is being migrated to /vcenter route</div>;
+        return <div className="text-center py-12">
+          <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-lg font-medium mb-2">vCenter Management</h3>
+          <p className="text-muted-foreground">
+            Please use the dedicated vCenter management section
+          </p>
+        </div>;
       case "scheduler":
         return <CommandControlCenter />;
       case "users":

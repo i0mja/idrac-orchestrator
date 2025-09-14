@@ -27,14 +27,14 @@ export function VCenterInfrastructure() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">Virtual Infrastructure Overview</h2>
           <p className="text-muted-foreground">
             Monitor your virtualized environment across all vCenter servers
           </p>
         </div>
-        <Button variant="outline" className="flex-shrink-0">
+        <Button variant="outline" className="w-full sm:w-auto">
           <RefreshCw className="w-4 h-4 mr-2" />
           <span className="hidden sm:inline">Refresh All</span>
           <span className="sm:hidden">Refresh</span>

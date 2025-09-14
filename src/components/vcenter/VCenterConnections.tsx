@@ -240,7 +240,7 @@ export function VCenterConnections() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold">vCenter Connections</h2>
           <p className="text-muted-foreground">
@@ -249,7 +249,7 @@ export function VCenterConnections() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={resetForm}>
+            <Button onClick={resetForm} className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-2" />
               Add vCenter
             </Button>
