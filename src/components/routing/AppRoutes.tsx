@@ -6,6 +6,7 @@ import { EnhancedDashboard } from "@/components/dashboard/EnhancedDashboard";
 import { EnhancedGlobalInventory } from "@/components/inventory/EnhancedGlobalInventory";
 import { EnhancedCommandControl } from "@/components/scheduler/EnhancedCommandControl";
 import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
+import EnhancedAlertsEventsPage from "@/components/alerts/EnhancedAlertsEventsPage";
 import VCenterManagement from "@/pages/VCenterManagement";
 import { HealthChecks } from "@/components/health/HealthChecks";
 import { UserManagement } from "@/components/users/UserManagement";
@@ -24,7 +25,7 @@ export function AppRoutes() {
         <Route path="discovery" element={<NetworkDiscovery />} />
         <Route path="scheduler" element={<EnhancedCommandControl />} />
         <Route path="enterprise" element={<EnterpriseManagement />} />
-        <Route path="alerts" element={<AlertsEventsPage />} />
+        <Route path="alerts" element={<EnhancedAlertsEventsPage />} />
         <Route path="vcenter" element={<VCenterManagement />} />
         <Route path="health" element={<HealthChecks />} />
         <Route path="users" element={<UserManagement />} />

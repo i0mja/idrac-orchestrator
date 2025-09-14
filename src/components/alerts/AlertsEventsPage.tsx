@@ -26,8 +26,7 @@ const AlertsEventsPage = () => {
     warningEvents,
     unacknowledgedCount,
     acknowledgeEvent,
-    acknowledgeAllEvents,
-    triggerAutoOrchestration
+    acknowledgeAllEvents
   } = useSystemEvents();
 
   const getSeverityIcon = (severity: string) => {
@@ -84,14 +83,6 @@ const AlertsEventsPage = () => {
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-        <Button 
-          onClick={triggerAutoOrchestration}
-          className="flex items-center justify-center gap-2 w-full sm:w-auto"
-          disabled={loading}
-        >
-          <Play className="h-4 w-4" />
-          Trigger Auto-Orchestration
-        </Button>
         {unacknowledgedCount > 0 && (
           <Button 
             onClick={acknowledgeAllEvents}

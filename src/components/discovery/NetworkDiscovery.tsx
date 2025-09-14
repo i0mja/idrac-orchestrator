@@ -25,8 +25,10 @@ import {
   EyeOff,
   Info,
   Shield,
-  Wifi
+  Wifi,
+  Play
 } from "lucide-react";
+import { useSystemEvents } from '@/hooks/useSystemEvents';
 
 interface DiscoveryResult {
   hostname: string;
@@ -75,6 +77,7 @@ export function NetworkDiscovery() {
 
   const [datacenters, setDatacenters] = useState<DatacenterInfo[]>([]);
   const { profiles, createProfile, refreshData } = useCredentialProfiles();
+  const { triggerAutoOrchestration } = useSystemEvents();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -378,25 +381,37 @@ export function NetworkDiscovery() {
                 </div>
               )}
 
-              {/* Start Scan Button */}
-              <Button 
-                onClick={startNetworkScan} 
-                disabled={isScanning}
-                size="lg"
-                className="w-full"
-              >
-                {isScanning ? (
-                  <>
-                    <Clock className="w-5 h-5 mr-2 animate-spin" />
-                    Scanning Network...
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5 mr-2" />
-                    Start Network Discovery
-                  </>
-                )}
-              </Button>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button 
+                  onClick={startNetworkScan} 
+                  disabled={isScanning}
+                  size="lg"
+                  className="flex-1"
+                >
+                  {isScanning ? (
+                    <>
+                      <Clock className="w-5 h-5 mr-2 animate-spin" />
+                      Scanning Network...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-5 h-5 mr-2" />
+                      Start Network Discovery
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  onClick={triggerAutoOrchestration}
+                  variant="outline"
+                  size="lg"
+                  className="flex-1 sm:flex-initial"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  Trigger Auto-Orchestration
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
