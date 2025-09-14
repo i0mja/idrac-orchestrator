@@ -1,41 +1,53 @@
-export interface IdracCreds {
-  username: string;
-  password: string;
+export interface IdracCreds { username: string; password: string; }
+
+function auth(creds: IdracCreds) {
+  return 'Basic ' + Buffer.from(`${creds.username}:${creds.password}`).toString('base64');
 }
 
 export async function simpleUpdate(idracHost: string, creds: IdracCreds, imageUri: string) {
-  const res = await fetch(`https://${idracHost}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate`, {
+  const url = `https://${idracHost}/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate`;
+  const res = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Basic ' + Buffer.from(`${creds.username}:${creds.password}`).toString('base64'),
-    },
-    body: JSON.stringify({ ImageURI: imageUri, TransferProtocol: 'HTTP', Targets: [] }),
+    headers: { 'content-type': 'application/json', authorization: auth(creds) },
+    body: JSON.stringify({ ImageURI: imageUri, TransferProtocol: 'HTTP', Targets: [] })
   });
-  if (!res.ok) {
-    throw new Error('SimpleUpdate failed');
-  }
-  const jobLocation = res.headers.get('Location') || '';
+  if (!res.ok) throw new Error(`SimpleUpdate failed: ${res.status}`);
+  const loc = res.headers.get('location') || '';
+  const jobLocation = loc.startsWith('http') ? loc : `https://${idracHost}${loc}`;
   return { jobLocation };
 }
 
 export async function getJob(jobLocation: string, creds: IdracCreds) {
-  const res = await fetch(jobLocation, {
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(`${creds.username}:${creds.password}`).toString('base64'),
-    },
-  });
-  return (await res.json()) as any;
+  const res = await fetch(jobLocation, { headers: { authorization: auth(creds) } });
+  if (!res.ok) throw new Error(`getJob failed: ${res.status}`);
+  return res.json();
 }
 
-export async function waitForJob(jobLocation: string, creds: IdracCreds, timeoutMs = 300000) {
+export async function softwareInventory(idracHost: string, creds: IdracCreds) {
+  const res = await fetch(`https://${idracHost}/redfish/v1/UpdateService/SoftwareInventory`, {
+    headers: { authorization: auth(creds) }
+  });
+  if (!res.ok) throw new Error(`SoftwareInventory failed: ${res.status}`);
+  return res.json();
+}
+
+export async function waitForJob(jobLocation: string, creds: IdracCreds, timeoutMs = 300_000) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const job = await getJob(jobLocation, creds);
-    const state = job.TaskState || job.JobState;
+    const state = job.TaskState || job.JobState || job.Status || '';
     if (state === 'Completed') return job;
     if (state === 'Exception' || state === 'Failed') throw new Error('Job failed');
     await new Promise((r) => setTimeout(r, 5000));
   }
   throw new Error('Timeout waiting for job');
+}
+
+export async function waitForIdrac(idracHost: string, creds: IdracCreds, timeoutMs = 600_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try { await softwareInventory(idracHost, creds); return true; }
+    catch { await new Promise((r) => setTimeout(r, 5000)); }
+  }
+  throw new Error('iDRAC not responding within timeout');
 }
