@@ -18,7 +18,20 @@ export function DiscoveryPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Page Header */}
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <Wifi className="w-6 h-6 text-white" />
+        </div>
+        <div>
+          <h1 className="text-4xl font-bold text-gradient">Network Discovery</h1>
+          <p className="text-muted-foreground text-lg">
+            Discover Dell servers with iDRAC access across your network infrastructure
+          </p>
+        </div>
+      </div>
+
       {/* Navigation Bar */}
       <div className="border-b border-border bg-card rounded-lg overflow-hidden">
         <div className="flex">
