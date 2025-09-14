@@ -1,25 +1,20 @@
-export interface Probers {
+export type DetectFns = {
   redfish: () => Promise<boolean>;
   wsman: () => Promise<boolean>;
   racadm: () => Promise<boolean>;
   ipmi?: () => Promise<boolean>;
-}
+};
 
-export interface DetectResult {
-  mgmtKind: string;
-  features: Record<string, boolean>;
-}
+export async function detectCapabilities(fns: DetectFns) {
+  const redfish = await fns.redfish().catch(() => false);
+  if (redfish) return { mgmtKind: 'idrac9', features: { redfish: true, wsman: false, racadm: false, ipmi: false } };
 
-export async function detectCapabilities(probers: Probers): Promise<DetectResult> {
-  if (await probers.redfish()) {
-    return { mgmtKind: 'idrac9', features: { redfish: true } };
-  }
-  if (await probers.wsman()) {
-    return { mgmtKind: 'lc', features: { wsman: true, lc: true } };
-  }
-  if (await probers.racadm()) {
-    return { mgmtKind: 'racadm', features: { racadm: true } };
-  }
-  const ipmi = probers.ipmi ? await probers.ipmi() : false;
-  return { mgmtKind: 'unknown', features: { ipmi } };
+  const wsman = await fns.wsman().catch(() => false);
+  if (wsman) return { mgmtKind: 'idrac7', features: { redfish: false, wsman: true, racadm: false, ipmi: false } };
+
+  const racadm = await fns.racadm().catch(() => false);
+  if (racadm) return { mgmtKind: 'drac5', features: { redfish: false, wsman: false, racadm: true, ipmi: false } };
+
+  const ipmi = fns.ipmi ? await fns.ipmi().catch(() => false) : false;
+  return { mgmtKind: 'unknown', features: { redfish: false, wsman: false, racadm: false, ipmi } };
 }
