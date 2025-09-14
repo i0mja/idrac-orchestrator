@@ -13,8 +13,7 @@ type PageType =
   | "alerts"
   | "vcenter"
   | "scheduler"
-  | "discovery"
-  | "ome";
+  | "discovery";
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -32,8 +31,6 @@ export function AppLayout() {
         return "global-inventory";
       case "/discovery":
         return "discovery";
-      case "/ome":
-        return "ome";
       case "/scheduler":
         return "scheduler";
       case "/enterprise":
@@ -64,9 +61,6 @@ export function AppLayout() {
         break;
       case "discovery":
         navigate("/discovery");
-        break;
-      case "ome":
-        navigate("/ome");
         break;
       case "scheduler":
         navigate("/scheduler");
