@@ -60,57 +60,53 @@ const AlertsEventsPage = () => {
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center space-x-2">
-          <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading alerts and events...</span>
-        </div>
+      <div className="flex justify-center items-center h-64">
+        <RefreshCw className="w-6 h-6 animate-spin" />
+        <span className="ml-2">Loading alerts and events...</span>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-4xl font-bold text-gradient">Alerts & Events</h1>
-            <p className="text-muted-foreground text-lg">
-              Monitor system events and auto-orchestration activities
-            </p>
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
+          <AlertTriangle className="w-6 h-6 text-white" />
         </div>
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-          <Button 
-            onClick={triggerAutoOrchestration}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto"
-            disabled={loading}
-          >
-            <Play className="h-4 w-4" />
-            <span className="hidden sm:inline">Trigger Auto-Orchestration</span>
-            <span className="sm:hidden">Trigger</span>
-          </Button>
-          {unacknowledgedCount > 0 && (
-            <Button 
-              onClick={acknowledgeAllEvents}
-              variant="outline"
-              className="flex items-center justify-center gap-2 w-full sm:w-auto"
-            >
-              <BellOff className="h-4 w-4" />
-              <span className="hidden sm:inline">Acknowledge All ({unacknowledgedCount})</span>
-              <span className="sm:hidden">Ack All ({unacknowledgedCount})</span>
-            </Button>
-          )}
+        <div>
+          <h1 className="text-4xl font-bold text-gradient">Alerts & Events</h1>
+          <p className="text-muted-foreground text-lg">
+            Monitor system events and auto-orchestration activities
+          </p>
         </div>
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+        <Button 
+          onClick={triggerAutoOrchestration}
+          className="flex items-center justify-center gap-2 w-full sm:w-auto"
+          disabled={loading}
+        >
+          <Play className="h-4 w-4" />
+          Trigger Auto-Orchestration
+        </Button>
+        {unacknowledgedCount > 0 && (
+          <Button 
+            onClick={acknowledgeAllEvents}
+            variant="outline"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto"
+          >
+            <BellOff className="h-4 w-4" />
+            Acknowledge All ({unacknowledgedCount})
+          </Button>
+        )}
+      </div>
+
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="card-enterprise">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Critical Events</CardTitle>
             <XCircle className="h-4 w-4 text-destructive" />
@@ -123,33 +119,33 @@ const AlertsEventsPage = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-enterprise">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Warnings</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+            <AlertTriangle className="h-4 w-4 text-warning" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-500">{warningEvents.length}</div>
+            <div className="text-2xl font-bold text-warning">{warningEvents.length}</div>
             <p className="text-xs text-muted-foreground">
               Need review
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-enterprise">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Unacknowledged</CardTitle>
-            <Bell className="h-4 w-4 text-blue-500" />
+            <Bell className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-500">{unacknowledgedCount}</div>
+            <div className="text-2xl font-bold text-primary">{unacknowledgedCount}</div>
             <p className="text-xs text-muted-foreground">
               Pending review
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="card-enterprise">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Events</CardTitle>
             <Info className="h-4 w-4 text-muted-foreground" />
@@ -164,9 +160,12 @@ const AlertsEventsPage = () => {
       </div>
 
       {/* Events List */}
-      <Card>
+      <Card className="card-enterprise">
         <CardHeader>
-          <CardTitle>Recent Events</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="w-5 h-5" />
+            Recent Events
+          </CardTitle>
           <CardDescription>
             System events, auto-orchestration activities, and alerts
           </CardDescription>
@@ -175,18 +174,19 @@ const AlertsEventsPage = () => {
           <ScrollArea className="h-[600px]">
             <div className="space-y-4">
               {events.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Info className="h-8 w-8 mx-auto mb-2" />
-                  <p>No events found</p>
+                <div className="text-center py-12">
+                  <Info className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground text-lg">No events found</p>
+                  <p className="text-sm text-muted-foreground mt-1">Events will appear here as they occur</p>
                 </div>
               ) : (
                 events.map((event) => (
-                  <div key={event.id} className="border rounded-lg p-4 space-y-3">
+                  <div key={event.id} className="p-4 rounded-lg bg-gradient-subtle border border-border/50">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
                         {getSeverityIcon(event.severity)}
                         <div>
-                          <h4 className="font-semibold">{event.title}</h4>
+                          <h4 className="font-semibold text-foreground">{event.title}</h4>
                           <p className="text-sm text-muted-foreground">{event.description}</p>
                         </div>
                       </div>
@@ -206,7 +206,7 @@ const AlertsEventsPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mt-3">
                       <div className="flex items-center space-x-4">
                         <span className="flex items-center space-x-1">
                           <Clock className="h-3 w-3" />
@@ -214,19 +214,19 @@ const AlertsEventsPage = () => {
                         </span>
                         <span>Type: {event.event_type}</span>
                         {event.acknowledged && (
-                          <span className="text-green-500">✓ Acknowledged</span>
+                          <span className="text-success">✓ Acknowledged</span>
                         )}
                       </div>
                     </div>
 
                     {event.metadata && Object.keys(event.metadata).length > 0 && (
                       <>
-                        <Separator />
+                        <Separator className="my-3" />
                         <details className="text-xs">
                           <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
                             Event Details
                           </summary>
-                          <pre className="mt-2 p-2 bg-muted rounded text-xs overflow-auto">
+                          <pre className="mt-2 p-3 bg-muted rounded text-xs overflow-auto">
                             {JSON.stringify(event.metadata, null, 2)}
                           </pre>
                         </details>
