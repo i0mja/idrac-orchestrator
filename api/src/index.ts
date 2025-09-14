@@ -1,0 +1,34 @@
+import Fastify from 'fastify';
+import swagger from 'fastify-swagger';
+import config from './config/index.js';
+import hostsRoutes from './routes/hosts.js';
+import plansRoutes from './routes/plans.js';
+import healthRoutes from './routes/health.js';
+
+const app = Fastify({ logger: { transport: { target: 'pino-pretty' } } });
+
+app.register(swagger, {
+  routePrefix: '/docs',
+  openapi: { info: { title: 'iDRAC Orchestrator API', version: '1.0.0' } },
+  exposeRoute: true,
+});
+
+app.addHook('preHandler', (req, reply, done) => {
+  const auth = req.headers['authorization'];
+  if (config.API_KEY && auth !== `Bearer ${config.API_KEY}`) {
+    reply.code(401).send({ error: 'unauthorized' });
+    return;
+  }
+  done();
+});
+
+app.register(hostsRoutes);
+app.register(plansRoutes);
+app.register(healthRoutes);
+
+app.listen({ port: config.API_PORT, host: '0.0.0.0' })
+  .then((addr) => app.log.info(`listening on ${addr}`))
+  .catch((err) => {
+    app.log.error(err);
+    process.exit(1);
+  });
