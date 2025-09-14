@@ -2,7 +2,7 @@ import { Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
-import { EnhancedDashboard } from "@/components/dashboard/EnhancedDashboard";
+import { EnterpriseDashboard } from "@/components/dashboard/EnterpriseDashboard";
 import { ComprehensiveGlobalInventory } from "@/components/inventory/ComprehensiveGlobalInventory";
 import { EnhancedCommandControl } from "@/components/scheduler/EnhancedCommandControl";
 import EnhancedAlertsEventsPage from "@/components/alerts/EnhancedAlertsEventsPage";
@@ -18,7 +18,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/auth" element={<Auth />} />
       <Route path="/" element={<AppLayout />}>
-        <Route index element={<EnhancedDashboard />} />
+        <Route index element={<EnterpriseDashboard />} />
         <Route path="inventory" element={<ComprehensiveGlobalInventory />} />
         <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="scheduler" element={<EnhancedCommandControl />} />
