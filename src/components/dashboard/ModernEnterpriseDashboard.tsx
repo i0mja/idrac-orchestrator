@@ -7,7 +7,7 @@ import { useSystemEvents } from '@/hooks/useSystemEvents';
 import { useVCenterService } from '@/hooks/useVCenterService';
 import { useFirmwarePackages } from '@/hooks/useFirmwarePackages';
 import { useMaintenanceWindows } from '@/hooks/useMaintenanceWindows';
-import { DashboardConfig, DashboardWidget, DEFAULT_WIDGETS } from './DashboardConfig';
+import DashboardConfig, { type DashboardWidget, DEFAULT_WIDGETS } from './DashboardConfig';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

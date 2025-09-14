@@ -246,3 +246,4 @@ export function DashboardConfig({ isOpen, onClose, widgets, onUpdateWidgets }: D
 }
 
 export { DEFAULT_WIDGETS };
+export default DashboardConfig;
