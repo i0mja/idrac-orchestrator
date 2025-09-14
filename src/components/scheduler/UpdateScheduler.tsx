@@ -576,6 +576,140 @@ export function UpdateScheduler() {
         </TabsContent>
       </Tabs>
 
+      {/* Create Job Dialog */}
+      <Dialog open={isCreateJobDialogOpen} onOpenChange={setIsCreateJobDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Schedule Update Job</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Job Name</Label>
+              <Input placeholder="Enter job name" />
+            </div>
+            <div>
+              <Label>Server</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select server" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="demo">Demo Server</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Firmware Package</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select package" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bios">BIOS Update v2.1</SelectItem>
+                  <SelectItem value="idrac">iDRAC Update v5.2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Schedule</Label>
+              <Input type="datetime-local" />
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setIsCreateJobDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1"
+                onClick={() => {
+                  toast({
+                    title: "Job Scheduled",
+                    description: "Update job has been scheduled successfully"
+                  });
+                  setIsCreateJobDialogOpen(false);
+                }}
+              >
+                Schedule
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Maintenance Window Dialog */}
+      <Dialog open={isCreateWindowDialogOpen} onOpenChange={setIsCreateWindowDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Maintenance Window</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Window Name</Label>
+              <Input placeholder="Enter window name" />
+            </div>
+            <div>
+              <Label>Datacenter</Label>
+              <Select>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select datacenter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dc1">DC1-East</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>Start Date</Label>
+                <Input type="date" />
+              </div>
+              <div>
+                <Label>Start Time</Label>
+                <Input type="time" defaultValue="02:00" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label>End Time</Label>
+                <Input type="time" defaultValue="06:00" />
+              </div>
+              <div>
+                <Label>Max Concurrent</Label>
+                <Input type="number" defaultValue="3" min="1" max="10" />
+              </div>
+            </div>
+            <div>
+              <Label>Description</Label>
+              <Textarea placeholder="Optional description" />
+            </div>
+            <div className="flex gap-2 pt-4">
+              <Button 
+                variant="outline" 
+                className="flex-1"
+                onClick={() => setIsCreateWindowDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                className="flex-1"
+                onClick={() => {
+                  toast({
+                    title: "Window Created",
+                    description: "Maintenance window has been created successfully"
+                  });
+                  setIsCreateWindowDialogOpen(false);
+                }}
+              >
+                Create
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Job Details Dialog */}
       {selectedJob && (
         <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
