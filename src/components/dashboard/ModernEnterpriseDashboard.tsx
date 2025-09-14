@@ -34,7 +34,19 @@ export function ModernEnterpriseDashboard() {
 
   const [widgets, setWidgets] = useState<DashboardWidget[]>(() => {
     const saved = localStorage.getItem('dashboard-widgets');
-    return saved ? JSON.parse(saved) : DEFAULT_WIDGETS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved) as Partial<DashboardWidget>[];
+        // Merge stored widget preferences with defaults to preserve icons and metadata
+        return DEFAULT_WIDGETS.map((defaults) => {
+          const stored = parsed.find((w) => w.id === defaults.id);
+          return { ...defaults, ...stored, icon: defaults.icon };
+        });
+      } catch {
+        return DEFAULT_WIDGETS;
+      }
+    }
+    return DEFAULT_WIDGETS;
   });
   const [configOpen, setConfigOpen] = useState(false);
 
@@ -43,7 +55,14 @@ export function ModernEnterpriseDashboard() {
   // Save to localStorage when widgets change
   const handleUpdateWidgets = useCallback((newWidgets: DashboardWidget[]) => {
     setWidgets(newWidgets);
-    localStorage.setItem('dashboard-widgets', JSON.stringify(newWidgets));
+    // Store only serializable widget settings to localStorage
+    const storageWidgets = newWidgets.map(({ id, enabled, order, size }) => ({
+      id,
+      enabled,
+      order,
+      size,
+    }));
+    localStorage.setItem('dashboard-widgets', JSON.stringify(storageWidgets));
     toast({
       title: "Dashboard Updated",
       description: "Your dashboard configuration has been saved.",
