@@ -3,7 +3,17 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 
-type PageType = "dashboard" | "global-inventory" | "enterprise" | "health" | "users" | "settings" | "alerts" | "vcenter" | "scheduler" | "discovery";
+type PageType =
+  | "dashboard"
+  | "global-inventory"
+  | "enterprise"
+  | "health"
+  | "users"
+  | "settings"
+  | "alerts"
+  | "vcenter"
+  | "scheduler"
+  | "discovery";
 
 export function AppLayout() {
   const navigate = useNavigate();

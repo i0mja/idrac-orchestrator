@@ -37,3 +37,112 @@ export async function getPlanStatus(id: string) {
   });
   return res.json();
 }
+
+// OME connections
+export async function createOmeConnection(input: {
+  name: string;
+  baseUrl: string;
+  vaultPath: string;
+}): Promise<{ id: string }> {
+  const res = await fetch(`${BASE_URL}/ome/connections`, {
+    method: 'POST',
+    headers: authHeaders('application/json'),
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listOmeRuns(
+  connectionId: string
+): Promise<{ runs: any[]; cacheSummary: any }> {
+  const res = await fetch(`${BASE_URL}/ome/${connectionId}/runs`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function omeDiscoverPreview(
+  connectionId: string,
+  filter?: string
+): Promise<{ runId: string; total: number; stats: any; sample: any[] }> {
+  const params = new URLSearchParams();
+  if (filter) params.set('filter', filter);
+  const res = await fetch(
+    `${BASE_URL}/ome/${connectionId}/discover/preview?${params.toString()}`,
+    { headers: authHeaders() }
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function omeDiscoverRun(
+  connectionId: string,
+  filter?: string
+): Promise<{ runId: string; stats: any }> {
+  const params = new URLSearchParams();
+  if (filter) params.set('filter', filter);
+  const res = await fetch(
+    `${BASE_URL}/ome/${connectionId}/discover/run?${params.toString()}`,
+    { method: 'POST', headers: authHeaders() }
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function omeSchedule(
+  connectionId: string,
+  everyMinutes: number,
+  filter?: string
+): Promise<{ scheduled: boolean; jobId: string }> {
+  const res = await fetch(`${BASE_URL}/ome/${connectionId}/schedule`, {
+    method: 'POST',
+    headers: authHeaders('application/json'),
+    body: JSON.stringify({ everyMinutes, filter }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function omeCancelSchedule(
+  connectionId: string
+): Promise<{ cancelled: boolean }> {
+  const res = await fetch(`${BASE_URL}/ome/${connectionId}/schedule`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function omeResolveDevice(
+  connectionId: string,
+  hostId: string
+): Promise<{ found: boolean; omeDeviceId?: number }> {
+  const res = await fetch(
+    `${BASE_URL}/ome/${connectionId}/resolve/${hostId}`,
+    { method: 'POST', headers: authHeaders() }
+  );
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listHosts(): Promise<
+  Array<{
+    id: string;
+    fqdn: string;
+    mgmtIp: string;
+    model?: string | null;
+    serviceTag?: string | null;
+    vcenterUrl?: string | null;
+    clusterMoid?: string | null;
+    hostMoid?: string | null;
+    mgmtKind?: string | null;
+    tags?: string[] | null;
+  }>
+> {
+  const res = await fetch(`${BASE_URL}/hosts`, { headers: authHeaders() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
