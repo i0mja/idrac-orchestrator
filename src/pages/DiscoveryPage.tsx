@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { NetworkDiscovery } from '@/components/discovery/NetworkDiscovery';
 import { DiscoveryTab as OmeDiscoveryTab } from '@/pages/ome/DiscoveryTab';
 import { AssetsTab } from '@/pages/ome/AssetsTab';
@@ -11,24 +10,48 @@ export function DiscoveryPage() {
   const [activeTab, setActiveTab] = useState('network');
 
   const tabs = [
-    { id: 'network', label: 'Network Discovery', icon: Wifi },
-    { id: 'ome-discovery', label: 'OME Discovery', icon: Server },
-    { id: 'ome-assets', label: 'OME Assets', icon: Database },
-    { id: 'ome-runs', label: 'OME Runs', icon: Activity },
+    {
+      id: 'network',
+      label: 'Network Discovery',
+      icon: Wifi,
+      description:
+        'Discover Dell servers with iDRAC access across your network infrastructure',
+    },
+    {
+      id: 'ome-discovery',
+      label: 'OME Discovery',
+      icon: Server,
+      description:
+        'Initiate device discovery through an OpenManage Enterprise instance',
+    },
+    {
+      id: 'ome-assets',
+      label: 'OME Assets',
+      icon: Database,
+      description:
+        'Review and manage assets synced from OpenManage Enterprise',
+    },
+    {
+      id: 'ome-runs',
+      label: 'OME Runs',
+      icon: Activity,
+      description:
+        'Track discovery job history and status from OpenManage Enterprise',
+    },
   ];
+
+  const active = tabs.find((t) => t.id === activeTab) ?? tabs[0];
 
   return (
     <div className="space-y-8">
       {/* Page Header */}
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-gradient-primary rounded-xl flex items-center justify-center">
-          <Wifi className="w-6 h-6 text-white" />
+          <active.icon className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-4xl font-bold text-gradient">Network Discovery</h1>
-          <p className="text-muted-foreground text-lg">
-            Discover Dell servers with iDRAC access across your network infrastructure
-          </p>
+          <h1 className="text-4xl font-bold text-gradient">{active.label}</h1>
+          <p className="text-muted-foreground text-lg">{active.description}</p>
         </div>
       </div>
 

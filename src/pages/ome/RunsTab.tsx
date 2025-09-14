@@ -10,6 +10,9 @@ export function RunsTab() {
 
   return (
     <div className="space-y-4">
+      <p className="text-muted-foreground">
+        Review recent discovery runs executed in OpenManage Enterprise.
+      </p>
       <OmeConnectionManager />
       {data.length === 0 && <p>No runs yet—try a Preview or Import.</p>}
       {data.length > 0 && (
