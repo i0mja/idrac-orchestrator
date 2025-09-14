@@ -19,14 +19,6 @@ export function DiscoveryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold">Network Discovery</h1>
-        <p className="text-muted-foreground">
-          Discover Dell servers with iDRAC access across your network infrastructure
-        </p>
-      </div>
-
       {/* Navigation Bar */}
       <div className="border-b border-border bg-card rounded-lg overflow-hidden">
         <div className="flex">
