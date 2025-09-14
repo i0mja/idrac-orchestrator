@@ -10,9 +10,15 @@ interface RemoteCommandRequest {
   command: {
     id: string;
     name: string;
-    target_type: 'cluster' | 'host_group' | 'individual';
+    target_type: 'cluster' | 'host_group' | 'individual' | 'datacenter';
     target_names: string[];
-    command_type: 'update_firmware' | 'reboot' | 'maintenance_mode' | 'health_check';
+    command_type:
+      | 'update_firmware'
+      | 'reboot'
+      | 'maintenance_mode'
+      | 'health_check'
+      | 'security_patch'
+      | 'idrac_update';
     command_parameters: Record<string, any>;
     scheduled_at?: string;
   };
@@ -104,6 +110,9 @@ async function getTargetServers(supabase: any, targetType: string, targetNames: 
     case 'individual':
       query = query.in('hostname', targetNames)
       break
+    case 'datacenter':
+      query = query.in('datacenter', targetNames)
+      break
   }
 
   const { data: servers, error } = await query
@@ -164,6 +173,13 @@ async function executeSpecificCommand(server: any, credentials: any, command: an
     case 'update_firmware':
       await executeFirmwareUpdate(server, credentials, command_parameters)
       break
+    case 'security_patch':
+    case 'idrac_update':
+      await executeFirmwareUpdate(server, credentials, {
+        ...command_parameters,
+        update_category: command_type
+      })
+      break
     case 'reboot':
       await executeReboot(server, credentials, command_parameters)
       break
@@ -188,7 +204,7 @@ async function executeFirmwareUpdate(server: any, credentials: any, parameters: 
   
   // For now, we'll simulate the command
   const updateCommand = {
-    action: 'update_firmware',
+    action: parameters.update_category || 'update_firmware',
     target_version: parameters.version_target || 'latest',
     reboot_required: parameters.reboot_required || true,
     server_id: server.id,
