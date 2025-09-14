@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useDashboardActions } from './_widgetActions';
+import { WIDGET_BEHAVIORS } from './DashboardConfig';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useEnhancedServers } from '@/hooks/useEnhancedServers';
 import { useUpdateJobs } from '@/hooks/useUpdateJobs';
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export function ModernEnterpriseDashboard() {
-  const navigate = useNavigate();
+  const { doAction } = useDashboardActions();
   const { servers, datacenters, eolAlerts, loading: serversLoading, refresh: refreshServers } = useEnhancedServers();
   const { jobs, loading: jobsLoading } = useUpdateJobs();
   const { events, criticalEvents, warningEvents, loading: eventsLoading } = useSystemEvents();
@@ -130,48 +131,54 @@ export function ModernEnterpriseDashboard() {
       icon: Search,
       label: "Discover Servers",
       description: "Network discovery",
-      onClick: () => navigate('/discovery'),
+      action: { type: 'navigate', path: '/discovery' },
       gradient: "from-blue-500 to-cyan-500"
     },
     {
       icon: PlayCircle,
       label: "Schedule Command",
       description: "Remote execution",
-      onClick: () => navigate('/scheduler'),
+      action: { type: 'navigate', path: '/scheduler' },
       gradient: "from-green-500 to-emerald-500"
     },
     {
       icon: Bell,
       label: "View Alerts",
       description: "System notifications",
-      onClick: () => navigate('/alerts'),
+      action: { type: 'navigate', path: '/alerts' },
       gradient: "from-orange-500 to-red-500"
     },
     {
       icon: Calendar,
       label: "Maintenance",
       description: "Schedule downtime",
-      onClick: () => navigate('/scheduler'),
+      action: { type: 'navigate', path: '/scheduler' },
       gradient: "from-purple-500 to-pink-500"
     },
     {
       icon: BarChart3,
       label: "Analytics",
       description: "Performance insights",
-      onClick: () => navigate('/inventory'),
+      action: { type: 'navigate', path: '/inventory' },
       gradient: "from-indigo-500 to-blue-500"
     },
     {
       icon: Settings,
       label: "System Config",
       description: "Global settings",
-      onClick: () => navigate('/settings'),
+      action: { type: 'navigate', path: '/settings' },
       gradient: "from-gray-500 to-slate-500"
     }
   ];
 
   const renderWidget = (widget: DashboardWidget) => {
     const { fleetStats, securityStats, updateStats, alertStats } = dashboardStats;
+    const behavior = WIDGET_BEHAVIORS[widget.id];
+    const headerProps = {
+      role: 'button' as const,
+      tabIndex: 0,
+      onClick: () => doAction(behavior?.primaryAction)
+    };
     
     const getWidgetClassName = () => {
       switch (widget.size) {
@@ -187,7 +194,7 @@ export function ModernEnterpriseDashboard() {
       case 'fleet-overview':
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border-primary/20 hover:shadow-xl transition-all duration-300`}>
-            <CardHeader className="pb-2">
+            <CardHeader {...headerProps} className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-2 rounded-lg bg-gradient-to-r from-primary to-primary-glow">
                   <Server className="h-5 w-5 text-white" />
@@ -226,13 +233,29 @@ export function ModernEnterpriseDashboard() {
                 </div>
               </div>
             </CardContent>
+            {behavior?.quickLinks && (
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {behavior.quickLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      variant="link"
+                      size="sm"
+                      onClick={() => doAction(link.action)}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         );
 
       case 'security-dashboard':
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-orange-500/5 via-red-500/10 to-orange-500/5 border-orange-500/20 hover:shadow-xl transition-all duration-300`}>
-            <CardHeader className="pb-2">
+            <CardHeader {...headerProps} className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-2 rounded-lg bg-gradient-to-r from-orange-500 to-red-500">
                   <Shield className="h-5 w-5 text-white" />
@@ -261,6 +284,22 @@ export function ModernEnterpriseDashboard() {
                 </div>
               </div>
             </CardContent>
+            {behavior?.quickLinks && (
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {behavior.quickLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      variant="link"
+                      size="sm"
+                      onClick={() => doAction(link.action)}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         );
 
@@ -284,7 +323,7 @@ export function ModernEnterpriseDashboard() {
 
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-blue-500/5 via-cyan-500/10 to-blue-500/5 border-blue-500/20 hover:shadow-xl transition-all duration-300`}>
-            <CardHeader className="pb-2">
+            <CardHeader {...headerProps} className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-cyan-500">
                   <Activity className="h-5 w-5 text-white" />
@@ -313,13 +352,29 @@ export function ModernEnterpriseDashboard() {
                 </div>
               </ScrollArea>
             </CardContent>
+            {behavior?.quickLinks && (
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {behavior.quickLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      variant="link"
+                      size="sm"
+                      onClick={() => doAction(link.action)}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         );
 
       case 'quick-actions':
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-purple-500/5 via-pink-500/10 to-purple-500/5 border-purple-500/20 hover:shadow-xl transition-all duration-300`}>
-            <CardHeader className="pb-2">
+            <CardHeader {...headerProps} className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500">
                   <Zap className="h-5 w-5 text-white" />
@@ -336,7 +391,7 @@ export function ModernEnterpriseDashboard() {
                       key={action.label}
                       variant="outline"
                       size="sm"
-                      onClick={action.onClick}
+                      onClick={() => doAction(action.action)}
                       className="h-auto p-3 flex-col gap-1 hover:shadow-md transition-all"
                     >
                       <ActionIcon className="h-4 w-4" />
@@ -346,13 +401,29 @@ export function ModernEnterpriseDashboard() {
                 })}
               </div>
             </CardContent>
+            {behavior?.quickLinks && (
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {behavior.quickLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      variant="link"
+                      size="sm"
+                      onClick={() => doAction(link.action)}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         );
 
       default:
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} opacity-60 border-dashed hover:shadow-xl transition-all duration-300`}>
-            <CardHeader className="pb-2">
+            <CardHeader {...headerProps} className="pb-2">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <div className="p-2 rounded-lg bg-muted">
                   <WidgetIcon className="h-5 w-5 text-muted-foreground" />
@@ -363,6 +434,22 @@ export function ModernEnterpriseDashboard() {
             <CardContent>
               <p className="text-sm text-muted-foreground">Widget coming soon...</p>
             </CardContent>
+            {behavior?.quickLinks && (
+              <CardContent className="pt-0">
+                <div className="flex flex-wrap gap-2">
+                  {behavior.quickLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      variant="link"
+                      size="sm"
+                      onClick={() => doAction(link.action)}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </div>
+              </CardContent>
+            )}
           </Card>
         );
     }
@@ -415,7 +502,12 @@ export function ModernEnterpriseDashboard() {
                   {dashboardStats.alertStats.critical} critical alerts detected across your infrastructure
                 </p>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/alerts')} className="hover:shadow-md transition-all">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => doAction({ type: 'navigate', path: '/alerts' })}
+                className="hover:shadow-md transition-all"
+              >
                 <Eye className="h-4 w-4 mr-2" />
                 View Alerts
                 <ArrowRight className="h-4 w-4 ml-2" />
@@ -444,7 +536,7 @@ export function ModernEnterpriseDashboard() {
                 <Button
                   key={action.label}
                   variant="outline"
-                  onClick={action.onClick}
+                  onClick={() => doAction(action.action)}
                   className="h-auto p-4 flex-col gap-2 hover:shadow-lg hover:scale-105 transition-all duration-200 bg-white/50 backdrop-blur-sm"
                 >
                   <div className={`p-2 rounded-lg bg-gradient-to-r ${action.gradient}`}>

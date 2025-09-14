@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,14 @@ import {
 export default function VCenterManagement() {
   const [activeTab, setActiveTab] = useState("overview");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchParams] = useSearchParams();
+  const clusterFilter = searchParams.get('cluster') || undefined;
+  const hostFilter = searchParams.get('host') || undefined;
+
+  useEffect(() => {
+    if (clusterFilter) setActiveTab('clusters');
+    if (hostFilter) setActiveTab('infrastructure');
+  }, [clusterFilter, hostFilter]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -258,11 +267,11 @@ export default function VCenterManagement() {
         </TabsContent>
 
         <TabsContent value="infrastructure">
-          <VCenterInfrastructure />
+          <VCenterInfrastructure hostFilter={hostFilter} />
         </TabsContent>
 
         <TabsContent value="clusters">
-          <VCenterClusters />
+          <VCenterClusters clusterFilter={clusterFilter} />
         </TabsContent>
       </Tabs>
     </div>

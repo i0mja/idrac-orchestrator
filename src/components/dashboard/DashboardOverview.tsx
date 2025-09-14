@@ -6,11 +6,11 @@ import { useServers } from "@/hooks/useServers";
 import { useUpdateJobs } from "@/hooks/useUpdateJobs";
 import { useFirmwarePackages } from "@/hooks/useFirmwarePackages";
 import { formatDistanceToNow } from "date-fns";
-import { 
-  Server, 
-  Download, 
-  Clock, 
-  AlertTriangle, 
+import {
+  Server,
+  Download,
+  Clock,
+  AlertTriangle,
   CheckCircle,
   XCircle,
   Cpu,
@@ -18,11 +18,13 @@ import {
   RefreshCw,
   TrendingUp
 } from "lucide-react";
+import { useDashboardActions, type Action } from './_widgetActions';
 
 export function DashboardOverview() {
   const { servers, loading: serversLoading } = useServers();
   const { jobs, loading: jobsLoading } = useUpdateJobs();
   const { packages } = useFirmwarePackages();
+  const { doAction } = useDashboardActions();
 
   // Calculate real statistics
   const totalServers = servers.length;
@@ -33,7 +35,7 @@ export function DashboardOverview() {
   // Get recent jobs (last 4)
   const recentJobs = jobs.slice(0, 4);
 
-  const stats = [
+  const stats: Array<{title:string;value:string;change:string;icon:any;color:string;action:Action}> = [
     {
       title: "Total Servers",
       value: totalServers.toString(),
@@ -51,28 +53,32 @@ export function DashboardOverview() {
         return createdDate > weekAgo;
       }).length}` : "0",
       icon: Server,
-      color: "text-primary"
+      color: "text-primary",
+      action: { type: 'navigate', path: '/inventory' }
     },
     {
-      title: "Online Servers", 
+      title: "Online Servers",
       value: onlineServers.toString(),
       change: `${Math.round((onlineServers / (totalServers || 1)) * 100)}%`,
       icon: CheckCircle,
-      color: "text-success"
+      color: "text-success",
+      action: { type: 'navigate', path: '/inventory', params: { status: 'online' } }
     },
     {
       title: "Pending Updates",
       value: pendingJobs.toString(),
       change: pendingJobs > 0 ? `${pendingJobs} waiting` : "None",
       icon: Download,
-      color: "text-warning"
+      color: "text-warning",
+      action: { type: 'navigate', path: '/scheduler', params: { tab: 'history' } }
     },
     {
       title: "Failed Jobs",
       value: failedJobs.toString(),
       change: failedJobs > 0 ? "Need attention" : "All good",
       icon: XCircle,
-      color: failedJobs > 0 ? "text-error" : "text-success"
+      color: failedJobs > 0 ? "text-error" : "text-success",
+      action: { type: 'navigate', path: '/scheduler', params: { tab: 'history', status: 'failed' } }
     }
   ];
 
@@ -123,7 +129,13 @@ export function DashboardOverview() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={stat.title} className="card-enterprise">
+            <Card
+              key={stat.title}
+              className="card-enterprise"
+              role="button"
+              tabIndex={0}
+              onClick={() => doAction(stat.action)}
+            >
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>

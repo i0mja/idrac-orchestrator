@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import type { Action } from './_widgetActions';
 import { 
   Server, Shield, RefreshCw, MapPin, Activity, HardDrive, 
   TrendingUp, Calendar, Database, Cloud, AlertTriangle, 
@@ -21,6 +22,8 @@ export interface DashboardWidget {
   enabled: boolean;
   order: number;
   size: 'small' | 'medium' | 'large';
+  primaryAction?: Action;
+  quickLinks?: Array<{ label: string; action: Action; icon?: React.ElementType }>;
 }
 
 const DEFAULT_WIDGETS: DashboardWidget[] = [
@@ -41,6 +44,42 @@ const DEFAULT_WIDGETS: DashboardWidget[] = [
   { id: 'user-activity', name: 'User Activity', description: 'Admin actions and system access logs', icon: Users, category: 'security', enabled: false, order: 15, size: 'medium' },
   { id: 'uptime-monitor', name: 'Uptime Monitor', description: 'Service availability and downtime tracking', icon: Clock, category: 'operations', enabled: false, order: 16, size: 'medium' },
 ];
+
+export const WIDGET_BEHAVIORS: Record<string, Pick<DashboardWidget,'primaryAction'|'quickLinks'>> = {
+  'fleet-overview': {
+    primaryAction: { type: 'navigate', path: '/inventory' },
+    quickLinks: [
+      { label: 'Online',  action: { type:'navigate', path:'/inventory', params:{ status:'online' } } },
+      { label: 'Offline', action: { type:'navigate', path:'/inventory', params:{ status:'offline' } } },
+      { label: 'Updating',action: { type:'navigate', path:'/inventory', params:{ status:'updating' } } },
+    ]
+  },
+  'update-status': {
+    primaryAction: { type:'navigate', path:'/scheduler', params:{ tab:'history' } }
+  },
+  'firmware-compliance': {
+    primaryAction: { type:'navigate', path:'/scheduler', params:{ tab:'templates' } },
+    quickLinks: [
+      { label:'Non-compliant', action:{ type:'navigate', path:'/inventory', params:{ tag:'noncompliant' } } }
+    ]
+  },
+  'datacenter-health': {
+    primaryAction: { type:'navigate', path:'/health', params:{ category:'idrac' } }
+  },
+  'alert-summary': {
+    primaryAction: { type:'navigate', path:'/alerts' },
+    quickLinks: [
+      { label:'Critical', action:{ type:'navigate', path:'/alerts', params:{ severity:'critical' } } },
+      { label:'Warnings', action:{ type:'navigate', path:'/alerts', params:{ severity:'warning' } } },
+    ]
+  },
+  'maintenance-windows': {
+    primaryAction: { type:'navigate', path:'/scheduler', params:{ tab:'windows' } },
+    quickLinks: [{ label:'Create window', action:{ type:'modal', id:'maintenance' } }]
+  },
+  'vcenter-integration': { primaryAction: { type:'navigate', path:'/vcenter' } },
+  'os-distribution':     { primaryAction: { type:'navigate', path:'/inventory', params:{ view:'os' } } },
+};
 
 interface DashboardConfigProps {
   isOpen: boolean;

@@ -15,8 +15,9 @@ import {
   CheckCircle
 } from "lucide-react";
 
-export function VCenterClusters() {
+export function VCenterClusters({ clusterFilter }: { clusterFilter?: string }) {
   const { vcenters, clusters } = useVCenterService();
+  const filteredClusters = clusterFilter ? clusters.filter(c => c.name === clusterFilter || c.id === clusterFilter) : clusters;
 
   const getMaintenancePolicyBadge = (policy: string) => {
     const policies = {
@@ -53,7 +54,7 @@ export function VCenterClusters() {
 
       {/* Cluster Cards */}
       <div className="grid gap-4">
-        {clusters.length === 0 ? (
+        {filteredClusters.length === 0 ? (
           <Card>
             <CardContent className="text-center py-12">
               <Database className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -68,7 +69,7 @@ export function VCenterClusters() {
             </CardContent>
           </Card>
         ) : (
-          clusters.map((cluster) => {
+          filteredClusters.map((cluster) => {
             const vcenter = vcenters.find(vc => vc.id === cluster.vcenter_id);
             const healthPercentage = cluster.total_hosts > 0 
               ? Math.round((cluster.active_hosts / cluster.total_hosts) * 100)

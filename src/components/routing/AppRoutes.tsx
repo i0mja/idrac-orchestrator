@@ -3,6 +3,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import Auth from "@/pages/Auth";
 import NotFound from "@/pages/NotFound";
 import { ModernEnterpriseDashboard } from "@/components/dashboard/ModernEnterpriseDashboard";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { ComprehensiveGlobalInventory } from "@/components/inventory/ComprehensiveGlobalInventory";
 import { EnhancedCommandControl } from "@/components/scheduler/EnhancedCommandControl";
 import EnhancedAlertsEventsPage from "@/components/alerts/EnhancedAlertsEventsPage";
@@ -19,6 +20,7 @@ export function AppRoutes() {
       <Route path="/auth" element={<Auth />} />
       <Route path="/" element={<AppLayout />}>
         <Route index element={<ModernEnterpriseDashboard />} />
+        <Route path="legacy-dashboard" element={<DashboardOverview />} />
         <Route path="inventory" element={<ComprehensiveGlobalInventory />} />
         <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="scheduler" element={<EnhancedCommandControl />} />

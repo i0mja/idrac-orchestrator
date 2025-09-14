@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,24 @@ const EnhancedAlertsEventsPage = () => {
   const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
   const [bookmarkedEvents, setBookmarkedEvents] = useState<Set<string>>(new Set());
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const severity = searchParams.get('severity');
+    const source = searchParams.get('source');
+    const since = searchParams.get('since');
+    const eventId = searchParams.get('eventId');
+    if (severity) setSelectedSeverity(severity);
+    if (source) setSelectedEventType(source);
+    if (since) {
+      const date = new Date(since);
+      if (!isNaN(date.getTime())) setDateRange({ from: date, to: null });
+    }
+    if (eventId) {
+      const evt = events.find(e => e.id === eventId);
+      if (evt) setSelectedEvent(evt);
+    }
+  }, [searchParams, events]);
 
   // Auto-refresh functionality
   useEffect(() => {
