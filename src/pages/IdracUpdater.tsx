@@ -13,7 +13,7 @@ import { SettingsPage } from "@/components/settings/SettingsPage";
 import AlertsEventsPage from "@/components/alerts/AlertsEventsPage";
 import SetupWizard from "@/components/setup/SetupWizard";
 
-import { UpdateScheduler } from "@/components/scheduler/UpdateScheduler";
+import { CommandControlCenter } from "@/components/scheduler/CommandControlCenter";
 import { useSystemConfig } from "@/hooks/useSystemConfig";
 import { useAuth } from "@/hooks/useAuth";
 import { Globe } from "lucide-react";
@@ -107,7 +107,7 @@ export default function IdracUpdater() {
           </p>
         </div>;
       case "scheduler":
-        return <UpdateScheduler />;
+        return <CommandControlCenter />;
       case "users":
         return <UserManagement />;
       case "settings":
