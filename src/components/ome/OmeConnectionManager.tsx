@@ -92,7 +92,7 @@ export function OmeConnectionManager() {
                   <Label>Vault Path</Label>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="ghost" size="xs">?</Button>
+                      <Button variant="ghost" size="sm">?</Button>
                     </TooltipTrigger>
                     <TooltipContent>
                       Format: env:USER_ENV,PASS_ENV — server reads credentials from your API environment.
