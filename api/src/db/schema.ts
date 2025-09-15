@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, varchar, jsonb, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, varchar, jsonb, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
 
 export const hosts = pgTable('hosts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -50,5 +50,23 @@ export const hostRuns = pgTable('host_runs', {
   ctx: jsonb('ctx').$type<Record<string, unknown>>().notNull().default({}),
   attempts: integer('attempts').notNull().default(0),
   createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const vcenters = pgTable('vcenters', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  hostname: text('hostname').notNull(),
+  username: text('username').notNull(),
+  password: text('password').notNull(),
+  port: integer('port').notNull().default(443),
+  ignoreSsl: boolean('ignore_ssl').notNull().default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const systemConfig = pgTable('system_config', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').$type<Record<string, unknown>>().notNull(),
   updatedAt: timestamp('updated_at').defaultNow()
 });

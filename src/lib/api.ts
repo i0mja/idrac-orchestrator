@@ -1,10 +1,38 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
-const API_KEY = import.meta.env.VITE_API_KEY as string;
+import { API_BASE_URL } from '@/lib/env';
+
+const API_KEY = (import.meta.env.VITE_API_KEY as string | undefined) ?? '';
 
 function authHeaders(contentType?: string) {
-  const headers: Record<string, string> = { Authorization: `Bearer ${API_KEY}` };
-  if (contentType) headers['Content-Type'] = contentType;
+  const headers: Record<string, string> = {};
+  if (API_KEY) {
+    headers.Authorization = `Bearer ${API_KEY}`;
+  }
+  if (contentType) {
+    headers['Content-Type'] = contentType;
+  }
   return headers;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers: authHeaders()
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
+}
+
+export async function apiSend<T>(path: string, method: string, body?: unknown): Promise<T> {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: authHeaders(body ? 'application/json' : undefined),
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json();
 }
 
 export interface PlanPayload {
@@ -15,25 +43,25 @@ export interface PlanPayload {
 }
 
 export async function createPlan(payload: PlanPayload) {
-  const res = await fetch(`${BASE_URL}/plans`, {
+  const res = await fetch(`${API_BASE_URL}/plans`, {
     method: 'POST',
     headers: authHeaders('application/json'),
-    body: JSON.stringify(payload),
+    body: JSON.stringify(payload)
   });
   return res.json();
 }
 
 export async function discoverHost(id: string) {
-  const res = await fetch(`${BASE_URL}/hosts/${id}/discover`, {
+  const res = await fetch(`${API_BASE_URL}/hosts/${id}/discover`, {
     method: 'POST',
-    headers: authHeaders(),
+    headers: authHeaders()
   });
   return res.json();
 }
 
 export async function getPlanStatus(id: string) {
-  const res = await fetch(`${BASE_URL}/plans/${id}/status`, {
-    headers: authHeaders(),
+  const res = await fetch(`${API_BASE_URL}/plans/${id}/status`, {
+    headers: authHeaders()
   });
   return res.json();
 }
@@ -44,10 +72,10 @@ export async function createOmeConnection(input: {
   baseUrl: string;
   vaultPath: string;
 }): Promise<{ id: string }> {
-  const res = await fetch(`${BASE_URL}/ome/connections`, {
+  const res = await fetch(`${API_BASE_URL}/ome/connections`, {
     method: 'POST',
     headers: authHeaders('application/json'),
-    body: JSON.stringify(input),
+    body: JSON.stringify(input)
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -56,8 +84,8 @@ export async function createOmeConnection(input: {
 export async function listOmeRuns(
   connectionId: string
 ): Promise<{ runs: any[]; cacheSummary: any }> {
-  const res = await fetch(`${BASE_URL}/ome/${connectionId}/runs`, {
-    headers: authHeaders(),
+  const res = await fetch(`${API_BASE_URL}/ome/${connectionId}/runs`, {
+    headers: authHeaders()
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -70,7 +98,7 @@ export async function omeDiscoverPreview(
   const params = new URLSearchParams();
   if (filter) params.set('filter', filter);
   const res = await fetch(
-    `${BASE_URL}/ome/${connectionId}/discover/preview?${params.toString()}`,
+    `${API_BASE_URL}/ome/${connectionId}/discover/preview?${params.toString()}`,
     { headers: authHeaders() }
   );
   if (!res.ok) throw new Error(await res.text());
@@ -84,7 +112,7 @@ export async function omeDiscoverRun(
   const params = new URLSearchParams();
   if (filter) params.set('filter', filter);
   const res = await fetch(
-    `${BASE_URL}/ome/${connectionId}/discover/run?${params.toString()}`,
+    `${API_BASE_URL}/ome/${connectionId}/discover/run?${params.toString()}`,
     { method: 'POST', headers: authHeaders() }
   );
   if (!res.ok) throw new Error(await res.text());
@@ -96,10 +124,10 @@ export async function omeSchedule(
   everyMinutes: number,
   filter?: string
 ): Promise<{ scheduled: boolean; jobId: string }> {
-  const res = await fetch(`${BASE_URL}/ome/${connectionId}/schedule`, {
+  const res = await fetch(`${API_BASE_URL}/ome/${connectionId}/schedule`, {
     method: 'POST',
     headers: authHeaders('application/json'),
-    body: JSON.stringify({ everyMinutes, filter }),
+    body: JSON.stringify({ everyMinutes, filter })
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -108,9 +136,9 @@ export async function omeSchedule(
 export async function omeCancelSchedule(
   connectionId: string
 ): Promise<{ cancelled: boolean }> {
-  const res = await fetch(`${BASE_URL}/ome/${connectionId}/schedule`, {
+  const res = await fetch(`${API_BASE_URL}/ome/${connectionId}/schedule`, {
     method: 'DELETE',
-    headers: authHeaders(),
+    headers: authHeaders()
   });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
@@ -121,7 +149,7 @@ export async function omeResolveDevice(
   hostId: string
 ): Promise<{ found: boolean; omeDeviceId?: number }> {
   const res = await fetch(
-    `${BASE_URL}/ome/${connectionId}/resolve/${hostId}`,
+    `${API_BASE_URL}/ome/${connectionId}/resolve/${hostId}`,
     { method: 'POST', headers: authHeaders() }
   );
   if (!res.ok) throw new Error(await res.text());
@@ -142,7 +170,29 @@ export async function listHosts(): Promise<
     tags?: string[] | null;
   }>
 > {
-  const res = await fetch(`${BASE_URL}/hosts`, { headers: authHeaders() });
+  const res = await fetch(`${API_BASE_URL}/hosts`, { headers: authHeaders() });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+// vCenters
+export interface VCenterPayload {
+  name: string;
+  hostname: string;
+  username: string;
+  password: string;
+  port?: number;
+  ignore_ssl?: boolean;
+}
+
+export const listVCenters = () => apiGet<any[]>('/vcenters');
+export const createVCenter = (payload: VCenterPayload) =>
+  apiSend<any>('/vcenters', 'POST', payload);
+export const updateVCenter = (id: string, payload: VCenterPayload) =>
+  apiSend<any>(`/vcenters/${id}`, 'PUT', payload);
+export const deleteVCenter = (id: string) =>
+  apiSend<{ deleted: boolean; id: string }>(`/vcenters/${id}`, 'DELETE');
+
+// setup
+export const getSetup = () => apiGet<any | null>('/system/setup');
+export const putSetup = (cfg: any) => apiSend<{ ok: true }>(`/system/setup`, 'PUT', cfg);

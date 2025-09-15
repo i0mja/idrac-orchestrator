@@ -1,6 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { SUPABASE_ENABLED } from '@/lib/env';
+import {
+  listVCenters as apiListVCenters,
+  createVCenter as apiCreateVCenter,
+  updateVCenter as apiUpdateVCenter,
+  deleteVCenter as apiDeleteVCenter,
+} from '@/lib/api';
+import type { VCenterPayload } from '@/lib/api';
 
 interface VCenterConfig {
   id: string;
@@ -82,6 +90,13 @@ export const useVCenterService = () => {
     }
 
     try {
+      if (!SUPABASE_ENABLED) {
+        const data = await apiListVCenters();
+        setCachedData('vcenters', data);
+        setState(prev => ({ ...prev, vcenters: data }));
+        return data;
+      }
+
       const { data, error } = await supabase
         .from('vcenters')
         .select('*')
@@ -104,6 +119,11 @@ export const useVCenterService = () => {
   }, [getCachedData, setCachedData, toast]);
 
   const loadClusters = useCallback(async (vcenterId?: string) => {
+    if (!SUPABASE_ENABLED) {
+      setState(prev => ({ ...prev, clusters: [] }));
+      return [];
+    }
+
     const cacheKey = `clusters${vcenterId ? `-${vcenterId}` : ''}`;
     const cached = getCachedData(cacheKey);
     if (cached) {
@@ -171,8 +191,16 @@ export const useVCenterService = () => {
 
   // Core vCenter operations
   const testConnection = useCallback(async (vcenterId: string) => {
+    if (!SUPABASE_ENABLED) {
+      toast({
+        title: "API mode",
+        description: "Connection testing requires Supabase edge functions.",
+      });
+      return { success: false, error: 'supabase_disabled' };
+    }
+
     const operation = createOperation('connection_test', vcenterId);
-    
+
     try {
       updateOperation(operation.id, { status: 'running', progress: 50 });
 
@@ -198,11 +226,11 @@ export const useVCenterService = () => {
 
       return { success: true, data };
     } catch (error: any) {
-      updateOperation(operation.id, { 
-        status: 'failed', 
-        progress: 0, 
+      updateOperation(operation.id, {
+        status: 'failed',
+        progress: 0,
         error_message: error.message,
-        completed_at: new Date().toISOString() 
+        completed_at: new Date().toISOString()
       });
 
       toast({
@@ -216,8 +244,16 @@ export const useVCenterService = () => {
   }, [createOperation, updateOperation, removeOperation, toast]);
 
   const syncHosts = useCallback(async (vcenterId: string, clusterIds?: string[]) => {
+    if (!SUPABASE_ENABLED) {
+      toast({
+        title: "API mode",
+        description: "Host synchronization requires Supabase edge functions.",
+      });
+      return { success: false, error: 'supabase_disabled' };
+    }
+
     const operation = createOperation('host_sync', vcenterId);
-    
+
     try {
       updateOperation(operation.id, { status: 'running', progress: 10 });
 
@@ -281,8 +317,16 @@ export const useVCenterService = () => {
   }, [createOperation, updateOperation, removeOperation, loadVCenters, loadClusters, toast]);
 
   const fullSync = useCallback(async (vcenterId: string) => {
+    if (!SUPABASE_ENABLED) {
+      toast({
+        title: "API mode",
+        description: "Full synchronization requires Supabase edge functions.",
+      });
+      return { success: false, error: 'supabase_disabled' };
+    }
+
     const operation = createOperation('full_sync', vcenterId);
-    
+
     try {
       updateOperation(operation.id, { status: 'running', progress: 0 });
 
@@ -339,9 +383,17 @@ export const useVCenterService = () => {
 
   // Auto-sync based on schedules
   const scheduleAutoSync = useCallback((vcenterId: string, intervalMinutes: number = 60) => {
+    if (!SUPABASE_ENABLED) {
+      toast({
+        title: "API mode",
+        description: "Automatic synchronization requires Supabase edge functions.",
+      });
+      return () => undefined;
+    }
+
     const interval = setInterval(async () => {
       const lastSyncTime = state.lastSync[vcenterId];
-      const shouldSync = !lastSyncTime || 
+      const shouldSync = !lastSyncTime ||
         Date.now() - new Date(lastSyncTime).getTime() > intervalMinutes * 60 * 1000;
 
       if (shouldSync) {
@@ -350,10 +402,80 @@ export const useVCenterService = () => {
     }, intervalMinutes * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [state.lastSync, syncHosts]);
+  }, [state.lastSync, syncHosts, toast]);
+
+  const saveVCenter = useCallback(
+    async (input: VCenterPayload & { id?: string }) => {
+      const payload = {
+        name: input.name,
+        hostname: input.hostname,
+        username: input.username,
+        password: input.password,
+        port: input.port ?? 443,
+        ignore_ssl: input.ignore_ssl ?? true,
+      };
+
+      try {
+        if (!SUPABASE_ENABLED) {
+          if (input.id) {
+            await apiUpdateVCenter(input.id, payload);
+          } else {
+            await apiCreateVCenter(payload);
+          }
+        } else {
+          if (input.id) {
+            const { error } = await supabase
+              .from('vcenters')
+              .update({ ...payload, updated_at: new Date().toISOString() })
+              .eq('id', input.id);
+            if (error) throw error;
+          } else {
+            const { error } = await supabase
+              .from('vcenters')
+              .insert({ ...payload, updated_at: new Date().toISOString() });
+            if (error) throw error;
+          }
+        }
+
+        setCache(new Map());
+        await loadVCenters();
+      } catch (error) {
+        console.error('Failed to save vCenter:', error);
+        throw error;
+      }
+    },
+    [loadVCenters]
+  );
+
+  const deleteVCenter = useCallback(
+    async (id: string) => {
+      try {
+        if (!SUPABASE_ENABLED) {
+          await apiDeleteVCenter(id);
+        } else {
+          const { error } = await supabase
+            .from('vcenters')
+            .delete()
+            .eq('id', id);
+          if (error) throw error;
+        }
+
+        setCache(new Map());
+        await loadVCenters();
+      } catch (error) {
+        console.error('Failed to delete vCenter:', error);
+        throw error;
+      }
+    },
+    [loadVCenters]
+  );
 
   // Real-time subscriptions
   useEffect(() => {
+    if (!SUPABASE_ENABLED) {
+      return;
+    }
+
     const channel = supabase
       .channel('vcenter-changes')
       .on(
@@ -433,6 +555,8 @@ export const useVCenterService = () => {
     // Data loaders
     loadVCenters,
     loadClusters,
+    saveVCenter,
+    deleteVCenter,
 
     // Utilities
     getVCenterById,
