@@ -13,24 +13,25 @@
     "test": "tsx test/**/*.test.ts"
   },
   "dependencies": {
-    "fastify": "^4",
-    "pino-pretty": "^11",
+    "@fastify/cors": "^11.1.0",
     "@fastify/swagger": "^8",
     "@fastify/swagger-ui": "^1",
     "bullmq": "^5",
     "drizzle-orm": "^0.33",
+    "fastify": "^4",
     "ioredis": "^5",
     "pg": "^8",
     "pino": "^9",
+    "pino-pretty": "^11",
     "undici": "^6",
     "zod": "^3"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/pg": "^8",
+    "dotenv": "^16",
     "drizzle-kit": "^0.24",
     "tsx": "^4",
-    "typescript": "^5",
-    "dotenv": "^16"
+    "typescript": "^5"
   }
 }

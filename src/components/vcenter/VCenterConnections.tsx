@@ -7,7 +7,6 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useVCenterService } from "@/hooks/useVCenterService";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { 
@@ -34,7 +33,7 @@ interface VCenterConfig {
 }
 
 export function VCenterConnections() {
-  const { vcenters, loadVCenters, testConnection } = useVCenterService();
+  const { vcenters, testConnection, saveVCenter, deleteVCenter } = useVCenterService();
   const { toast } = useToast();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -73,42 +72,29 @@ export function VCenterConnections() {
     }
 
     try {
-      const vCenterData = {
+      const payload = {
         name: formData.name,
         hostname: formData.hostname,
         username: formData.username,
         password: formData.password,
         port: formData.port,
         ignore_ssl: formData.ignore_ssl,
-        updated_at: new Date().toISOString()
       };
 
       if (editingVCenter?.id) {
-        const { error } = await supabase
-          .from('vcenters')
-          .update(vCenterData)
-          .eq('id', editingVCenter.id);
-
-        if (error) throw error;
-
+        await saveVCenter({ ...payload, id: editingVCenter.id });
         toast({
           title: "vCenter Updated",
           description: "Configuration has been updated successfully",
         });
       } else {
-        const { error } = await supabase
-          .from('vcenters')
-          .insert(vCenterData);
-
-        if (error) throw error;
-
+        await saveVCenter(payload);
         toast({
           title: "vCenter Added",
           description: "New vCenter configuration has been saved",
         });
       }
 
-      await loadVCenters();
       setIsDialogOpen(false);
       resetForm();
     } catch (error: any) {
@@ -141,19 +127,13 @@ export function VCenterConnections() {
     }
 
     try {
-      const { error } = await supabase
-        .from('vcenters')
-        .delete()
-        .eq('id', vcenterId);
-
-      if (error) throw error;
+      await deleteVCenter(vcenterId);
 
       toast({
         title: "vCenter Deleted",
         description: "Configuration has been removed",
       });
 
-      await loadVCenters();
       setConnectionStatus(prev => {
         const updated = { ...prev };
         delete updated[vcenterId];
@@ -174,18 +154,11 @@ export function VCenterConnections() {
     
     try {
       const result = await testConnection(vcenterId);
+      const success = Boolean(result && result.success);
       setConnectionStatus(prev => ({
         ...prev,
-        [vcenterId]: result ? 'success' : 'error'
+        [vcenterId]: success ? 'success' : 'error'
       }));
-      
-      toast({
-        title: result ? "Connection Successful" : "Connection Failed",
-        description: result 
-          ? "vCenter connection is working properly" 
-          : "Failed to connect to vCenter server",
-        variant: result ? "default" : "destructive",
-      });
     } catch (error) {
       setConnectionStatus(prev => ({
         ...prev,

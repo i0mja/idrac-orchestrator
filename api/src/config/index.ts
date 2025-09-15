@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  API_PORT: z.coerce.number().default(8080),
-  API_BASE_URL: z.string().default('http://localhost:8080'),
+  API_PORT: z.coerce.number().default(8081),
+  API_BASE_URL: z.string().default('http://localhost:8081'),
   API_KEY: z.string().default('dev-api-key'),
+  DISABLE_WORKER: z.string().default('false'),
 
   PGHOST: z.string().default('localhost'),
   PGPORT: z.coerce.number().default(5432),

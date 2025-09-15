@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 import type { SetupConfig, SetupStep } from '@/types/setup';
 import type { DatabaseConfig, InfrastructureConfig } from '@/types/database';
 import { DatabaseAdapterFactory } from '@/adapters/DatabaseAdapterFactory';
+import { SUPABASE_ENABLED } from '@/lib/env';
+import { putSetup } from '@/lib/api';
 
 const STEPS: SetupStep[] = [
   { id: 'welcome', title: 'Welcome', description: 'Get started with iDRAC Updater Orchestrator' },
@@ -78,7 +80,15 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
 
   const setupDatabase = async () => {
     if (!formData.database || formData.backend_mode === 'supabase') return;
-    
+
+    if (!SUPABASE_ENABLED) {
+      toast({
+        title: "Skipping Automated Setup",
+        description: "Supabase integration is disabled. Configure the database manually in API mode.",
+      });
+      return;
+    }
+
     setIsTestingConnection(true);
     try {
       const adapter = DatabaseAdapterFactory.create(formData.database);
@@ -211,6 +221,21 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
 
     setIsCompleting(true);
     try {
+      if (!SUPABASE_ENABLED) {
+        const finalConfig = {
+          ...formData,
+          setup_completed: true,
+          setup_completed_at: new Date().toISOString()
+        };
+        await putSetup(finalConfig);
+        toast({
+          title: "Setup Complete!",
+          description: "Saved to API (no Supabase).",
+        });
+        await onComplete(formData);
+        return;
+      }
+
       await onComplete(formData);
       toast({
         title: "Setup Complete!",
@@ -1227,6 +1252,11 @@ export const EnhancedOOBEWizard = ({ onComplete }: OOBEWizardProps) => {
     <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 flex items-center justify-center p-4">
       <Card className="w-full max-w-5xl">
         <CardHeader className="text-center">
+          {!SUPABASE_ENABLED && (
+            <div className="flex justify-center mb-2">
+              <Badge variant="outline">API mode (no Supabase)</Badge>
+            </div>
+          )}
           <div className="flex justify-center mb-4">
             <div className="flex space-x-2">
               {STEPS.map((step, index) => (
