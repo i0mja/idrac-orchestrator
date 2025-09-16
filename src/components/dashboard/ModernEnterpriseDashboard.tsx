@@ -420,6 +420,540 @@ export function ModernEnterpriseDashboard() {
           </Card>
         );
 
+      case 'update-status':
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-green-500/5 via-emerald-500/10 to-green-500/5 border-green-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-500">
+                  <RefreshCw className="h-5 w-5 text-white" />
+                </div>
+                Update Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center mb-4">
+                <p className="text-3xl font-bold text-success">{updateStats.successRate}%</p>
+                <p className="text-sm text-muted-foreground">Success Rate</p>
+              </div>
+              <Progress value={updateStats.successRate} className="h-2 mb-4" />
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{updateStats.completed}</p>
+                  <p className="text-muted-foreground">Completed</p>
+                </div>
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="font-bold text-primary">{updateStats.running}</p>
+                  <p className="text-muted-foreground">Running</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{updateStats.pending}</p>
+                  <p className="text-muted-foreground">Pending</p>
+                </div>
+                <div className="text-center p-2 rounded bg-error/10">
+                  <p className="font-bold text-error">{updateStats.failed}</p>
+                  <p className="text-muted-foreground">Failed</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'datacenter-health':
+        const datacenterStats = datacenters.reduce((acc, dc) => {
+          const dcServers = servers.filter(s => s.datacenter === dc.name);
+          const online = dcServers.filter(s => s.status === 'online').length;
+          acc[dc.name] = {
+            total: dcServers.length,
+            online,
+            health: dcServers.length > 0 ? Math.round((online / dcServers.length) * 100) : 0
+          };
+          return acc;
+        }, {} as Record<string, { total: number; online: number; health: number }>);
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-cyan-500/5 via-blue-500/10 to-cyan-500/5 border-cyan-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500">
+                  <MapPin className="h-5 w-5 text-white" />
+                </div>
+                Datacenter Health
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <div className="space-y-2">
+                  {Object.entries(datacenterStats).slice(0, 4).map(([name, stats]) => (
+                    <div key={name} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium truncate">{name || 'Default'}</p>
+                        <p className="text-xs text-muted-foreground">{stats.online}/{stats.total} servers</p>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-sm font-bold ${stats.health >= 90 ? 'text-success' : stats.health >= 70 ? 'text-warning' : 'text-error'}`}>
+                          {stats.health}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        );
+
+      case 'firmware-compliance':
+        const complianceStats = {
+          total: packages.length,
+          upToDate: servers.filter(s => s.last_updated && 
+            new Date(s.last_updated) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+          ).length,
+          outdated: servers.filter(s => !s.last_updated || 
+            new Date(s.last_updated) <= new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+          ).length
+        };
+        const complianceRate = servers.length > 0 ? Math.round((complianceStats.upToDate / servers.length) * 100) : 0;
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-indigo-500/5 via-purple-500/10 to-indigo-500/5 border-indigo-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-500">
+                  <HardDrive className="h-5 w-5 text-white" />
+                </div>
+                Firmware Compliance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center mb-4">
+                <p className="text-3xl font-bold text-primary">{complianceRate}%</p>
+                <p className="text-sm text-muted-foreground">Compliance Rate</p>
+              </div>
+              <Progress value={complianceRate} className="h-2 mb-4" />
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{complianceStats.upToDate}</p>
+                  <p className="text-muted-foreground">Up to Date</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{packages.length}</p>
+                  <p className="text-muted-foreground">Packages</p>
+                </div>
+                <div className="text-center p-2 rounded bg-error/10">
+                  <p className="font-bold text-error">{complianceStats.outdated}</p>
+                  <p className="text-muted-foreground">Outdated</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'performance-metrics':
+        const performanceMetrics = {
+          avgResponseTime: 145,
+          throughput: 1250,
+          errorRate: 0.8,
+          uptime: 99.95
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-teal-500/5 via-green-500/10 to-teal-500/5 border-teal-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-teal-500 to-green-500">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                Performance Metrics
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="font-bold text-primary">{performanceMetrics.avgResponseTime}ms</p>
+                  <p className="text-muted-foreground">Avg Response</p>
+                </div>
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{performanceMetrics.throughput}</p>
+                  <p className="text-muted-foreground">Req/min</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{performanceMetrics.errorRate}%</p>
+                  <p className="text-muted-foreground">Error Rate</p>
+                </div>
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{performanceMetrics.uptime}%</p>
+                  <p className="text-muted-foreground">Uptime</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'maintenance-windows':
+        const upcomingWindows = maintenanceWindows.filter(w => 
+          new Date(w.scheduled_date) >= new Date() && w.status === 'scheduled'
+        ).slice(0, 3);
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-amber-500/5 via-orange-500/10 to-amber-500/5 border-amber-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500">
+                  <Calendar className="h-5 w-5 text-white" />
+                </div>
+                Maintenance Windows
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <div className="space-y-2">
+                  {upcomingWindows.length > 0 ? upcomingWindows.map((window) => (
+                    <div key={window.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium truncate">{window.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(window.scheduled_date).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="text-xs">
+                        {window.status}
+                      </Badge>
+                    </div>
+                  )) : (
+                    <div className="text-center p-4">
+                      <p className="text-sm text-muted-foreground">No scheduled maintenance</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        );
+
+      case 'os-distribution':
+        const osStats = servers.reduce((acc, server) => {
+          const os = server.operating_system || 'Unknown';
+          acc[os] = (acc[os] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>);
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-rose-500/5 via-pink-500/10 to-rose-500/5 border-rose-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-rose-500 to-pink-500">
+                  <Database className="h-5 w-5 text-white" />
+                </div>
+                OS Distribution
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <div className="space-y-2">
+                  {Object.entries(osStats).slice(0, 4).map(([os, count]) => (
+                    <div key={os} className="flex items-center justify-between p-2 rounded-lg bg-muted/30">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium truncate">{os}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-primary">{count}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {servers.length > 0 ? Math.round((count / servers.length) * 100) : 0}%
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        );
+
+      case 'vcenter-integration':
+        const vcenterStats = {
+          connected: vcenters.filter(v => v.name).length,
+          clusters: clusters.length,
+          totalHosts: clusters.reduce((sum, c) => sum + (c.total_hosts || 0), 0),
+          activeHosts: clusters.reduce((sum, c) => sum + (c.active_hosts || 0), 0)
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-sky-500/5 via-blue-500/10 to-sky-500/5 border-sky-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-sky-500 to-blue-500">
+                  <Cloud className="h-5 w-5 text-white" />
+                </div>
+                vCenter Integration
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="font-bold text-primary">{vcenterStats.connected}</p>
+                  <p className="text-muted-foreground">vCenters</p>
+                </div>
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{vcenterStats.clusters}</p>
+                  <p className="text-muted-foreground">Clusters</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{vcenterStats.totalHosts}</p>
+                  <p className="text-muted-foreground">Total Hosts</p>
+                </div>
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{vcenterStats.activeHosts}</p>
+                  <p className="text-muted-foreground">Active</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'alert-summary':
+        const alertPriority = events.filter(e => !e.acknowledged).slice(0, 5);
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-red-500/5 via-orange-500/10 to-red-500/5 border-red-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-red-500 to-orange-500">
+                  <AlertTriangle className="h-5 w-5 text-white" />
+                </div>
+                Alert Summary
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <div className="space-y-2">
+                  {alertPriority.length > 0 ? alertPriority.map((alert) => (
+                    <div key={alert.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className={`h-2 w-2 rounded-full mt-2 ${
+                        alert.severity === 'error' ? 'bg-error' :
+                        alert.severity === 'warning' ? 'bg-warning' : 'bg-primary'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{alert.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(alert.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-center p-4">
+                      <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
+                      <p className="text-sm text-success">All Clear</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        );
+
+      case 'capacity-planning':
+        const capacityMetrics = {
+          cpuUtilization: 68,
+          memoryUtilization: 72,
+          storageUtilization: 55,
+          projectedGrowth: 15
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-violet-500/5 via-purple-500/10 to-violet-500/5 border-violet-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-violet-500 to-purple-500">
+                  <TrendingUp className="h-5 w-5 text-white" />
+                </div>
+                Capacity Planning
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>CPU</span>
+                    <span>{capacityMetrics.cpuUtilization}%</span>
+                  </div>
+                  <Progress value={capacityMetrics.cpuUtilization} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Memory</span>
+                    <span>{capacityMetrics.memoryUtilization}%</span>
+                  </div>
+                  <Progress value={capacityMetrics.memoryUtilization} className="h-2" />
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Storage</span>
+                    <span>{capacityMetrics.storageUtilization}%</span>
+                  </div>
+                  <Progress value={capacityMetrics.storageUtilization} className="h-2" />
+                </div>
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="text-xs text-muted-foreground">6mo Projected Growth</p>
+                  <p className="font-bold text-primary">+{capacityMetrics.projectedGrowth}%</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'cost-analysis':
+        const costMetrics = {
+          monthlySpend: 45670,
+          optimization: 8500,
+          efficiency: 87,
+          trend: 'down'
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-emerald-500/5 via-teal-500/10 to-emerald-500/5 border-emerald-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
+                Cost Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center mb-4">
+                <p className="text-2xl font-bold text-primary">${(costMetrics.monthlySpend / 1000).toFixed(0)}k</p>
+                <p className="text-xs text-muted-foreground">Monthly Spend</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">${(costMetrics.optimization / 1000).toFixed(0)}k</p>
+                  <p className="text-muted-foreground">Savings</p>
+                </div>
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="font-bold text-primary">{costMetrics.efficiency}%</p>
+                  <p className="text-muted-foreground">Efficiency</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'backup-status':
+        const backupStats = {
+          protected: Math.floor(servers.length * 0.85),
+          lastBackup: 2,
+          success: 94,
+          storage: 2.4
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-slate-500/5 via-gray-500/10 to-slate-500/5 border-slate-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-slate-500 to-gray-500">
+                  <Archive className="h-5 w-5 text-white" />
+                </div>
+                Backup Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{backupStats.protected}</p>
+                  <p className="text-muted-foreground">Protected</p>
+                </div>
+                <div className="text-center p-2 rounded bg-primary/10">
+                  <p className="font-bold text-primary">{backupStats.lastBackup}h</p>
+                  <p className="text-muted-foreground">Last Backup</p>
+                </div>
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{backupStats.success}%</p>
+                  <p className="text-muted-foreground">Success Rate</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{backupStats.storage}TB</p>
+                  <p className="text-muted-foreground">Storage</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'user-activity':
+        const userActivities = events.filter(e => e.created_by).slice(0, 4);
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-blue-500/5 via-indigo-500/10 to-blue-500/5 border-blue-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                User Activity
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-32">
+                <div className="space-y-2">
+                  {userActivities.length > 0 ? userActivities.map((activity) => (
+                    <div key={activity.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className="h-2 w-2 rounded-full bg-primary mt-2" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{activity.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(activity.created_at).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  )) : (
+                    <div className="text-center p-4">
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        );
+
+      case 'uptime-monitor':
+        const uptimeStats = {
+          currentUptime: 99.94,
+          avgUptime: 99.87,
+          incidents: 2,
+          mttr: 18
+        };
+
+        return (
+          <Card key={widget.id} className={`${getWidgetClassName()} bg-gradient-to-br from-green-500/5 via-lime-500/10 to-green-500/5 border-green-500/20 hover:shadow-xl transition-all duration-300`}>
+            <CardHeader {...headerProps} className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-green-500 to-lime-500">
+                  <Clock className="h-5 w-5 text-white" />
+                </div>
+                Uptime Monitor
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center mb-4">
+                <p className="text-3xl font-bold text-success">{uptimeStats.currentUptime}%</p>
+                <p className="text-sm text-muted-foreground">Current Uptime</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="text-center p-2 rounded bg-success/10">
+                  <p className="font-bold text-success">{uptimeStats.avgUptime}%</p>
+                  <p className="text-muted-foreground">30d Average</p>
+                </div>
+                <div className="text-center p-2 rounded bg-warning/10">
+                  <p className="font-bold text-warning">{uptimeStats.incidents}</p>
+                  <p className="text-muted-foreground">Incidents</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
       default:
         return (
           <Card key={widget.id} className={`${getWidgetClassName()} opacity-60 border-dashed hover:shadow-xl transition-all duration-300`}>
