@@ -15,7 +15,14 @@ export function useDashboardActions() {
     if (a.type === 'navigate') {
       const search = a.params
         ? `?${createSearchParams(
-            Object.entries(a.params).flatMap(([k,v]) => Array.isArray(v) ? v.map(x => [k, String(x)]) : [[k, String(v)]])
+            Object.entries(a.params).reduce((acc, [k,v]) => {
+              if (Array.isArray(v)) {
+                v.forEach(x => acc.append(k, String(x)));
+              } else {
+                acc.append(k, String(v));
+              }
+              return acc;
+            }, new URLSearchParams())
           )}`
         : '';
       navigate(`${a.path}${search}`);

@@ -175,6 +175,7 @@ For custom deployments or development environments, see the detailed guides:
 
 ### Local Development
 
+#### Option 1: With Supabase (Full Features)
 1. Ensure [Node.js](https://nodejs.org/) 18 or 20 is installed.
 2. Copy `.env.example` to `.env` and fill in Supabase values.
 3. Install dependencies and start the dev server:
@@ -184,7 +185,25 @@ npm install
 npm run dev
 ```
 
-The app will be available at [http://localhost:8080](http://localhost:8080).
+#### Option 2: Local Only (No Supabase Required)
+1. Follow the comprehensive [Local Setup Guide](LOCAL_SETUP.md)
+2. Quick start:
+
+```bash
+# Frontend
+npm install
+cp .env.example .env  # Leave Supabase values empty
+npm run dev
+
+# API Backend (separate terminal)
+cd api
+npm install  
+cp .env.example .env  # Configure local database
+docker-compose up -d postgres redis  # Start local database
+npm run dev
+```
+
+The app will be available at [http://localhost:8080](http://localhost:8080) with API at [http://localhost:8081](http://localhost:8081).
 
 ### Docker
 
@@ -199,13 +218,14 @@ docker run -p 3000:3000 idrac-orchestrator
 
 ## 📚 Documentation
 
-| Guide                                  | Purpose                               |
-| -------------------------------------- | ------------------------------------- |
-| **[QUICK_START.md](QUICK_START.md)**   | 5-minute installation options         |
-| **[INSTALLATION.md](INSTALLATION.md)** | Detailed manual setup                 |
-| **[DEPLOYMENT.md](DEPLOYMENT.md)**     | Production deployment                 |
-| **[CODE_STYLE.md](CODE_STYLE.md)**     | Development standards and conventions |
-| **[agents.md](agents.md)**             | Technical architecture                |
+| Guide                                    | Purpose                               |
+| ---------------------------------------- | ------------------------------------- |
+| **[LOCAL_SETUP.md](LOCAL_SETUP.md)**     | **Local development without Supabase** |
+| **[QUICK_START.md](QUICK_START.md)**     | 5-minute installation options         |
+| **[INSTALLATION.md](INSTALLATION.md)**   | Detailed manual setup                 |
+| **[DEPLOYMENT.md](DEPLOYMENT.md)**       | Production deployment                 |
+| **[CODE_STYLE.md](CODE_STYLE.md)**       | Development standards and conventions |
+| **[agents.md](agents.md)**               | Technical architecture                |
 
 ## 🎯 Post-Installation
 

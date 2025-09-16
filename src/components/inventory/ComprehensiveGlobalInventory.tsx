@@ -1093,13 +1093,15 @@ export function ComprehensiveGlobalInventory() {
                     environment: "all",
                     datacenter: "all", 
                     status: "all",
+                    cluster: "all",
                     hostType: "all",
                     os: "all",
                     criticality: "all",
                     compliance: "all",
                     riskLevel: "all",
                     warrantyStatus: "all",
-                    lastSeen: "all"
+                    lastSeen: "all",
+                    tag: "all"
                   })}
                   className="h-8"
                 >

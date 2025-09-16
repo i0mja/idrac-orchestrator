@@ -16,7 +16,7 @@ import {
 
 export function VCenterInfrastructure({ hostFilter }: { hostFilter?: string }) {
   const { vcenters, clusters, lastSync } = useVCenterService();
-  const filteredClusters = hostFilter ? clusters.filter(c => c.hosts?.some(h => h.name === hostFilter || h.id === hostFilter)) : clusters;
+  const filteredClusters = hostFilter ? clusters.filter(c => c.total_hosts > 0) : clusters;
 
   const totalStats = {
     clusters: filteredClusters.length,

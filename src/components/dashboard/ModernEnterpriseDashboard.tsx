@@ -131,42 +131,42 @@ export function ModernEnterpriseDashboard() {
       icon: Search,
       label: "Discover Servers",
       description: "Network discovery",
-      action: { type: 'navigate', path: '/discovery' },
+      action: { type: 'navigate' as const, path: '/discovery' },
       gradient: "from-blue-500 to-cyan-500"
     },
     {
       icon: PlayCircle,
       label: "Schedule Command",
       description: "Remote execution",
-      action: { type: 'navigate', path: '/scheduler' },
+      action: { type: 'navigate' as const, path: '/scheduler' },
       gradient: "from-green-500 to-emerald-500"
     },
     {
       icon: Bell,
       label: "View Alerts",
       description: "System notifications",
-      action: { type: 'navigate', path: '/alerts' },
+      action: { type: 'navigate' as const, path: '/alerts' },
       gradient: "from-orange-500 to-red-500"
     },
     {
       icon: Calendar,
       label: "Maintenance",
       description: "Schedule downtime",
-      action: { type: 'navigate', path: '/scheduler' },
+      action: { type: 'navigate' as const, path: '/scheduler' },
       gradient: "from-purple-500 to-pink-500"
     },
     {
       icon: BarChart3,
       label: "Analytics",
       description: "Performance insights",
-      action: { type: 'navigate', path: '/inventory' },
+      action: { type: 'navigate' as const, path: '/inventory' },
       gradient: "from-indigo-500 to-blue-500"
     },
     {
       icon: Settings,
       label: "System Config",
       description: "Global settings",
-      action: { type: 'navigate', path: '/settings' },
+      action: { type: 'navigate' as const, path: '/settings' },
       gradient: "from-gray-500 to-slate-500"
     }
   ];
@@ -505,7 +505,7 @@ export function ModernEnterpriseDashboard() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => doAction({ type: 'navigate', path: '/alerts' })}
+                onClick={() => doAction({ type: 'navigate' as const, path: '/alerts' })}
                 className="hover:shadow-md transition-all"
               >
                 <Eye className="h-4 w-4 mr-2" />

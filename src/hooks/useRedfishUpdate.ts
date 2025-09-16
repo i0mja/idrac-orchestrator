@@ -1,4 +1,4 @@
-import { api } from '@/integrations/api';
+import { apiSend } from '@/lib/api';
 
 export interface SimpleUpdateInput {
   host: string; username: string; password: string;
@@ -11,8 +11,8 @@ export interface SimpleUpdateInput {
 
 export function useRedfishUpdate() {
   const start = (input: SimpleUpdateInput, hostIds: string[]) =>
-    api.post('/updates/redfish/simple', { input, hostIds });
+    apiSend('/updates/redfish/simple', 'POST', { input, hostIds });
   const status = (taskUri: string) =>
-    api.get('/updates/redfish/task', { params: { taskUri } });
+    apiSend('/updates/redfish/task', 'GET', { taskUri });
   return { start, status };
 }
