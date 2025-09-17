@@ -20,6 +20,11 @@ const envSchema = z.object({
     .transform(v => v !== 'false'),
 
   CA_BUNDLE_PATH: z.string().optional().default(''),
+  IDRAC_CA_PEM: z.string().optional().default(''),
+
+  DELL_CATALOG_URL: z.string().default('https://downloads.dell.com/catalog/Catalog.xml.gz'),
+
+  IDRAC_UPDATE_TIMEOUT_MIN: z.coerce.number().default(90),
 
   // Defaults; per-host overrides live in DB/credentials
   VCENTER_URL: z.string().optional().default(''),
@@ -27,6 +32,7 @@ const envSchema = z.object({
   VCENTER_PASSWORD: z.string().optional().default(''),
 
   // Runner binaries
+  RACADM_BIN: z.string().default(process.env.RACADM_PATH ?? 'racadm'),
   RACADM_PATH: z.string().default('racadm'),
   IPMITOOL_PATH: z.string().default('ipmitool')
 });

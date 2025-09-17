@@ -329,6 +329,65 @@ After installation, complete the setup wizard:
 - Event acknowledgment and management
 - Audit trail and compliance reporting
 
+## 🔄 Updating to Latest Firmware
+
+The orchestrator supports three Redfish-driven update flows. Each mode can be launched from the **Manual Update** tab inside the Command Control Center or automated by creating update plans via the REST API.
+
+### Supported Modes
+
+- **Latest from Dell Catalog** – uses Redfish `InstallFromRepository` when available and falls back to `racadm fwupdate` automatically.
+- **Specific package by URL** – triggers Redfish `SimpleUpdate` with HTTPS/HTTP protocol detection and optional `Targets` arrays for component-scoped updates.
+- **Multipart upload** – streams a local firmware image to `/redfish/v1/UpdateService/update-multipart` with transparent `Content-Length` handling.
+
+### Environment Variables
+
+| Variable | Purpose |
+| --- | --- |
+| `DELL_CATALOG_URL` | Default catalog used for repository updates (defaults to Dell public catalog). |
+| `RACADM_BIN` | Path to the `racadm` executable for fallback updates (fallback: `RACADM_PATH` or `racadm`). |
+| `IDRAC_CA_PEM` | Optional PEM bundle or path for trusted iDRAC certificates. |
+| `IDRAC_UPDATE_TIMEOUT_MIN` | Maximum minutes to wait for Redfish tasks and iDRAC reboot recovery (default `90`). |
+| `FIRMWARE_UPLOAD_DIR` | Optional directory for uploaded firmware payloads used by multipart uploads. |
+
+### REST Examples
+
+Create a plan that pulls the latest catalog firmware for two hosts:
+
+```bash
+curl -X POST "$API/plans" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "repo-refresh",
+    "targets": ["$HOST_ID_1", "$HOST_ID_2"],
+    "artifacts": [],
+    "policy": {
+      "updateMode": "LATEST_FROM_CATALOG",
+      "catalogUrl": "https://downloads.dell.com/catalog/Catalog.xml.gz"
+    }
+  }'
+```
+
+Upload a local firmware package and start a multipart update:
+
+```bash
+curl -X POST "$API/uploads/firmware" \
+  -H "Authorization: Bearer $API_KEY" \
+  -F firmware=@idrac_firmware.exe
+
+curl -X POST "$API/plans" \
+  -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "manual-multipart",
+    "targets": ["$HOST_ID"],
+    "artifacts": [{ "component": "Firmware", "imageUri": "file:///path/from/upload" }],
+    "policy": { "updateMode": "MULTIPART_FILE" }
+  }'
+```
+
+After creating a plan, queue it with `POST /plans/{id}/start` and poll progress with `GET /plans/{id}/status`. The response includes per-host `ctx.progress` and `ctx.results` data which is rendered in the Manual Update UI.
+
 ## 🔧 Configuration
 
 ### Credential Profiles

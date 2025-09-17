@@ -1,91 +1,305 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { Readable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
+
 import db from '../db/index.js';
-import { artifacts, hostRuns, hosts, planTargets, updatePlans } from '../db/schema.js';
+import { artifacts, hostRuns, hosts, updatePlans } from '../db/schema.js';
 import { eq, sql } from 'drizzle-orm';
 import { detectCapabilities } from '../lib/detect.js';
 import * as redfish from '../lib/redfish/client.js';
+import { collectSoftwareInventory, diffInventories, pollTask, type InventorySnapshot, type TaskLogEvent } from '../lib/redfish/taskService.js';
+import { racadmAutoUpdate } from '../lib/racadm/index.js';
 import * as vc from '../lib/vcenter/index.js';
 import { getIdracCreds, getVcenterCreds } from '../lib/secrets/adapter.js';
 
-type State = 'PRECHECKS'|'ENTER_MAINT'|'APPLY'|'REBOOT'|'POSTCHECKS'|'EXIT_MAINT'|'DONE'|'ERROR';
+export type UpdateMode = 'LATEST_FROM_CATALOG' | 'SPECIFIC_URL' | 'MULTIPART_FILE';
 
-async function setState(id: string, from: State, to: State, patch: Record<string, unknown> = {}) {
-  // optimistic: update only if in expected 'from' state
-  const res = await db.execute<any>(sql.raw(`SELECT set_host_run_state('${id}', '${from}', '${to}', '${JSON.stringify(patch)}') AS ok;`));
-  if (!Array.isArray(res) && 'rows' in res && res.rows?.[0]?.ok === false) {
-    // fallback if driver returns rows differently
+type State = 'PRECHECKS' | 'ENTER_MAINT' | 'APPLY' | 'REBOOT' | 'POSTCHECKS' | 'EXIT_MAINT' | 'DONE' | 'ERROR';
+
+const DEFAULT_TIMEOUT_MINUTES = Number(process.env.IDRAC_UPDATE_TIMEOUT_MIN ?? '90');
+
+async function setState(id: string, from: State, to: State, ctx: Record<string, unknown> = {}) {
+  await db.execute(sql.raw(`SELECT set_host_run_state('${id}', '${from}', '${to}', '${JSON.stringify(ctx)}') AS ok;`));
+}
+
+function assertUpdateMode(value: unknown): UpdateMode {
+  if (value === 'LATEST_FROM_CATALOG' || value === 'SPECIFIC_URL' || value === 'MULTIPART_FILE') return value;
+  return 'SPECIFIC_URL';
+}
+
+function sanitizeTargets(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const targets = value.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
+  return targets.length ? targets : undefined;
+}
+
+function resolveCatalogUrl(policy: Record<string, unknown>): string {
+  const catalog = typeof policy.catalogUrl === 'string' && policy.catalogUrl.trim().length ? policy.catalogUrl.trim() : undefined;
+  return catalog ?? redfish.DEFAULT_DELL_CATALOG_URL;
+}
+
+function deriveFileName(uri: string) {
+  try {
+    const parsed = new URL(uri);
+    const candidate = parsed.pathname.split('/').filter(Boolean).pop();
+    if (candidate) return candidate;
+  } catch {
+    // fall through to filesystem handling
   }
+  return path.basename(uri);
+}
+
+function isHttpUrl(uri: string) {
+  return /^https?:\/\//i.test(uri);
+}
+
+async function openFirmwareStream(imageUri: string): Promise<{ stream: Readable; size?: number; fileName: string }> {
+  if (isHttpUrl(imageUri)) {
+    const response = await fetch(imageUri);
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to fetch firmware image ${imageUri}: ${response.status}`);
+    }
+    const sizeHeader = response.headers.get('content-length');
+    const size = sizeHeader ? Number(sizeHeader) : undefined;
+    const fileName = deriveFileName(imageUri) || 'firmware.pkg';
+    const nodeStream = Readable.fromWeb(response.body as unknown as ReadableStream);
+    return { stream: nodeStream, size: Number.isFinite(size) ? size : undefined, fileName };
+  }
+
+  if (imageUri.startsWith('file://')) {
+    const filePath = fileURLToPath(new URL(imageUri));
+    const stats = await fs.promises.stat(filePath);
+    return { stream: fs.createReadStream(filePath), size: stats.size, fileName: path.basename(filePath) };
+  }
+
+  const resolved = path.resolve(imageUri);
+  const stats = await fs.promises.stat(resolved);
+  return { stream: fs.createReadStream(resolved), size: stats.size, fileName: path.basename(resolved) };
+}
+
+interface ProgressState {
+  phase: string;
+  component?: string;
+  taskLocation?: string | null;
+  message?: string;
+  event?: TaskLogEvent;
+  fallback?: 'RACADM';
 }
 
 export async function runStateMachine(hostRunId: string): Promise<State> {
-  // 1) Load run, plan, host, artifacts
   const [run] = await db.select().from(hostRuns).where(eq(hostRuns.id, hostRunId));
   if (!run) throw new Error('host_run not found');
 
   const [host] = await db.select().from(hosts).where(eq(hosts.id, run.hostId));
   if (!host) throw new Error('host not found');
 
-  const targets = await db.select().from(planTargets).where(eq(planTargets.planId, run.planId));
-  const arts = await db.select().from(artifacts).where(eq(artifacts.planId, run.planId));
+  const artifactsRows = await db.select().from(artifacts).where(eq(artifacts.planId, run.planId));
   const [plan] = await db.select().from(updatePlans).where(eq(updatePlans.id, run.planId));
 
-  // === PRECHECKS ===
-  await setState(hostRunId, 'PRECHECKS', 'PRECHECKS', { startedAt: Date.now() });
+  const policy = (plan?.policy ?? {}) as Record<string, unknown>;
+  const updateMode = assertUpdateMode(policy.updateMode);
+  const repoUrl = resolveCatalogUrl(policy);
+  const targets = sanitizeTargets(policy.targets);
+
+  const idracCreds = await getIdracCreds(host.id);
+  const idracBaseUrl = redfish.normalizeBaseUrl(host.mgmtIp);
+  const timeoutMinutes = DEFAULT_TIMEOUT_MINUTES;
+
+  let ctx: Record<string, unknown> = (run.ctx as Record<string, unknown>) ?? {};
+  let currentState: State = run.state as State;
+
+  const mergeCtx = (patch: Record<string, unknown>) => {
+    ctx = { ...ctx, ...patch };
+    return ctx;
+  };
+
+  const updateCtx = async (patch: Record<string, unknown>) => {
+    const next = mergeCtx(patch);
+    await setState(hostRunId, currentState, currentState, next);
+  };
+
+  const transition = async (to: State, patch: Record<string, unknown> = {}) => {
+    const next = mergeCtx(patch);
+    await setState(hostRunId, currentState, to, next);
+    currentState = to;
+  };
+
+  await updateCtx({ startedAt: Date.now(), updateMode, repoUrl, targets });
+
   const caps = await detectCapabilities({
     redfish: async () => {
-      try { const r = await fetch(`https://${host.mgmtIp}/redfish/v1/`); return r.ok; } catch { return false; }
+      try { const response = await redfish.redfishFetch(`${idracBaseUrl}/redfish/v1/`); return response.ok; }
+      catch { return false; }
     },
     wsman: async () => false,
     racadm: async () => false
   });
 
-  // Gather creds
-  const idracCreds = await getIdracCreds(host.id);
-  const vcenterRef = host.vcenterUrl ? await getVcenterCreds(host.id, { url: host.vcenterUrl || undefined }) : null;
+  await updateCtx({ mgmtKind: caps.mgmtKind, features: caps.features });
 
-  // === ENTER_MAINT ===
-  if (host.vcenterUrl && host.hostMoid) {
-    await setState(hostRunId, 'PRECHECKS', 'ENTER_MAINT', { mgmtKind: caps.mgmtKind });
-    const { token } = await vc.login(vcenterRef!.baseUrl, vcenterRef!.username, vcenterRef!.password);
-    const cli = vc.createClient(vcenterRef!.baseUrl, token);
-    const { taskId } = await cli.enterMaintenance(host.hostMoid, { evacuatePoweredOffVMs: true, timeoutMinutes: Number(plan.policy?.maintenanceTimeoutMinutes ?? 120) });
-    await cli.waitTask(taskId, 30 * 60_000);
-  } else {
-    await setState(hostRunId, 'PRECHECKS', 'APPLY', { mgmtKind: caps.mgmtKind });
-  }
-
-  // === APPLY (Redfish only for now) ===
-  if (caps.features.redfish) {
-    await setState(hostRunId, 'ENTER_MAINT', 'APPLY', {});
-    for (const a of arts) {
-      // one image per call
-      const { jobLocation } = await redfish.simpleUpdate(host.mgmtIp, idracCreds, a.imageUri);
-      await redfish.waitForJob(jobLocation, idracCreds, 30 * 60_000);
-      // allow iDRAC to reboot the platform if needed; after each, wait for iDRAC reachable
-      await redfish.waitForIdrac(host.mgmtIp, idracCreds, (plan.policy as any)?.idracReachabilityTimeoutSeconds ? (Number((plan.policy as any).idracReachabilityTimeoutSeconds) * 1000) : 10 * 60_000);
-    }
-  } else {
-    await setState(hostRunId, 'ENTER_MAINT', 'ERROR', { reason: 'UNSUPPORTED_PROTOCOL', msg: 'WSMAN/RACADM path not implemented yet' });
+  if (!caps.features.redfish) {
+    await transition(currentState, 'ERROR', {
+      error: { message: 'Redfish capability not detected' },
+      progress: { phase: 'ERROR' }
+    });
     return 'ERROR';
   }
 
-  // === POSTCHECKS ===
-  await setState(hostRunId, 'APPLY', 'POSTCHECKS', {});
-  try {
-    const inv = await redfish.softwareInventory(host.mgmtIp, idracCreds);
-    await setState(hostRunId, 'POSTCHECKS', 'POSTCHECKS', { inventory: inv });
-  } catch {
-    // ignore inventory read failures, continue
+  const vcenterRef = host.vcenterUrl && host.hostMoid
+    ? await getVcenterCreds(host.id, { url: host.vcenterUrl })
+    : null;
+
+  if (host.vcenterUrl && host.hostMoid && vcenterRef) {
+    await transition('PRECHECKS', 'ENTER_MAINT', {});
+    const { token } = await vc.login(vcenterRef.baseUrl, vcenterRef.username, vcenterRef.password);
+    const cli = vc.createClient(vcenterRef.baseUrl, token);
+    const maintenanceTimeout = Number((policy.maintenanceTimeoutMinutes as number | string | undefined) ?? 120);
+    const { taskId } = await cli.enterMaintenance(host.hostMoid, { evacuatePoweredOffVMs: true, timeoutMinutes: maintenanceTimeout });
+    await updateCtx({ maintenance: { phase: 'ENTER', taskId } });
+    await cli.waitTask(taskId, 30 * 60_000);
+    await transition('ENTER_MAINT', 'APPLY', { maintenance: { phase: 'ENTER_COMPLETED', taskId } });
+  } else {
+    await transition('PRECHECKS', 'APPLY', {});
   }
 
-  // === EXIT_MAINT ===
-  if (host.vcenterUrl && host.hostMoid) {
-    await setState(hostRunId, 'POSTCHECKS', 'EXIT_MAINT', {});
-    const { token } = await vc.login(vcenterRef!.baseUrl, vcenterRef!.username, vcenterRef!.password);
-    const cli = vc.createClient(vcenterRef!.baseUrl, token);
+  const results: any[] = Array.isArray(ctx.results) ? [...(ctx.results as any[])] : [];
+  await updateCtx({ progress: { phase: 'APPLY_INIT', mode: updateMode } satisfies ProgressState, results });
+
+  const updateResults: any[] = results;
+
+  const recordProgress = async (progress: ProgressState) => {
+    await updateCtx({ progress: { ...progress, updatedAt: Date.now() } });
+  };
+
+  try {
+    if (updateMode === 'LATEST_FROM_CATALOG') {
+      await recordProgress({ phase: 'INSTALL_FROM_REPOSITORY', taskLocation: null, message: `Using repository ${repoUrl}` });
+      let beforeInventory: InventorySnapshot | undefined;
+      try { beforeInventory = await collectSoftwareInventory(idracBaseUrl, idracCreds); }
+      catch { beforeInventory = undefined; }
+
+      try {
+        const response = await redfish.installFromRepository(host.mgmtIp, idracCreds, repoUrl);
+        const taskLocation = response.taskLocation ?? null;
+        await recordProgress({ phase: 'INSTALL_FROM_REPOSITORY', taskLocation });
+        if (!taskLocation) {
+          throw new Error('InstallFromRepository did not return a task location');
+        }
+        const poll = await pollTask({
+          idracHost: host.mgmtIp,
+          creds: idracCreds,
+          taskLocation,
+          baselineInventory: beforeInventory,
+          timeoutMinutes,
+          logger: async event => { await recordProgress({ phase: 'INSTALL_FROM_REPOSITORY', taskLocation, event }); }
+        });
+        updateResults.push({ mode: updateMode, repoUrl, task: poll });
+        await updateCtx({ results: updateResults });
+        await recordProgress({ phase: 'INSTALL_FROM_REPOSITORY', taskLocation, message: `Task ${poll.state}` });
+      } catch (error) {
+        if (error instanceof redfish.RedfishActionMissingError) {
+          await recordProgress({ phase: 'RACADM_FALLBACK', fallback: 'RACADM', message: 'Redfish repository action unsupported, falling back to racadm' });
+          const before = beforeInventory ?? await collectSoftwareInventory(idracBaseUrl, idracCreds).catch(() => undefined);
+          const racadmResult = await racadmAutoUpdate(host.mgmtIp, { username: idracCreds.username, password: idracCreds.password }, repoUrl, {
+            timeoutMs: timeoutMinutes * 60_000,
+            logger: async event => {
+              await recordProgress({ phase: 'RACADM_FALLBACK', fallback: 'RACADM', message: event.type === 'exit' ? `racadm exited ${event.code}` : undefined });
+            }
+          });
+          if (!racadmResult.success) {
+            updateResults.push({ mode: updateMode, repoUrl, fallback: 'RACADM', racadm: racadmResult });
+            await recordProgress({ phase: 'RACADM_FALLBACK', fallback: 'RACADM', message: racadmResult.failureReason ?? 'racadm reported failure' });
+            throw new Error(racadmResult.failureReason ?? 'racadm update failed');
+          }
+          await recordProgress({ phase: 'RACADM_FALLBACK', fallback: 'RACADM', message: 'racadm command completed, waiting for iDRAC' });
+          await redfish.waitForIdrac(host.mgmtIp, idracCreds, timeoutMinutes * 60_000);
+          const after = await collectSoftwareInventory(idracBaseUrl, idracCreds).catch(() => undefined);
+          const changes = after ? diffInventories(before, after) : [];
+          updateResults.push({ mode: updateMode, repoUrl, fallback: 'RACADM', racadm: racadmResult, inventory: after ? { before, after, changes } : undefined });
+          await updateCtx({ results: updateResults });
+          await recordProgress({ phase: 'RACADM_FALLBACK', fallback: 'RACADM', message: 'racadm update completed' });
+        } else {
+          throw error;
+        }
+      }
+    } else {
+      if (!artifactsRows.length) {
+        throw new Error('No artifacts defined for update plan');
+      }
+      let baseline = await collectSoftwareInventory(idracBaseUrl, idracCreds).catch(() => undefined);
+      for (const artifact of artifactsRows) {
+        const component = artifact.component;
+        await recordProgress({ phase: 'APPLY_COMPONENT', component, taskLocation: null, message: `Updating ${component}` });
+        if (updateMode === 'SPECIFIC_URL') {
+          const response = await redfish.simpleUpdate(host.mgmtIp, idracCreds, artifact.imageUri, targets);
+          const taskLocation = response.taskLocation ?? null;
+          await recordProgress({ phase: 'APPLY_COMPONENT', component, taskLocation, message: 'SimpleUpdate requested' });
+          if (!taskLocation) throw new Error('SimpleUpdate did not return a task location');
+          const poll = await pollTask({
+            idracHost: host.mgmtIp,
+            creds: idracCreds,
+            taskLocation,
+            baselineInventory: baseline,
+            timeoutMinutes,
+            logger: async event => { await recordProgress({ phase: 'APPLY_COMPONENT', component, taskLocation, event }); }
+          });
+          updateResults.push({ mode: updateMode, component, imageUri: artifact.imageUri, task: poll });
+          await updateCtx({ results: updateResults });
+          baseline = poll.inventory?.after ?? baseline;
+        } else {
+          const firmware = await openFirmwareStream(artifact.imageUri);
+          await recordProgress({ phase: 'UPLOAD', component, message: `Uploading ${firmware.fileName}` });
+          const response = await redfish.multipartUpdate(host.mgmtIp, idracCreds, {
+            fileName: firmware.fileName,
+            fileStream: firmware.stream,
+            size: firmware.size,
+            updateParameters: {}
+          });
+          const taskLocation = response.taskLocation ?? null;
+          await recordProgress({ phase: 'UPLOAD', component, taskLocation, message: 'Multipart upload started' });
+          if (!taskLocation) throw new Error('Multipart update did not return a task location');
+          const poll = await pollTask({
+            idracHost: host.mgmtIp,
+            creds: idracCreds,
+            taskLocation,
+            baselineInventory: baseline,
+            timeoutMinutes,
+            logger: async event => { await recordProgress({ phase: 'UPLOAD', component, taskLocation, event }); }
+          });
+          updateResults.push({ mode: updateMode, component, imageUri: artifact.imageUri, task: poll, fileName: firmware.fileName });
+          await updateCtx({ results: updateResults });
+          baseline = poll.inventory?.after ?? baseline;
+        }
+      }
+    }
+  } catch (error) {
+    await transition(currentState, 'ERROR', {
+      error: {
+        message: error instanceof Error ? error.message : String(error)
+      },
+      progress: { phase: 'ERROR' }
+    });
+    return 'ERROR';
+  }
+
+  await transition('APPLY', 'POSTCHECKS', { progress: { phase: 'POSTCHECKS' } });
+  try {
+    const finalInventory = await collectSoftwareInventory(idracBaseUrl, idracCreds);
+    await updateCtx({ finalInventory });
+  } catch {
+    await updateCtx({ finalInventory: null });
+  }
+
+  if (host.vcenterUrl && host.hostMoid && vcenterRef) {
+    await transition('POSTCHECKS', 'EXIT_MAINT', { maintenance: { phase: 'EXIT' } });
+    const { token } = await vc.login(vcenterRef.baseUrl, vcenterRef.username, vcenterRef.password);
+    const cli = vc.createClient(vcenterRef.baseUrl, token);
     const { taskId } = await cli.exitMaintenance(host.hostMoid);
     await cli.waitTask(taskId, 30 * 60_000);
+    await updateCtx({ maintenance: { phase: 'EXIT_COMPLETED', taskId } });
   }
 
-  await setState(hostRunId, 'EXIT_MAINT', 'DONE', { finishedAt: Date.now() });
+  await transition(currentState, 'DONE', { finishedAt: Date.now(), progress: { phase: 'DONE' }, results: updateResults });
   return 'DONE';
 }

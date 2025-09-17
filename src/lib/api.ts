@@ -51,6 +51,22 @@ export async function createPlan(payload: PlanPayload) {
   return res.json();
 }
 
+export const startPlan = (id: string) => apiSend<{ started: boolean; count: number }>(`/plans/${id}/start`, 'POST');
+
+export async function uploadFirmwareFile(file: File) {
+  const formData = new FormData();
+  formData.append('firmware', file);
+  const res = await fetch(`${API_BASE_URL}/uploads/firmware`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: formData
+  });
+  if (!res.ok) {
+    throw new Error(await res.text());
+  }
+  return res.json() as Promise<{ ok: boolean; path: string; uri: string; filename: string }>;
+}
+
 export async function discoverHost(id: string) {
   const res = await fetch(`${API_BASE_URL}/hosts/${id}/discover`, {
     method: 'POST',

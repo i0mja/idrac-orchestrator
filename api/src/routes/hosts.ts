@@ -3,6 +3,7 @@ import db from '../db/index.js';
 import { hosts } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { detectCapabilities } from '../lib/detect.js';
+import { redfishFetch } from '../lib/redfish/client.js';
 
 export default async function hostsRoutes(app: FastifyInstance) {
   app.post('/hosts', async (request) => {
@@ -30,7 +31,7 @@ export default async function hostsRoutes(app: FastifyInstance) {
 
     const res = await detectCapabilities({
       redfish: async () => {
-        try { const r = await fetch(`https://${row.mgmtIp}/redfish/v1/`); return r.ok; } catch { return false; }
+        try { const r = await redfishFetch(`https://${row.mgmtIp}/redfish/v1/`); return r.ok; } catch { return false; }
       },
       wsman: async () => false,
       racadm: async () => false
