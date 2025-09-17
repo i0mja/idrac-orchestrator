@@ -403,14 +403,45 @@ const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
               <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="h-4 w-4 text-blue-600" />
-                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Database Requirements</h4>
+                  <h4 className="font-medium text-blue-900 dark:text-blue-100">Local Development Setup</h4>
                 </div>
-                <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>• PostgreSQL 15+ server running</li>
-                  <li>• Database "idrac_orchestrator" created</li>
-                  <li>• User with full privileges on the database</li>
-                  <li>• Network connectivity from application to database</li>
-                </ul>
+                <p className="text-sm text-blue-800 dark:text-blue-200 mb-3">
+                  For local development, you have two options:
+                </p>
+                <div className="space-y-3">
+                  <div className="border-l-2 border-green-500 pl-3">
+                    <h5 className="font-medium text-sm">Full Features (Recommended)</h5>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Complete setup with Supabase - authentication, real-time, storage
+                    </p>
+                    <div className="bg-black rounded p-2">
+                      <code className="text-green-400 font-mono text-xs">
+                        ./start-supabase-local.sh
+                      </code>
+                    </div>
+                    <a href="https://github.com/i0mja/idrac-orchestrator/blob/main/SUPABASE_LOCAL_SETUP.md" 
+                       target="_blank" 
+                       className="text-xs text-blue-600 underline">
+                      View Supabase setup guide →
+                    </a>
+                  </div>
+                  <div className="border-l-2 border-orange-500 pl-3">
+                    <h5 className="font-medium text-sm">API-Only Mode</h5>
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Simpler setup without authentication features
+                    </p>
+                    <div className="bg-black rounded p-2">
+                      <code className="text-green-400 font-mono text-xs">
+                        ./start-local.sh
+                      </code>
+                    </div>
+                    <a href="https://github.com/i0mja/idrac-orchestrator/blob/main/LOCAL_SETUP.md" 
+                       target="_blank" 
+                       className="text-xs text-orange-600 underline">
+                      View API-only guide →
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div className="grid gap-4">

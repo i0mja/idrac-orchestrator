@@ -81,13 +81,28 @@ const Welcome: React.FC = () => {
       action: () => setShowSetup(true)
     },
     {
+      id: "supabase-local",
+      title: "Full Local Setup",
+      description: "Complete development with Supabase - all features enabled",
+      icon: Database,
+      time: "10 min",
+      difficulty: "Easy",
+      color: "bg-blue-500",
+      action: () => {
+        toast({
+          title: "Full Local Setup",
+          description: "Check SUPABASE_LOCAL_SETUP.md or run ./start-supabase-local.sh"
+        });
+      }
+    },
+    {
       id: "one-click-install", 
       title: "One-Click Installation",
       description: "Choose your platform and run a single command",
       icon: Download,
       time: "3 min", 
       difficulty: "Easy",
-      color: "bg-blue-500",
+      color: "bg-orange-500",
       action: () => setShowInstaller(true)
     },
     {
@@ -162,6 +177,13 @@ const Welcome: React.FC = () => {
               <a href="#features" className="flex items-center">
                 <BookOpen className="mr-2 h-5 w-5" />
                 Learn More
+              </a>
+            </Button>
+            <Button size="lg" variant="outline" asChild>
+              <a href="https://github.com/i0mja/idrac-orchestrator/blob/main/SUPABASE_LOCAL_SETUP.md" target="_blank" className="flex items-center">
+                <Database className="mr-2 h-5 w-5" />
+                Full Local Setup
+                <ExternalLink className="ml-2 h-4 w-4" />
               </a>
             </Button>
           </div>
@@ -249,8 +271,8 @@ const Welcome: React.FC = () => {
               <TabsContent value="docker" className="mt-6">
                 <div className="space-y-4">
                   <div className="text-center space-y-2">
-                    <h3 className="text-lg font-semibold">Docker Installation (Recommended)</h3>
-                    <p className="text-muted-foreground">Complete setup with one command</p>
+                    <h3 className="text-lg font-semibold">Production Installation</h3>
+                    <p className="text-muted-foreground">Complete production setup with one command</p>
                   </div>
                     <div className="bg-black rounded-lg p-4">
                       <code className="text-green-400 font-mono text-sm">
@@ -270,6 +292,23 @@ const Welcome: React.FC = () => {
                       <CheckCircle className="h-4 w-4 text-green-500" />
                       <span>Production-ready configuration</span>
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+                    <h4 className="font-medium mb-2 text-blue-900 dark:text-blue-100">🛠️ Local Development</h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-200 mb-2">
+                      For local development with full Supabase features:
+                    </p>
+                    <div className="bg-black rounded p-2">
+                      <code className="text-green-400 font-mono text-xs">
+                        ./start-supabase-local.sh
+                      </code>
+                    </div>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                      <a href="https://github.com/i0mja/idrac-orchestrator/blob/main/SUPABASE_LOCAL_SETUP.md" target="_blank" className="underline">
+                        View full local setup guide →
+                      </a>
+                    </p>
                   </div>
                 </div>
               </TabsContent>

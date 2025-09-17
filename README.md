@@ -2,48 +2,58 @@
 
 A comprehensive enterprise-grade solution for orchestrating firmware updates across Dell server infrastructure with VMware vCenter integration. This system ensures zero-downtime rolling updates while maintaining cluster availability and respecting maintenance windows.
 
-## 🚀 Quick Start (5 Minutes)
+## 🚀 Quick Start
 
-Get up and running instantly with our one-click installation:
+Choose your installation method:
 
-### Option 1: RHEL 9 Optimized (Recommended)
+### 🏢 Production Installation (Recommended)
 
-```bash
-# RedHat Enterprise Linux 9, Rocky Linux 9, AlmaLinux 9
-curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | sudo bash
-```
-
-**✅ Optimized for RHEL 9 • ✅ SELinux configured • ✅ systemd integration • ✅ Enterprise ready**
-
-### Option 2: Docker (Universal)
-
+#### Linux/macOS
 ```bash
 curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install.sh | bash
 ```
 
-**✅ Works on any platform • ✅ Complete setup in 5 minutes • ✅ Auto-configures everything**
-
-### Option 3: Windows Server
-
+#### Windows Server
 ```powershell
-# Run as Administrator in PowerShell
-# Single command installer – prompts for SQLite or PostgreSQL
-Set-ExecutionPolicy Bypass -Scope Process -Force; \
-  iwr https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1 -useb | iex
+iwr -useb https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/scripts/install-windows.ps1 | iex
 ```
 
-This script:
+#### RHEL 9
+```bash
+curl -fsSL https://raw.githubusercontent.com/i0mja/idrac-orchestrator/main/install-rhel.sh | bash
+```
 
-- Installs Chocolatey, Git, and Node.js if they aren't already present
-- Clones the repository and builds the app automatically
-- Configures either SQLite (fast) or PostgreSQL (production)
-- Requires no manual `npm` commands
+### 🛠️ Local Development
+
+#### Option 1: Full Features with Supabase (Recommended)
+For complete local development with authentication, real-time features, and storage:
 
 ```bash
-npx idrac-orchestrator-demo
+# Clone and setup with Supabase
+git clone https://github.com/i0mja/idrac-orchestrator.git
+cd idrac-orchestrator
+
+# One-command full setup (Linux/macOS)
+./start-supabase-local.sh
+
+# Or Windows
+start-supabase-local.bat
 ```
 
-**✅ No installation • ✅ Sample data included • ✅ Ready in 1 minute**
+📖 **[Complete Supabase Local Setup Guide](SUPABASE_LOCAL_SETUP.md)** - Full instructions for running with all features
+
+#### Option 2: API-Only Mode (Simpler)
+For basic development without Supabase features:
+
+```bash
+# Quick local setup (Linux/macOS)
+./start-local.sh
+
+# Or Windows
+start-local.bat
+```
+
+📖 **[API-Only Local Setup Guide](LOCAL_SETUP.md)** - Simpler setup without authentication/real-time features
 
 ### Option 5: Advanced Setup
 
