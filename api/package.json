@@ -14,11 +14,13 @@
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
+    "@fastify/multipart": "^9.2.1",
     "@fastify/swagger": "^8",
     "@fastify/swagger-ui": "^1",
     "bullmq": "^5",
     "drizzle-orm": "^0.33",
     "fastify": "^4",
+    "form-data": "^4.0.0",
     "ioredis": "^5",
     "pg": "^8",
     "pino": "^9",

@@ -15,6 +15,7 @@ import { CampaignFilters, type CampaignFilters as CampaignFiltersType } from "./
 import { CampaignDetailsModal } from "./CampaignDetailsModal";
 import { CampaignTemplatesModal } from "./CampaignTemplatesModal";
 import { BulkCampaignActions } from "./BulkCampaignActions";
+import { ManualUpdatePanel } from "../updates/ManualUpdatePanel";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   Settings,
@@ -516,9 +517,10 @@ export function EnhancedCommandControl() {
       </div>
 
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList>
+        <TabsList className="flex flex-wrap gap-2">
           <TabsTrigger value="campaigns">Update Campaigns</TabsTrigger>
           <TabsTrigger value="emergency">Emergency Actions</TabsTrigger>
+          <TabsTrigger value="manual-update">Manual Update</TabsTrigger>
         </TabsList>
 
         <TabsContent value="campaigns" className="space-y-6">
@@ -653,8 +655,8 @@ export function EnhancedCommandControl() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   className="h-auto p-4"
                   onClick={() => handleEmergencyAction('security_patch')}
                 >
@@ -664,8 +666,8 @@ export function EnhancedCommandControl() {
                     <div className="text-xs opacity-90">Critical vulnerability patching</div>
                   </div>
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="h-auto p-4"
                   onClick={() => handleEmergencyAction('idrac_update')}
                 >
@@ -678,6 +680,9 @@ export function EnhancedCommandControl() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+        <TabsContent value="manual-update" className="space-y-6">
+          <ManualUpdatePanel />
         </TabsContent>
       </Tabs>
 
