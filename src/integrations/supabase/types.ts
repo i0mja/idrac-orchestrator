@@ -50,6 +50,66 @@ export type Database = {
         }
         Relationships: []
       }
+      backup_config: {
+        Row: {
+          backup_type: string
+          compression_enabled: boolean | null
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          encryption_enabled: boolean | null
+          id: string
+          last_backup_at: string | null
+          last_backup_size: number | null
+          last_backup_status: string | null
+          name: string
+          next_scheduled_at: string | null
+          retention_days: number | null
+          schedule_cron: string
+          storage_config: Json | null
+          storage_location: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          backup_type: string
+          compression_enabled?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          encryption_enabled?: boolean | null
+          id?: string
+          last_backup_at?: string | null
+          last_backup_size?: number | null
+          last_backup_status?: string | null
+          name: string
+          next_scheduled_at?: string | null
+          retention_days?: number | null
+          schedule_cron: string
+          storage_config?: Json | null
+          storage_location?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          backup_type?: string
+          compression_enabled?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          encryption_enabled?: boolean | null
+          id?: string
+          last_backup_at?: string | null
+          last_backup_size?: number | null
+          last_backup_status?: string | null
+          name?: string
+          next_scheduled_at?: string | null
+          retention_days?: number | null
+          schedule_cron?: string
+          storage_config?: Json | null
+          storage_location?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       campaign_approvals: {
         Row: {
           approval_level: number | null
@@ -518,6 +578,81 @@ export type Database = {
         }
         Relationships: []
       }
+      health_check_results: {
+        Row: {
+          check_type: string
+          checked_at: string | null
+          created_at: string | null
+          details: Json | null
+          error_message: string | null
+          execution_time_ms: number | null
+          id: string
+          recommendations: Json | null
+          status: string
+          target_id: string | null
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          recommendations?: Json | null
+          status: string
+          target_id?: string | null
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string | null
+          created_at?: string | null
+          details?: Json | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          id?: string
+          recommendations?: Json | null
+          status?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
+      health_scoring_config: {
+        Row: {
+          category: string
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          id: string
+          metric_name: string
+          thresholds: Json | null
+          updated_at: string | null
+          weight: number
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          metric_name: string
+          thresholds?: Json | null
+          updated_at?: string | null
+          weight?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          metric_name?: string
+          thresholds?: Json | null
+          updated_at?: string | null
+          weight?: number
+        }
+        Relationships: []
+      }
       host_credential_overrides: {
         Row: {
           created_at: string
@@ -864,6 +999,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "server_notes_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      server_readiness_checks: {
+        Row: {
+          blocking_issues: Json | null
+          check_timestamp: string | null
+          connectivity_status: string
+          created_at: string | null
+          credential_status: string
+          firmware_capability_status: string
+          id: string
+          last_successful_update: string | null
+          maintenance_mode_capable: boolean | null
+          overall_readiness: string
+          readiness_score: number | null
+          server_id: string
+          vcenter_integration_status: string | null
+          warnings: Json | null
+        }
+        Insert: {
+          blocking_issues?: Json | null
+          check_timestamp?: string | null
+          connectivity_status: string
+          created_at?: string | null
+          credential_status: string
+          firmware_capability_status: string
+          id?: string
+          last_successful_update?: string | null
+          maintenance_mode_capable?: boolean | null
+          overall_readiness: string
+          readiness_score?: number | null
+          server_id: string
+          vcenter_integration_status?: string | null
+          warnings?: Json | null
+        }
+        Update: {
+          blocking_issues?: Json | null
+          check_timestamp?: string | null
+          connectivity_status?: string
+          created_at?: string | null
+          credential_status?: string
+          firmware_capability_status?: string
+          id?: string
+          last_successful_update?: string | null
+          maintenance_mode_capable?: boolean | null
+          overall_readiness?: string
+          readiness_score?: number | null
+          server_id?: string
+          vcenter_integration_status?: string | null
+          warnings?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "server_readiness_checks_server_id_fkey"
             columns: ["server_id"]
             isOneToOne: false
             referencedRelation: "servers"
