@@ -271,8 +271,12 @@ export function HealthChecks() {
       const healthMetrics = await calculateHealthScore();
       setMetrics(healthMetrics);
 
+      // Fetch servers for readiness simulation
+      const { data: serversData } = await supabase.from('servers').select('*');
+      const servers = serversData || [];
+
       // Simulate readiness check results for now
-      const readinessResults: ReadinessCheck[] = allServers.map(server => ({
+      const readinessResults: ReadinessCheck[] = servers.map(server => ({
         server_id: server.id,
         hostname: server.hostname,
         ip_address: server.ip_address.toString(),
