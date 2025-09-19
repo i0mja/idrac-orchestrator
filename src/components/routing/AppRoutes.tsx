@@ -5,7 +5,7 @@ import NotFound from "@/pages/NotFound";
 import { ModernEnterpriseDashboard } from "@/components/dashboard/ModernEnterpriseDashboard";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { ComprehensiveGlobalInventory } from "@/components/inventory/ComprehensiveGlobalInventory";
-import { EnhancedCommandControl } from "@/components/scheduler/EnhancedCommandControl";
+import { ModernSchedulerHub } from "@/components/scheduler/ModernSchedulerHub";
 import EnhancedAlertsEventsPage from "@/components/alerts/EnhancedAlertsEventsPage";
 import VCenterManagement from "@/pages/VCenterManagement";
 import { HealthChecks } from "@/components/health/HealthChecks";
@@ -23,7 +23,7 @@ export function AppRoutes() {
         <Route path="legacy-dashboard" element={<DashboardOverview />} />
         <Route path="inventory" element={<ComprehensiveGlobalInventory />} />
         <Route path="discovery" element={<DiscoveryPage />} />
-        <Route path="scheduler" element={<EnhancedCommandControl />} />
+        <Route path="scheduler" element={<ModernSchedulerHub />} />
         <Route path="enterprise" element={<EnterpriseManagement />} />
         <Route path="alerts" element={<EnhancedAlertsEventsPage />} />
         <Route path="vcenter" element={<VCenterManagement />} />
