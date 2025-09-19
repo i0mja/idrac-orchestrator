@@ -8,14 +8,13 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useUpdateJobs } from "@/hooks/useUpdateJobs";
 import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { supabase } from "@/integrations/supabase/client";
 import { ManualUpdatePanel } from "../updates/ManualUpdatePanel";
+import { DetailedSchedulingDialog } from "./DetailedSchedulingDialog";
 import { 
   Calendar,
   Zap,
@@ -85,21 +84,12 @@ export function ModernSchedulerHub() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isManualUpdateOpen, setIsManualUpdateOpen] = useState(false);
-  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isDetailedScheduleOpen, setIsDetailedScheduleOpen] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
 
   const { jobs, loading: jobsLoading, createRemoteCommand, cancelJob, retryJob } = useUpdateJobs();
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
-
-  // Quick schedule form state
-  const [quickSchedule, setQuickSchedule] = useState({
-    name: '',
-    type: 'maintenance' as 'maintenance' | 'update' | 'patch',
-    scheduled_for: '',
-    servers: [] as string[],
-    priority: 'medium' as 'critical' | 'high' | 'medium' | 'low'
-  });
 
   useEffect(() => {
     loadData();
@@ -222,56 +212,6 @@ export function ModernSchedulerHub() {
     }
   };
 
-  const handleQuickSchedule = async () => {
-    if (!quickSchedule.name || !quickSchedule.scheduled_for) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      // Create maintenance window
-      const { data, error } = await supabase
-        .from('maintenance_windows')
-        .insert({
-          name: quickSchedule.name,
-          description: `Quick scheduled ${quickSchedule.type}`,
-          scheduled_date: quickSchedule.scheduled_for.split('T')[0],
-          start_time: quickSchedule.scheduled_for.split('T')[1],
-          end_time: '06:00:00', // Default 4-hour window
-          status: 'scheduled'
-        });
-
-      if (error) throw error;
-
-      toast({
-        title: "Event Scheduled",
-        description: `${quickSchedule.name} has been scheduled successfully`,
-      });
-
-      setIsScheduleModalOpen(false);
-      setQuickSchedule({
-        name: '',
-        type: 'maintenance',
-        scheduled_for: '',
-        servers: [],
-        priority: 'medium'
-      });
-
-      loadData();
-    } catch (error) {
-      console.error('Error scheduling event:', error);
-      toast({
-        title: "Error",
-        description: "Failed to schedule event",
-        variant: "destructive"
-      });
-    }
-  };
-
   const quickActions: QuickAction[] = [
     {
       id: 'manual-update',
@@ -283,11 +223,11 @@ export function ModernSchedulerHub() {
     },
     {
       id: 'schedule-maintenance',
-      title: 'Schedule Maintenance',
-      description: 'Plan maintenance window',
+      title: 'Schedule Event',
+      description: 'Create detailed maintenance schedule',
       icon: Calendar,
       variant: 'outline',
-      action: () => setIsScheduleModalOpen(true),
+      action: () => setIsDetailedScheduleOpen(true),
     },
     {
       id: 'emergency-patch',
@@ -506,31 +446,33 @@ export function ModernSchedulerHub() {
               </CardHeader>
               <CardContent>
                 {runningJobs.length === 0 ? (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      No active operations. All systems ready for new tasks.
-                    </AlertDescription>
-                  </Alert>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No active operations</p>
+                  </div>
                 ) : (
                   <div className="space-y-4">
                     {runningJobs.slice(0, 3).map((job) => (
-                      <div key={job.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div key={job.id} className="flex items-center gap-4 p-3 border rounded-lg">
                         <div className="flex-1">
-                          <div className="font-medium">{job.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            Started {new Date(job.started_at).toLocaleTimeString()}
+                          <p className="font-medium text-sm">{job.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {getStatusBadge(job.status)}
+                            <span className="text-xs text-muted-foreground">
+                              {job.progress}% complete
+                            </span>
                           </div>
-                          <Progress value={job.progress} className="w-full mt-2" />
-                        </div>
-                        <div className="ml-4">
-                          {getStatusBadge(job.status)}
+                          <Progress value={job.progress} className="mt-2" />
                         </div>
                       </div>
                     ))}
                     {runningJobs.length > 3 && (
-                      <Button variant="outline" onClick={() => setActiveTab('running')} className="w-full">
-                        View All {runningJobs.length} Jobs
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setActiveTab('running')}
+                        className="w-full"
+                      >
+                        View All {runningJobs.length} Operations
                       </Button>
                     )}
                   </div>
@@ -548,30 +490,48 @@ export function ModernSchedulerHub() {
               </CardHeader>
               <CardContent>
                 {scheduledEvents.length === 0 ? (
-                  <Alert>
-                    <Clock className="h-4 w-4" />
-                    <AlertDescription>
-                      No scheduled events. Use Quick Actions to schedule maintenance or updates.
-                    </AlertDescription>
-                  </Alert>
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No upcoming events</p>
+                    <Button 
+                      variant="outline" 
+                      className="mt-4"
+                      onClick={() => setIsDetailedScheduleOpen(true)}
+                    >
+                      Schedule Event
+                    </Button>
+                  </div>
                 ) : (
-                  <div className="space-y-3">
-                    {scheduledEvents.slice(0, 4).map((event) => (
-                      <div key={event.id} className="flex items-center justify-between p-2 border-l-4 border-l-primary/30 pl-4">
-                        <div>
-                          <div className="font-medium">{event.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {new Date(event.scheduled_for).toLocaleString()}
+                  <div className="space-y-4">
+                    {scheduledEvents.slice(0, 3).map((event) => (
+                      <div key={event.id} className="flex items-center gap-4 p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{event.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(event.scheduled_for).toLocaleDateString()} at{' '}
+                            {new Date(event.scheduled_for).toLocaleTimeString([], { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              {event.servers_count} servers
+                            </Badge>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {event.priority}
+                            </Badge>
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-xs">
-                          {event.servers_count} servers
-                        </Badge>
                       </div>
                     ))}
-                    {scheduledEvents.length > 4 && (
-                      <Button variant="outline" onClick={() => setActiveTab('scheduled')} className="w-full">
-                        View All Events
+                    {scheduledEvents.length > 3 && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setActiveTab('scheduled')}
+                        className="w-full"
+                      >
+                        View All {scheduledEvents.length} Events
                       </Button>
                     )}
                   </div>
@@ -579,67 +539,100 @@ export function ModernSchedulerHub() {
               </CardContent>
             </Card>
           </div>
+
+          {/* System Health Alert */}
+          {stats.activeJobs > 5 && (
+            <Alert>
+              <AlertTriangle className="w-4 h-4" />
+              <AlertDescription>
+                <strong>High System Activity:</strong> {stats.activeJobs} operations currently running. 
+                Monitor system resources and consider scheduling additional maintenance during off-peak hours.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
 
         {/* Running Jobs Tab */}
         <TabsContent value="running" className="space-y-6">
           <Card className="card-enterprise">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="w-5 h-5" />
-                Running Jobs & Operations
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5" />
+                  Active Operations
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={loadData}>
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Refresh
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Pause className="w-4 h-4 mr-2" />
+                    Pause All
+                  </Button>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Job Name</TableHead>
-                    <TableHead>Type</TableHead>
+                    <TableHead>Operation</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Progress</TableHead>
                     <TableHead>Started</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>ETC</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {runningJobs.map((job) => (
+                  {jobs?.slice(0, 10).map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.name}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="capitalize">
-                          {job.type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="w-20">
-                          <Progress value={job.progress} />
-                          <span className="text-xs text-muted-foreground">{job.progress}%</span>
+                        <div>
+                          <p className="font-medium text-sm">Job #{job.id.slice(-8)}</p>
+                          <p className="text-xs text-muted-foreground">Server Update</p>
                         </div>
                       </TableCell>
-                      <TableCell>{new Date(job.started_at).toLocaleTimeString()}</TableCell>
                       <TableCell>{getStatusBadge(job.status)}</TableCell>
                       <TableCell>
+                        <div className="space-y-1">
+                          <Progress value={job.progress || 0} className="w-20" />
+                          <span className="text-xs">{job.progress || 0}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {job.started_at ? new Date(job.started_at).toLocaleTimeString() : 'Not started'}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {job.scheduled_at ? new Date(job.scheduled_at).toLocaleTimeString() : '--:--'}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-3 h-3" />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => retryJob(job.id)}
+                            disabled={job.status === 'running'}
+                          >
+                            <RefreshCw className="w-3 h-3" />
                           </Button>
-                          {job.status === 'running' && (
-                            <Button size="sm" variant="outline">
-                              <Pause className="w-3 h-3" />
-                            </Button>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => cancelJob(job.id)}
+                            disabled={job.status === 'completed'}
+                          >
+                            <Pause className="w-3 h-3" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
-                  {runningJobs.length === 0 && (
+                  {(!jobs || jobs.length === 0) && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <CheckCircle className="w-8 h-8 text-green-500" />
-                          <span>No running jobs. All systems idle.</span>
-                        </div>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No active operations
                       </TableCell>
                     </TableRow>
                   )}
@@ -658,7 +651,7 @@ export function ModernSchedulerHub() {
                   <Calendar className="w-5 h-5" />
                   Scheduled Events & Maintenance
                 </CardTitle>
-                <Button onClick={() => setIsScheduleModalOpen(true)}>
+                <Button onClick={() => setIsDetailedScheduleOpen(true)}>
                   <Plus className="w-4 h-4 mr-2" />
                   Schedule New Event
                 </Button>
@@ -683,10 +676,16 @@ export function ModernSchedulerHub() {
                       <TableCell className="font-medium">{event.name}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {event.type}
+                          {event.type.replace('_', ' ')}
                         </Badge>
                       </TableCell>
-                      <TableCell>{new Date(event.scheduled_for).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {new Date(event.scheduled_for).toLocaleDateString()} at{' '}
+                        {new Date(event.scheduled_for).toLocaleTimeString([], { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                      </TableCell>
                       <TableCell>{event.servers_count}</TableCell>
                       <TableCell>
                         <Badge 
@@ -700,10 +699,12 @@ export function ModernSchedulerHub() {
                       <TableCell>
                         <div className="flex gap-2">
                           <Button size="sm" variant="outline">
-                            <Eye className="w-3 h-3" />
+                            <Eye className="w-3 h-3 mr-1" />
+                            View
                           </Button>
                           <Button size="sm" variant="outline">
-                            <Settings className="w-3 h-3" />
+                            <Settings className="w-3 h-3 mr-1" />
+                            Edit
                           </Button>
                         </div>
                       </TableCell>
@@ -712,9 +713,13 @@ export function ModernSchedulerHub() {
                   {scheduledEvents.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8">
-                        <div className="flex flex-col items-center gap-2">
-                          <Calendar className="w-8 h-8 text-muted-foreground" />
-                          <span>No scheduled events. Click "Schedule New Event" to get started.</span>
+                        <div className="text-muted-foreground">
+                          <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                          <p className="mb-4">No scheduled events</p>
+                          <Button onClick={() => setIsDetailedScheduleOpen(true)}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Schedule Your First Event
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -734,67 +739,85 @@ export function ModernSchedulerHub() {
                 Bulk Server Operations
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                {/* Server Selection */}
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-base font-medium">Select Servers</Label>
-                  <div className="mt-2 max-h-60 overflow-y-auto border rounded-lg p-4">
-                    {servers.map((server) => (
-                      <div key={server.id} className="flex items-center space-x-2 py-2">
+                  <h4 className="font-semibold mb-3">Server Selection</h4>
+                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                    {servers.slice(0, 10).map((server) => (
+                      <div key={server.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={server.id}
                           checked={selectedServers.includes(server.id)}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedServers(prev => [...prev, server.id]);
+                              setSelectedServers([...selectedServers, server.id]);
                             } else {
-                              setSelectedServers(prev => prev.filter(id => id !== server.id));
+                              setSelectedServers(selectedServers.filter(id => id !== server.id));
                             }
                           }}
                         />
-                        <Label htmlFor={server.id} className="flex-1 cursor-pointer">
-                          <div className="flex items-center justify-between">
-                            <span>{server.hostname}</span>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                {server.datacenter}
-                              </Badge>
-                              <Badge 
-                                variant={server.status === 'online' ? 'default' : 'secondary'}
-                                className="text-xs"
-                              >
-                                {server.status}
-                              </Badge>
-                            </div>
+                        <label htmlFor={server.id} className="text-sm flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{server.hostname}</span>
+                            <Badge variant="outline" className="text-xs">{server.environment}</Badge>
                           </div>
-                        </Label>
+                          <div className="text-xs text-muted-foreground">
+                            {String(server.ip_address)} • {server.datacenter}
+                          </div>
+                        </label>
                       </div>
                     ))}
                   </div>
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    {selectedServers.length} servers selected
-                  </div>
                 </div>
 
-                {/* Bulk Actions */}
-                {selectedServers.length > 0 && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-muted/20 rounded-lg">
-                    <Button className="gap-2" disabled={selectedServers.length === 0}>
-                      <Zap className="w-4 h-4" />
-                      Bulk Update
+                <div>
+                  <h4 className="font-semibold mb-3">Bulk Actions</h4>
+                  <div className="space-y-2">
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                      disabled={selectedServers.length === 0}
+                    >
+                      <Zap className="w-4 h-4 mr-2" />
+                      Update Firmware ({selectedServers.length} servers)
                     </Button>
-                    <Button variant="outline" className="gap-2" disabled={selectedServers.length === 0}>
-                      <Shield className="w-4 h-4" />
-                      Security Scan
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                      disabled={selectedServers.length === 0}
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Reboot Servers ({selectedServers.length} servers)
                     </Button>
-                    <Button variant="outline" className="gap-2" disabled={selectedServers.length === 0}>
-                      <RefreshCw className="w-4 h-4" />
-                      Health Check
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                      disabled={selectedServers.length === 0}
+                    >
+                      <Shield className="w-4 h-4 mr-2" />
+                      Apply Security Patches ({selectedServers.length} servers)
+                    </Button>
+                    <Button 
+                      className="w-full justify-start" 
+                      variant="outline"
+                      disabled={selectedServers.length === 0}
+                    >
+                      <Monitor className="w-4 h-4 mr-2" />
+                      Health Check ({selectedServers.length} servers)
                     </Button>
                   </div>
-                )}
+                </div>
               </div>
+              
+              {selectedServers.length > 0 && (
+                <Alert>
+                  <CheckCircle className="w-4 h-4" />
+                  <AlertDescription>
+                    {selectedServers.length} server(s) selected for bulk operations.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -809,61 +832,11 @@ export function ModernSchedulerHub() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Operation</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Completed</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Result</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {jobs.filter(job => ['completed', 'failed'].includes(job.status)).slice(0, 10).map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell className="font-medium">
-                        {job.server?.hostname} - {job.firmware_package?.name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {job.firmware_package?.firmware_type}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {job.completed_at ? new Date(job.completed_at).toLocaleString() : '-'}
-                      </TableCell>
-                      <TableCell>
-                        {job.started_at && job.completed_at
-                          ? `${Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 60000)}m`
-                          : '-'
-                        }
-                      </TableCell>
-                      <TableCell>{getStatusBadge(job.status)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
-                            <Eye className="w-3 h-3" />
-                          </Button>
-                          {job.status === 'failed' && (
-                            <Button size="sm" variant="outline" onClick={() => retryJob(job.id)}>
-                              <RefreshCw className="w-3 h-3" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {jobs.filter(job => ['completed', 'failed'].includes(job.status)).length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        No completed operations found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>Operation history will be displayed here</p>
+                <p className="text-sm">Track completed jobs, maintenance windows, and system changes</p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -871,7 +844,7 @@ export function ModernSchedulerHub() {
 
       {/* Manual Update Dialog */}
       <Dialog open={isManualUpdateOpen} onOpenChange={setIsManualUpdateOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Zap className="w-5 h-5" />
@@ -882,86 +855,12 @@ export function ModernSchedulerHub() {
         </DialogContent>
       </Dialog>
 
-      {/* Quick Schedule Dialog */}
-      <Dialog open={isScheduleModalOpen} onOpenChange={setIsScheduleModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Quick Schedule Event
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="event-name">Event Name</Label>
-              <Input
-                id="event-name"
-                value={quickSchedule.name}
-                onChange={(e) => setQuickSchedule(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g. Weekly Maintenance Window"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="event-type">Event Type</Label>
-              <Select 
-                value={quickSchedule.type} 
-                onValueChange={(value: any) => setQuickSchedule(prev => ({ ...prev, type: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="maintenance">Maintenance Window</SelectItem>
-                  <SelectItem value="update">Firmware Update</SelectItem>
-                  <SelectItem value="patch">Security Patch</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="scheduled-time">Scheduled Date & Time</Label>
-              <Input
-                id="scheduled-time"
-                type="datetime-local"
-                value={quickSchedule.scheduled_for}
-                onChange={(e) => setQuickSchedule(prev => ({ ...prev, scheduled_for: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="priority">Priority</Label>
-              <Select 
-                value={quickSchedule.priority} 
-                onValueChange={(value: any) => setQuickSchedule(prev => ({ ...prev, priority: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex gap-2 pt-4">
-              <Button onClick={handleQuickSchedule} className="flex-1">
-                Schedule Event
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setIsScheduleModalOpen(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Detailed Scheduling Dialog */}
+      <DetailedSchedulingDialog
+        open={isDetailedScheduleOpen}
+        onOpenChange={setIsDetailedScheduleOpen}
+        onScheduleCreated={loadData}
+      />
     </div>
   );
 }
