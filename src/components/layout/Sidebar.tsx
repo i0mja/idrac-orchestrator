@@ -32,6 +32,7 @@ type PageType =
   | "settings"
   | "alerts"
   | "vcenter"
+  | "jobs"
   | "scheduler"
   | "discovery";
 
@@ -53,6 +54,7 @@ const menuItems: Array<{
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
   { id: "discovery", label: "Discovery", icon: Search, roles: ["admin", "operator"] },
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
+  { id: "jobs", label: "Jobs Management", icon: Activity, roles: ["admin", "operator"] },
   { id: "workflows", label: "Workflow Automation", icon: Zap, roles: ["admin", "operator"], isEnterprise: true },
   { id: "scheduler", label: "Command & Control", icon: Calendar, roles: ["admin", "operator"] },
   { id: "enterprise", label: "Infrastructure & Operations", icon: Building2, roles: ["admin", "operator"] },

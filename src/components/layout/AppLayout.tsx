@@ -17,6 +17,7 @@ type PageType =
   | "settings"
   | "alerts"
   | "vcenter"
+  | "jobs"
   | "scheduler"
   | "discovery";
 
@@ -61,6 +62,8 @@ export function AppLayout() {
         return "settings";
       case "/vcenter":
         return "vcenter";
+      case "/jobs":
+        return "jobs";
       default:
         return "dashboard";
     }
@@ -112,6 +115,9 @@ export function AppLayout() {
         break;
       case "vcenter":
         navigate("/vcenter");
+        break;
+      case "jobs":
+        navigate("/jobs");
         break;
     }
   };

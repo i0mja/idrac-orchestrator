@@ -18,6 +18,7 @@ import { AdvancedIntegrationsHub } from "@/components/enterprise/AdvancedIntegra
 import { ComplianceManagement } from "@/components/enterprise/ComplianceManagement";
 import { WorkflowAutomationHub } from "@/components/enterprise/WorkflowAutomationHub";
 import { EnterpriseAnalyticsDashboard } from "@/components/enterprise/EnterpriseAnalyticsDashboard";
+import JobsManagement from "@/pages/JobsManagement";
 
 export function AppRoutes() {
   return (
@@ -37,6 +38,7 @@ export function AppRoutes() {
         <Route path="analytics" element={<EnterpriseAnalyticsDashboard />} />
         <Route path="alerts" element={<EnhancedAlertsEventsPage />} />
         <Route path="vcenter" element={<VCenterManagement />} />
+        <Route path="jobs" element={<JobsManagement />} />
         <Route path="health" element={<HealthChecks />} />
         <Route path="users" element={<UserManagement />} />
         <Route path="settings" element={<SettingsPage />} />
