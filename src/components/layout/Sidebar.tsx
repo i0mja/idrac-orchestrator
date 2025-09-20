@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Users,
   Settings,
@@ -10,13 +11,22 @@ import {
   Bell,
   Network,
   Calendar,
-  Search
+  Search,
+  Plug,
+  Scale,
+  Zap,
+  BarChart3
 } from "lucide-react";
 
 type PageType =
   | "dashboard"
   | "global-inventory"
   | "enterprise"
+  | "organization"
+  | "integrations"
+  | "compliance"
+  | "workflows"
+  | "analytics"
   | "health"
   | "users"
   | "settings"
@@ -36,15 +46,21 @@ const menuItems: Array<{
   label: string;
   icon: any;
   roles: string[];
+  isEnterprise?: boolean;
 }> = [
-  { id: "dashboard", label: "Dashboard", icon: Activity, roles: ["admin", "operator", "viewer"] },
+  { id: "dashboard", label: "Command Center", icon: Activity, roles: ["admin", "operator", "viewer"] },
+  { id: "analytics", label: "Analytics Dashboard", icon: BarChart3, roles: ["admin", "operator", "viewer"], isEnterprise: true },
   { id: "global-inventory", label: "Global Inventory", icon: Database, roles: ["admin", "operator", "viewer"] },
   { id: "discovery", label: "Discovery", icon: Search, roles: ["admin", "operator"] },
   { id: "vcenter", label: "vCenter Management", icon: Network, roles: ["admin", "operator"] },
-  { id: "enterprise", label: "Infrastructure & Operations", icon: Building2, roles: ["admin", "operator"] },
+  { id: "workflows", label: "Workflow Automation", icon: Zap, roles: ["admin", "operator"], isEnterprise: true },
   { id: "scheduler", label: "Command & Control", icon: Calendar, roles: ["admin", "operator"] },
+  { id: "enterprise", label: "Infrastructure & Operations", icon: Building2, roles: ["admin", "operator"] },
   { id: "health", label: "Health Checks", icon: Shield, roles: ["admin", "operator", "viewer"] },
   { id: "alerts", label: "Alerts & Events", icon: Bell, roles: ["admin", "operator", "viewer"] },
+  { id: "organization", label: "Organization", icon: Building2, roles: ["admin"], isEnterprise: true },
+  { id: "integrations", label: "Integrations", icon: Plug, roles: ["admin"], isEnterprise: true },
+  { id: "compliance", label: "Compliance", icon: Scale, roles: ["admin"], isEnterprise: true },
   { id: "users", label: "User Management", icon: Users, roles: ["admin"] },
   { id: "settings", label: "Settings", icon: Settings, roles: ["admin"] },
 ];
@@ -67,7 +83,7 @@ export function Sidebar({ currentPage, onPageChange, userRole }: SidebarProps) {
           </div>
         </div>
 
-        <nav className="space-y-2">
+        <nav className="space-y-1">
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -75,13 +91,19 @@ export function Sidebar({ currentPage, onPageChange, userRole }: SidebarProps) {
                 key={item.id}
                 variant="ghost"
                 className={cn(
-                  "w-full justify-start gap-3 h-10",
-                  currentPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground"
+                  "w-full justify-start gap-3 h-10 text-sm",
+                  currentPage === item.id && "bg-sidebar-accent text-sidebar-accent-foreground",
+                  item.isEnterprise && "relative"
                 )}
                 onClick={() => onPageChange(item.id)}
               >
                 <Icon className="w-4 h-4" />
-                {item.label}
+                <span className="flex-1 text-left">{item.label}</span>
+                {item.isEnterprise && (
+                  <Badge variant="secondary" className="text-xs px-1.5 py-0.5 h-5">
+                    PRO
+                  </Badge>
+                )}
               </Button>
             );
           })}

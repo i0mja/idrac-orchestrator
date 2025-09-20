@@ -7,6 +7,11 @@ type PageType =
   | "dashboard"
   | "global-inventory"
   | "enterprise"
+  | "organization"
+  | "integrations"
+  | "compliance"
+  | "workflows"
+  | "analytics"
   | "health"
   | "users"
   | "settings"
@@ -35,6 +40,16 @@ export function AppLayout() {
         return "scheduler";
       case "/enterprise":
         return "enterprise";
+      case "/organization":
+        return "organization";
+      case "/integrations":
+        return "integrations";
+      case "/compliance":
+        return "compliance";
+      case "/workflows":
+        return "workflows";
+      case "/analytics":
+        return "analytics";
       case "/health":
         return "health";
       case "/alerts":
@@ -67,6 +82,21 @@ export function AppLayout() {
         break;
       case "enterprise":
         navigate("/enterprise");
+        break;
+      case "organization":
+        navigate("/organization");
+        break;
+      case "integrations":
+        navigate("/integrations");
+        break;
+      case "compliance":
+        navigate("/compliance");
+        break;
+      case "workflows":
+        navigate("/workflows");
+        break;
+      case "analytics":
+        navigate("/analytics");
         break;
       case "health":
         navigate("/health");

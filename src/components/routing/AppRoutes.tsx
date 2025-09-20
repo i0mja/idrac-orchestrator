@@ -13,6 +13,11 @@ import { UserManagement } from "@/components/users/UserManagement";
 import { SettingsPage } from "@/components/settings/SettingsPage";
 import { DiscoveryPage } from "@/pages/DiscoveryPage";
 import { EnterpriseManagement } from "@/components/enterprise/EnterpriseManagement";
+import { OrganizationManagement } from "@/components/enterprise/OrganizationManagement";
+import { AdvancedIntegrationsHub } from "@/components/enterprise/AdvancedIntegrationsHub";
+import { ComplianceManagement } from "@/components/enterprise/ComplianceManagement";
+import { WorkflowAutomationHub } from "@/components/enterprise/WorkflowAutomationHub";
+import { EnterpriseAnalyticsDashboard } from "@/components/enterprise/EnterpriseAnalyticsDashboard";
 
 export function AppRoutes() {
   return (
@@ -25,6 +30,11 @@ export function AppRoutes() {
         <Route path="discovery" element={<DiscoveryPage />} />
         <Route path="scheduler" element={<ModernSchedulerHub />} />
         <Route path="enterprise" element={<EnterpriseManagement />} />
+        <Route path="organization" element={<OrganizationManagement />} />
+        <Route path="integrations" element={<AdvancedIntegrationsHub />} />
+        <Route path="compliance" element={<ComplianceManagement />} />
+        <Route path="workflows" element={<WorkflowAutomationHub />} />
+        <Route path="analytics" element={<EnterpriseAnalyticsDashboard />} />
         <Route path="alerts" element={<EnhancedAlertsEventsPage />} />
         <Route path="vcenter" element={<VCenterManagement />} />
         <Route path="health" element={<HealthChecks />} />
