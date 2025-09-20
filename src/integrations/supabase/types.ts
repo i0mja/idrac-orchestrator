@@ -62,6 +62,56 @@ export type Database = {
           },
         ]
       }
+      api_keys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          key_hash: string
+          key_prefix: string
+          last_used_at: string | null
+          name: string
+          organization_id: string
+          permissions: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash: string
+          key_prefix: string
+          last_used_at?: string | null
+          name: string
+          organization_id: string
+          permissions?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_hash?: string
+          key_prefix?: string
+          last_used_at?: string | null
+          name?: string
+          organization_id?: string
+          permissions?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -374,6 +424,50 @@ export type Database = {
         }
         Relationships: []
       }
+      compliance_reports: {
+        Row: {
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          report_data: Json
+          report_type: string
+          status: string | null
+        }
+        Insert: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          organization_id: string
+          period_end: string
+          period_start: string
+          report_data: Json
+          report_type: string
+          status?: string | null
+        }
+        Update: {
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          organization_id?: string
+          period_end?: string
+          period_start?: string
+          report_data?: Json
+          report_type?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "compliance_reports_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       credential_assignments: {
         Row: {
           created_at: string
@@ -676,6 +770,53 @@ export type Database = {
         }
         Relationships: []
       }
+      governance_policies: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          enforcement_level: string | null
+          id: string
+          is_active: boolean | null
+          organization_id: string
+          policy_name: string
+          policy_rules: Json
+          policy_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          enforcement_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id: string
+          policy_name: string
+          policy_rules?: Json
+          policy_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          enforcement_level?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id?: string
+          policy_name?: string
+          policy_rules?: Json
+          policy_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_policies_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_check_results: {
         Row: {
           check_type: string
@@ -903,6 +1044,130 @@ export type Database = {
           },
         ]
       }
+      notification_channels: {
+        Row: {
+          channel_type: string
+          configuration: Json
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          organization_id: string
+        }
+        Insert: {
+          channel_type: string
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          organization_id: string
+        }
+        Update: {
+          channel_type?: string
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_channels_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organization_members: {
+        Row: {
+          id: string
+          invited_by: string | null
+          is_active: boolean | null
+          joined_at: string | null
+          organization_id: string
+          permissions: Json | null
+          role: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean | null
+          joined_at?: string | null
+          organization_id: string
+          permissions?: Json | null
+          role?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean | null
+          joined_at?: string | null
+          organization_id?: string
+          permissions?: Json | null
+          role?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          created_at: string | null
+          domain: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          max_servers: number | null
+          max_users: number | null
+          name: string
+          settings: Json | null
+          slug: string
+          subscription_tier: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          max_servers?: number | null
+          max_users?: number | null
+          name: string
+          settings?: Json | null
+          slug: string
+          subscription_tier?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          domain?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          max_servers?: number | null
+          max_users?: number | null
+          name?: string
+          settings?: Json | null
+          slug?: string
+          subscription_tier?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       os_compatibility: {
         Row: {
           created_at: string
@@ -953,6 +1218,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_login: string | null
+          organization_id: string | null
           role: string | null
           updated_at: string | null
           user_id: string | null
@@ -965,6 +1231,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_login?: string | null
+          organization_id?: string | null
           role?: string | null
           updated_at?: string | null
           user_id?: string | null
@@ -977,12 +1244,21 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_login?: string | null
+          organization_id?: string | null
           role?: string | null
           updated_at?: string | null
           user_id?: string | null
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       server_backups: {
         Row: {
@@ -1186,6 +1462,7 @@ export type Database = {
           memory_gb: number | null
           model: string | null
           operating_system: string | null
+          organization_id: string | null
           os_eol_date: string | null
           os_version: string | null
           purchase_date: string | null
@@ -1222,6 +1499,7 @@ export type Database = {
           memory_gb?: number | null
           model?: string | null
           operating_system?: string | null
+          organization_id?: string | null
           os_eol_date?: string | null
           os_version?: string | null
           purchase_date?: string | null
@@ -1258,6 +1536,7 @@ export type Database = {
           memory_gb?: number | null
           model?: string | null
           operating_system?: string | null
+          organization_id?: string | null
           os_eol_date?: string | null
           os_version?: string | null
           purchase_date?: string | null
@@ -1272,7 +1551,56 @@ export type Database = {
           vcenter_id?: string | null
           warranty_end_date?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "servers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sso_providers: {
+        Row: {
+          configuration: Json
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          organization_id: string
+          provider_name: string
+          provider_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id: string
+          provider_name: string
+          provider_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          configuration?: Json
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          organization_id?: string
+          provider_name?: string
+          provider_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sso_providers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_config: {
         Row: {
@@ -1801,6 +2129,7 @@ export type Database = {
           error_message: string | null
           execution_log: Json | null
           id: string
+          organization_id: string | null
           started_at: string | null
           status: string | null
           template_id: string
@@ -1812,6 +2141,7 @@ export type Database = {
           error_message?: string | null
           execution_log?: Json | null
           id?: string
+          organization_id?: string | null
           started_at?: string | null
           status?: string | null
           template_id: string
@@ -1823,12 +2153,20 @@ export type Database = {
           error_message?: string | null
           execution_log?: Json | null
           id?: string
+          organization_id?: string | null
           started_at?: string | null
           status?: string | null
           template_id?: string
           triggered_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "workflow_executions_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "workflow_executions_template_id_fkey"
             columns: ["template_id"]
@@ -1854,6 +2192,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           name: string
+          organization_id: string | null
           steps: Json
           trigger_config: Json | null
           trigger_type: string
@@ -1867,6 +2206,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name: string
+          organization_id?: string | null
           steps: Json
           trigger_config?: Json | null
           trigger_type: string
@@ -1880,6 +2220,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           name?: string
+          organization_id?: string | null
           steps?: Json
           trigger_config?: Json | null
           trigger_type?: string
@@ -1891,6 +2232,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
