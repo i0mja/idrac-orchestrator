@@ -131,13 +131,30 @@ api/
 
 The `api/src/lib/protocols` module implements a production-ready firmware transport layer with the following capabilities:
 
-- **Protocol auto-detection** across Redfish, WS-MAN, RACADM, IPMI, and SSH with mixed-generation iDRAC awareness.
-- **Health monitoring** via `ProtocolManager`, emitting structured telemetry for observability pipelines.
-- **Intelligent fallback chain** (`Redfish → WS-MAN → RACADM → IPMI → SSH`) with error classification and exponential backoff retry policies.
+- **Protocol auto-detection & validation** continuously exercises Redfish, WS-MAN, RACADM, IPMI, and SSH endpoints while remaining aware of mixed-generation iDRAC behaviors.
+- **Automatic fallback** promotes the healthiest protocol via the `Redfish → WS-MAN → RACADM → IPMI → SSH` chain with error classification and exponential backoff retry policies.
+- **Real-time protocol health monitoring** via `ProtocolManager`, emitting structured telemetry for observability pipelines and discovery dashboards.
 - **Firmware operation abstraction** (`FirmwareUpdateRequest`) powering `SimpleUpdate`, `InstallFromRepository`, and `MultipartUpdate` workflows.
+- **Compliance scoring** leverages Dell catalog metadata so protocol results directly influence firmware baseline scoring before execution.
+- **Credential profile management** binds protocol execution to centrally assigned credential profiles, ensuring least-privilege enforcement across transports.
 - **Pluggable architecture** that allows service providers to extend update transports without modifying the state machine.
 
-The orchestration state machine consumes this layer to guarantee protocol resiliency during complex, multi-component update plans.
+The orchestration state machine consumes this layer to guarantee protocol resiliency during complex, multi-component update plans while surfacing live health telemetry to the UI.
+
+##### Key Integration Points
+
+- **Protocol orchestration core**: [`api/src/lib/protocols/protocolManager.ts`](api/src/lib/protocols/protocolManager.ts) maintains runtime health, scoring, and fallback state.
+- **Protocol detection entry point**: [`api/src/lib/protocols/index.ts`](api/src/lib/protocols/index.ts) runs the ordered detection suite and exposes capability metadata.
+- **Discovery persistence**: Enhanced protocol test results are stored in `servers.metadata` to power dashboards, routing decisions, and historical audits.
+- **Intelligent routing**: Update plans consume declared protocol capabilities to select the most reliable transport per server.
+
+## Next Development Priorities
+
+1. **Live WebSocket updates during discovery** to stream protocol health results into the inventory experience.
+2. **Bulk protocol actions** enabling "Test All" and "Update All" workflows across large server selections.
+3. **OME integration as a discovery source** so Dell OpenManage Enterprise inventories seed the orchestrator.
+4. **State machine auto-registration** to automatically onboard newly discovered servers into orchestration plans.
+5. **Advanced filtering by protocol capabilities** allowing operators to target remediation by supported transports.
 
 ## Data Architecture
 
