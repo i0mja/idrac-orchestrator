@@ -112,6 +112,15 @@ verify_jwt = false
 [functions.host-maintenance-mode]
 verify_jwt = false
 
+[functions.job-queue-manager]
+verify_jwt = false
+
+[functions.background-job-processor]
+verify_jwt = false
+
+[functions.job-scheduler]
+verify_jwt = false
+
 [db]
 port = 54322
 
