@@ -735,6 +735,36 @@ export type Database = {
         }
         Relationships: []
       }
+      discovery_cache: {
+        Row: {
+          cached_at: string
+          created_at: string
+          expires_at: string
+          firmware_data: Json | null
+          id: string
+          ip_address: unknown
+          protocol_results: Json
+        }
+        Insert: {
+          cached_at?: string
+          created_at?: string
+          expires_at?: string
+          firmware_data?: Json | null
+          id?: string
+          ip_address: unknown
+          protocol_results?: Json
+        }
+        Update: {
+          cached_at?: string
+          created_at?: string
+          expires_at?: string
+          firmware_data?: Json | null
+          id?: string
+          ip_address?: unknown
+          protocol_results?: Json
+        }
+        Relationships: []
+      }
       eol_alerts: {
         Row: {
           acknowledged: boolean | null
@@ -1550,6 +1580,8 @@ export type Database = {
           discovery_source: string | null
           domain: string | null
           environment: string | null
+          firmware_compliance: Json | null
+          healthiest_protocol: string | null
           host_type: string | null
           hostname: string
           id: string
@@ -1557,6 +1589,7 @@ export type Database = {
           ip_address: unknown
           ism_installed: boolean | null
           last_discovered: string | null
+          last_protocol_check: string | null
           last_updated: string | null
           memory_gb: number | null
           model: string | null
@@ -1564,6 +1597,7 @@ export type Database = {
           organization_id: string | null
           os_eol_date: string | null
           os_version: string | null
+          protocol_capabilities: Json | null
           purchase_date: string | null
           rack_location: string | null
           security_risk_level: string | null
@@ -1587,6 +1621,8 @@ export type Database = {
           discovery_source?: string | null
           domain?: string | null
           environment?: string | null
+          firmware_compliance?: Json | null
+          healthiest_protocol?: string | null
           host_type?: string | null
           hostname: string
           id?: string
@@ -1594,6 +1630,7 @@ export type Database = {
           ip_address: unknown
           ism_installed?: boolean | null
           last_discovered?: string | null
+          last_protocol_check?: string | null
           last_updated?: string | null
           memory_gb?: number | null
           model?: string | null
@@ -1601,6 +1638,7 @@ export type Database = {
           organization_id?: string | null
           os_eol_date?: string | null
           os_version?: string | null
+          protocol_capabilities?: Json | null
           purchase_date?: string | null
           rack_location?: string | null
           security_risk_level?: string | null
@@ -1624,6 +1662,8 @@ export type Database = {
           discovery_source?: string | null
           domain?: string | null
           environment?: string | null
+          firmware_compliance?: Json | null
+          healthiest_protocol?: string | null
           host_type?: string | null
           hostname?: string
           id?: string
@@ -1631,6 +1671,7 @@ export type Database = {
           ip_address?: unknown
           ism_installed?: boolean | null
           last_discovered?: string | null
+          last_protocol_check?: string | null
           last_updated?: string | null
           memory_gb?: number | null
           model?: string | null
@@ -1638,6 +1679,7 @@ export type Database = {
           organization_id?: string | null
           os_eol_date?: string | null
           os_version?: string | null
+          protocol_capabilities?: Json | null
           purchase_date?: string | null
           rack_location?: string | null
           security_risk_level?: string | null
@@ -2376,6 +2418,10 @@ export type Database = {
           updated_at: string
         }[]
       }
+      cleanup_discovery_cache: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_credentials_for_ip: {
         Args: { target_ip: unknown }
         Returns: {
@@ -2440,6 +2486,15 @@ export type Database = {
           p_user_id?: string
         }
         Returns: string
+      }
+      update_server_protocol_capabilities: {
+        Args: {
+          p_firmware_compliance?: Json
+          p_healthiest_protocol: string
+          p_protocol_capabilities: Json
+          p_server_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
