@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogTrigger,
@@ -21,6 +22,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCredentialProfiles } from '@/hooks/useCredentialProfiles';
+import { ProtocolStatusDisplay } from './ProtocolStatusDisplay';
+import { FirmwareComplianceDisplay } from './FirmwareComplianceDisplay';
 import {
   Search,
   Server,
@@ -38,10 +41,31 @@ import {
   Shield,
   Wifi,
   Play,
+  Activity,
+  Download,
 } from 'lucide-react';
 import { useSystemEvents } from '@/hooks/useSystemEvents';
 
-interface DiscoveryResult {
+interface ProtocolCapability {
+  protocol: 'REDFISH' | 'WSMAN' | 'RACADM' | 'IPMI' | 'SSH';
+  supported: boolean;
+  firmwareVersion?: string;
+  managerType?: string;
+  generation?: string;
+  updateModes: string[];
+  priority: number;
+  latencyMs?: number;
+  status: 'healthy' | 'degraded' | 'unreachable';
+}
+
+interface FirmwareCompliance {
+  biosOutdated: boolean;
+  idracOutdated: boolean;
+  availableUpdates: number;
+  updateReadiness: 'ready' | 'maintenance_required' | 'not_supported';
+}
+
+interface EnhancedDiscoveryResult {
   hostname: string;
   ip_address: string;
   model: string;
@@ -49,6 +73,11 @@ interface DiscoveryResult {
   idrac_version: string;
   bios_version: string;
   status: string;
+  protocols: ProtocolCapability[];
+  healthiestProtocol?: ProtocolCapability;
+  firmwareCompliance?: FirmwareCompliance;
+  discoveryMethod: string;
+  lastProtocolCheck: string;
 }
 
 interface DatacenterInfo {
@@ -60,15 +89,18 @@ interface DatacenterInfo {
 export function NetworkDiscovery() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
-  const [discoveredServers, setDiscoveredServers] = useState<DiscoveryResult[]>([]);
+  const [discoveredServers, setDiscoveredServers] = useState<EnhancedDiscoveryResult[]>([]);
   const [showCredentialForm, setShowCredentialForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [expandedServer, setExpandedServer] = useState<string | null>(null);
 
-  // Scan configuration
+  // Enhanced scan configuration
   const [scanConfig, setScanConfig] = useState({
     ipRange: '192.168.1.1-50',
     datacenterId: null as string | null,
     useCredentialProfiles: true,
+    detectProtocols: true,
+    checkFirmware: true,
   });
 
   // Fallback credentials (only used if no profiles match)
@@ -188,12 +220,14 @@ export function NetworkDiscovery() {
         setScanProgress((prev) => Math.min(prev + 10, 95));
       }, 1000);
 
-      const { data, error } = await supabase.functions.invoke('discover-servers', {
+      const { data, error } = await supabase.functions.invoke('enhanced-discovery', {
         body: {
           ipRange: scanConfig.ipRange || undefined,
           datacenterId: scanConfig.datacenterId,
           credentials: scanConfig.useCredentialProfiles ? null : fallbackCredentials,
           useCredentialProfiles: scanConfig.useCredentialProfiles,
+          detectProtocols: scanConfig.detectProtocols,
+          checkFirmware: scanConfig.checkFirmware,
         },
       });
 
@@ -205,8 +239,8 @@ export function NetworkDiscovery() {
       setDiscoveredServers(data.servers || []);
 
       toast({
-        title: 'Network Scan Complete',
-        description: `Discovered ${data.discovered || 0} Dell servers with iDRAC access`,
+        title: 'Enhanced Discovery Complete',
+        description: `Discovered ${data.discovered || 0} servers • ${data.summary?.withProtocols || 0} with protocols • ${data.summary?.readyForUpdates || 0} ready for updates`,
       });
     } catch (error) {
       console.error('Network scan error:', error);
@@ -289,6 +323,56 @@ export function NetworkDiscovery() {
                   </p>
                 </div>
               )}
+
+              {/* Enhanced Discovery Options */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Discovery Options</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="detect-protocols"
+                      checked={scanConfig.detectProtocols}
+                      onCheckedChange={(checked) =>
+                        setScanConfig((prev) => ({ ...prev, detectProtocols: checked }))
+                      }
+                      disabled={isScanning}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label
+                        htmlFor="detect-protocols"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Protocol Detection
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Test all protocols (Redfish, WS-MAN, RACADM, IPMI, SSH)
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id="check-firmware"
+                      checked={scanConfig.checkFirmware}
+                      onCheckedChange={(checked) =>
+                        setScanConfig((prev) => ({ ...prev, checkFirmware: checked }))
+                      }
+                      disabled={isScanning}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label
+                        htmlFor="check-firmware"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                      >
+                        Firmware Analysis
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Check firmware versions and compliance
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* Authentication Method */}
               <div className="space-y-4">
@@ -489,22 +573,111 @@ export function NetworkDiscovery() {
                     </Badge>
                   </div>
 
-                  <div className="grid gap-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-4">
                     {discoveredServers.map((server, index) => (
-                      <Card key={index} className="border-l-4 border-l-green-500">
+                      <Card key={index} className="border-l-4 border-l-primary">
                         <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-semibold">{server.hostname}</h4>
-                            <Badge variant={server.status === 'online' ? 'default' : 'secondary'}>
-                              {server.status}
-                            </Badge>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <Server className="w-5 h-5 text-primary" />
+                                <div>
+                                  <div className="font-medium">{server.hostname}</div>
+                                  <div className="text-sm text-muted-foreground">
+                                    {server.ip_address} • {server.model}
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <Badge variant={server.status === 'online' ? 'default' : 'secondary'}>
+                                {server.status === 'online' ? (
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                ) : (
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                )}
+                                {server.status}
+                              </Badge>
+                              
+                              {server.protocols && (
+                                <ProtocolStatusDisplay 
+                                  protocols={server.protocols}
+                                  healthiestProtocol={server.healthiestProtocol}
+                                />
+                              )}
+                              
+                              {server.firmwareCompliance && (
+                                <FirmwareComplianceDisplay
+                                  compliance={server.firmwareCompliance}
+                                  biosVersion={server.bios_version}
+                                  idracVersion={server.idrac_version}
+                                  compact
+                                />
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                              <code className="text-xs bg-muted px-2 py-1 rounded">
+                                {server.service_tag}
+                              </code>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => 
+                                  setExpandedServer(
+                                    expandedServer === server.ip_address ? null : server.ip_address
+                                  )
+                                }
+                              >
+                                {expandedServer === server.ip_address ? 'Hide' : 'Details'}
+                              </Button>
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
-                            <div>IP: {server.ip_address}</div>
-                            <div>Model: {server.model}</div>
-                            {server.service_tag && <div>Service Tag: {server.service_tag}</div>}
-                            {server.idrac_version && <div>iDRAC: {server.idrac_version}</div>}
-                          </div>
+                          
+                          {expandedServer === server.ip_address && (
+                            <div className="mt-4 pt-4 border-t space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {server.protocols && (
+                                  <ProtocolStatusDisplay 
+                                    protocols={server.protocols}
+                                    healthiestProtocol={server.healthiestProtocol}
+                                    showDetails
+                                  />
+                                )}
+                                
+                                {server.firmwareCompliance && (
+                                  <FirmwareComplianceDisplay
+                                    compliance={server.firmwareCompliance}
+                                    biosVersion={server.bios_version}
+                                    idracVersion={server.idrac_version}
+                                  />
+                                )}
+                              </div>
+                              
+                              <div className="bg-muted/50 p-3 rounded-lg">
+                                <div className="text-sm space-y-1">
+                                  <div><span className="font-medium">Discovery Method:</span> {server.discoveryMethod}</div>
+                                  <div><span className="font-medium">Last Protocol Check:</span> {new Date(server.lastProtocolCheck).toLocaleString()}</div>
+                                  <div><span className="font-medium">BIOS Version:</span> {server.bios_version || 'Unknown'}</div>
+                                  <div><span className="font-medium">iDRAC Version:</span> {server.idrac_version || 'Unknown'}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <Button variant="outline" size="sm">
+                                  <Activity className="w-4 h-4 mr-2" />
+                                  Test Protocols
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <Download className="w-4 h-4 mr-2" />
+                                  Check Updates
+                                </Button>
+                                <Button variant="outline" size="sm">
+                                  <Shield className="w-4 h-4 mr-2" />
+                                  Queue Maintenance
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
