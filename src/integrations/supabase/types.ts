@@ -14,6 +14,104 @@ export type Database = {
   }
   public: {
     Tables: {
+      analytics_events: {
+        Row: {
+          campaign_id: string | null
+          event_type: string
+          id: string
+          properties: Json | null
+          server_id: string | null
+          session_id: string | null
+          timestamp: string | null
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          event_type: string
+          id?: string
+          properties?: Json | null
+          server_id?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          event_type?: string
+          id?: string
+          properties?: Json | null
+          server_id?: string | null
+          session_id?: string | null
+          timestamp?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "user_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analytics_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string | null
+          success: boolean | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       auto_orchestration_config: {
         Row: {
           cluster_priority_order: string[] | null
@@ -1245,6 +1343,59 @@ export type Database = {
         }
         Relationships: []
       }
+      system_insights: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          affected_resources: Json | null
+          confidence_score: number | null
+          created_at: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          insight_type: string
+          recommendations: Json | null
+          severity: string | null
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_resources?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_type: string
+          recommendations?: Json | null
+          severity?: string | null
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          affected_resources?: Json | null
+          confidence_score?: number | null
+          created_at?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          insight_type?: string
+          recommendations?: Json | null
+          severity?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_insights_acknowledged_by_fkey"
+            columns: ["acknowledged_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       update_jobs: {
         Row: {
           completed_at: string | null
@@ -1418,6 +1569,95 @@ export type Database = {
           },
         ]
       }
+      user_permissions: {
+        Row: {
+          expires_at: string | null
+          granted_at: string | null
+          granted_by: string | null
+          id: string
+          is_active: boolean | null
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Update: {
+          expires_at?: string | null
+          granted_at?: string | null
+          granted_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          permission?: Database["public"]["Enums"]["app_permission"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_permissions_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_permissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          ip_address: unknown | null
+          is_active: boolean | null
+          last_activity: string | null
+          session_token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_token?: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          ip_address?: unknown | null
+          is_active?: boolean | null
+          last_activity?: string | null
+          session_token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vcenter_clusters: {
         Row: {
           active_hosts: number | null
@@ -1554,6 +1794,107 @@ export type Database = {
           },
         ]
       }
+      workflow_executions: {
+        Row: {
+          completed_at: string | null
+          context: Json | null
+          error_message: string | null
+          execution_log: Json | null
+          id: string
+          started_at: string | null
+          status: string | null
+          template_id: string
+          triggered_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          context?: Json | null
+          error_message?: string | null
+          execution_log?: Json | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          template_id: string
+          triggered_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          context?: Json | null
+          error_message?: string | null
+          execution_log?: Json | null
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          template_id?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_executions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "workflow_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_executions_triggered_by_fkey"
+            columns: ["triggered_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workflow_templates: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          steps: Json
+          trigger_config: Json | null
+          trigger_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          steps: Json
+          trigger_config?: Json | null
+          trigger_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          steps?: Json
+          trigger_config?: Json | null
+          trigger_type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1586,6 +1927,32 @@ export type Database = {
       }
     }
     Enums: {
+      app_permission:
+        | "system:admin"
+        | "users:read"
+        | "users:write"
+        | "users:delete"
+        | "servers:read"
+        | "servers:write"
+        | "servers:delete"
+        | "firmware:read"
+        | "firmware:write"
+        | "firmware:deploy"
+        | "jobs:read"
+        | "jobs:write"
+        | "jobs:execute"
+        | "jobs:cancel"
+        | "alerts:read"
+        | "alerts:acknowledge"
+        | "alerts:manage"
+        | "settings:read"
+        | "settings:write"
+        | "analytics:read"
+        | "analytics:export"
+        | "backup:read"
+        | "backup:write"
+        | "backup:restore"
+        | "audit:read"
       connection_method: "redfish" | "racadm" | "vcenter"
       firmware_type: "idrac" | "bios" | "storage" | "network" | "other"
       server_status: "online" | "offline" | "updating" | "error" | "unknown"
@@ -1722,6 +2089,33 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_permission: [
+        "system:admin",
+        "users:read",
+        "users:write",
+        "users:delete",
+        "servers:read",
+        "servers:write",
+        "servers:delete",
+        "firmware:read",
+        "firmware:write",
+        "firmware:deploy",
+        "jobs:read",
+        "jobs:write",
+        "jobs:execute",
+        "jobs:cancel",
+        "alerts:read",
+        "alerts:acknowledge",
+        "alerts:manage",
+        "settings:read",
+        "settings:write",
+        "analytics:read",
+        "analytics:export",
+        "backup:read",
+        "backup:write",
+        "backup:restore",
+        "audit:read",
+      ],
       connection_method: ["redfish", "racadm", "vcenter"],
       firmware_type: ["idrac", "bios", "storage", "network", "other"],
       server_status: ["online", "offline", "updating", "error", "unknown"],
