@@ -62,7 +62,7 @@ interface ScheduleForm {
   // Target Selection
   target_type: 'all_servers' | 'by_datacenter' | 'by_environment' | 'by_model' | 'custom_selection';
   selected_servers: string[];
-  selected_datacenters: string[];
+  selected_datacenter_id: string | null;
   selected_environments: string[];
   selected_models: string[];
   
@@ -103,7 +103,7 @@ const DEFAULT_FORM: ScheduleForm = {
   recurrence_end: undefined,
   target_type: 'custom_selection',
   selected_servers: [],
-  selected_datacenters: [],
+  selected_datacenter_id: null,
   selected_environments: [],
   selected_models: [],
   max_concurrent_updates: 3,
@@ -139,6 +139,13 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
     setForm(prev => ({ ...prev, ...updates }));
   };
 
+  const handleTargetTypeChange = (value: ScheduleForm['target_type']) => {
+    updateForm({
+      target_type: value,
+      ...(value !== 'by_datacenter' ? { selected_datacenter_id: null } : {}),
+    });
+  };
+
   const validateSchedule = async () => {
     setIsValidating(true);
     try {
@@ -167,9 +174,25 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
         case 'custom_selection':
           affectedServers = servers.filter(s => form.selected_servers.includes(s.id));
           break;
-        case 'by_datacenter':
-          affectedServers = servers.filter(s => form.selected_datacenters.includes(s.datacenter || ''));
+        case 'by_datacenter': {
+          if (!form.selected_datacenter_id) {
+            affectedServers = [];
+            break;
+          }
+
+          const selectedDatacenter = datacenters.find(
+            (dc) => dc.id === form.selected_datacenter_id
+          );
+
+          affectedServers = servers.filter((s) => {
+            if (s.site_id && s.site_id === form.selected_datacenter_id) return true;
+            if (selectedDatacenter?.name && s.datacenter) {
+              return s.datacenter === selectedDatacenter.name;
+            }
+            return false;
+          });
           break;
+        }
         case 'by_environment':
           affectedServers = servers.filter(s => form.selected_environments.includes(s.environment || ''));
           break;
@@ -194,13 +217,29 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
     if (form.scheduled_date && form.target_type) {
       validateSchedule();
     }
-  }, [form.scheduled_date, form.target_type, form.selected_servers, form.selected_datacenters]);
+  }, [
+    form.scheduled_date,
+    form.target_type,
+    form.selected_servers,
+    form.selected_datacenter_id,
+    servers,
+    datacenters,
+  ]);
 
   const handleSubmit = async () => {
     if (!form.name || !form.scheduled_date || !form.start_time) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (form.target_type === 'by_datacenter' && !form.selected_datacenter_id) {
+      toast({
+        title: "Datacenter Required",
+        description: "Please select a datacenter for this maintenance window",
         variant: "destructive"
       });
       return;
@@ -216,19 +255,28 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
     }
 
     try {
+      const selectedDatacenter = form.selected_datacenter_id
+        ? datacenters.find((dc) => dc.id === form.selected_datacenter_id)
+        : undefined;
+
       const scheduleData = {
         name: form.name,
         description: form.description,
+        datacenter_id: form.selected_datacenter_id ?? null,
         scheduled_date: format(form.scheduled_date, 'yyyy-MM-dd'),
         start_time: form.start_time,
         end_time: form.end_time,
+        max_concurrent_updates: form.max_concurrent_updates,
+        recurrence: form.recurrence,
+        notification_hours_before: form.notification_settings.notify_before,
         status: form.requires_approval ? 'pending_approval' : 'scheduled',
         metadata: {
           type: form.type,
           priority: form.priority,
           target_type: form.target_type,
           selected_servers: form.selected_servers,
-          selected_datacenters: form.selected_datacenters,
+          selected_datacenter_id: form.selected_datacenter_id,
+          selected_datacenter_name: selectedDatacenter?.name ?? null,
           max_concurrent_updates: form.max_concurrent_updates,
           rollback_plan: form.rollback_plan,
           pre_update_checks: form.pre_update_checks,
@@ -569,7 +617,10 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label>Target Type</Label>
-                  <Select value={form.target_type} onValueChange={(value: any) => updateForm({ target_type: value })}>
+                  <Select
+                    value={form.target_type}
+                    onValueChange={(value: ScheduleForm['target_type']) => handleTargetTypeChange(value)}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select target type" />
                     </SelectTrigger>
@@ -585,25 +636,23 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
 
                 {form.target_type === 'by_datacenter' && (
                   <div className="space-y-2">
-                    <Label>Select Datacenters</Label>
-                    <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
-                      {getUniqueValues('datacenter').map((datacenter) => (
-                        <div key={String(datacenter)} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`dc-${datacenter}`}
-                            checked={form.selected_datacenters.includes(datacenter as string)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                updateForm({ selected_datacenters: [...form.selected_datacenters, datacenter as string] });
-                              } else {
-                                updateForm({ selected_datacenters: form.selected_datacenters.filter(d => d !== datacenter) });
-                              }
-                            }}
-                          />
-                          <Label htmlFor={`dc-${datacenter}`} className="text-sm">{String(datacenter)}</Label>
-                        </div>
-                      ))}
-                    </div>
+                    <Label>Select Datacenter</Label>
+                    <Select
+                      value={form.selected_datacenter_id ?? ''}
+                      onValueChange={(value) => updateForm({ selected_datacenter_id: value })}
+                      disabled={datacenters.length === 0}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={datacenters.length ? 'Choose datacenter' : 'No datacenters available'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {datacenters.map((datacenter) => (
+                          <SelectItem key={datacenter.id} value={datacenter.id}>
+                            {datacenter.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 )}
 

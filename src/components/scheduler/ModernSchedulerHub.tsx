@@ -75,6 +75,7 @@ interface ScheduledEvent {
   servers_count: number;
   priority: 'critical' | 'high' | 'medium' | 'low';
   status: 'scheduled' | 'cancelled';
+  datacenter_name?: string | null;
 }
 
 export function ModernSchedulerHub() {
@@ -129,24 +130,42 @@ export function ModernSchedulerHub() {
       // Load scheduled events from maintenance_windows and update_jobs
       const { data: maintenanceData, error: maintenanceError } = await supabase
         .from('maintenance_windows')
-        .select('*')
+        .select(`
+          *,
+          datacenters (
+            name
+          )
+        `)
         .eq('status', 'scheduled')
         .order('scheduled_date', { ascending: true });
 
       if (maintenanceError) throw maintenanceError;
 
       const scheduledEventsData: ScheduledEvent[] = [
-        ...(maintenanceData || []).map(window => ({
-          id: window.id,
-          name: window.name,
-          type: 'maintenance' as const,
-          scheduled_for: `${window.scheduled_date}T${window.start_time}`,
-          servers_count: servers.filter(s => 
-            window.datacenter_id ? s.datacenter === window.datacenter_id : true
-          ).length,
-          priority: 'medium' as const,
-          status: 'scheduled' as const
-        })),
+        ...(maintenanceData || []).map((window: any) => {
+          const datacenterName =
+            window.datacenters?.name ||
+            datacenters.find((dc) => dc.id === window.datacenter_id)?.name ||
+            null;
+
+          const serversInWindow = servers.filter((s) => {
+            if (!window.datacenter_id) return true;
+            if (s.site_id && s.site_id === window.datacenter_id) return true;
+            if (datacenterName && s.datacenter === datacenterName) return true;
+            return false;
+          });
+
+          return {
+            id: window.id,
+            name: window.name,
+            type: 'maintenance' as const,
+            scheduled_for: `${window.scheduled_date}T${window.start_time}`,
+            servers_count: serversInWindow.length,
+            priority: 'medium' as const,
+            status: 'scheduled' as const,
+            datacenter_name: datacenterName,
+          };
+        }),
         // Add scheduled update jobs
         ...(jobsData || [])
           .filter(job => job.scheduled_at && job.status === 'pending')
