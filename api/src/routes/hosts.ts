@@ -3,7 +3,6 @@ import db from '../db/index.js';
 import { hosts } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { detectCapabilities } from '../lib/detect.js';
-import { redfishFetch } from '../lib/redfish/client.js';
 
 export default async function hostsRoutes(app: FastifyInstance) {
   app.post('/hosts', async (request) => {
@@ -29,15 +28,20 @@ export default async function hostsRoutes(app: FastifyInstance) {
     const [row] = await db.select().from(hosts).where(eq(hosts.id, id));
     if (!row) return reply.code(404).send({ error: 'not_found' });
 
-    const res = await detectCapabilities({
-      redfish: async () => {
-        try { const r = await redfishFetch(`https://${row.mgmtIp}/redfish/v1/`); return r.ok; } catch { return false; }
-      },
-      wsman: async () => false,
-      racadm: async () => false
+    const body = (request.body ?? {}) as { username?: string; password?: string };
+    if (!body.username || !body.password) {
+      return reply.code(400).send({ error: 'missing_credentials' });
+    }
+
+    const detection = await detectCapabilities({
+      host: row.mgmtIp,
+      credentials: { username: body.username, password: body.password },
+      identity: { model: row.model ?? undefined, serviceTag: row.serviceTag ?? undefined }
     });
-    await db.update(hosts).set({ mgmtKind: res.mgmtKind }).where(eq(hosts.id, id));
-    return res;
+
+    const primary = detection.healthiestProtocol?.protocol ?? row.mgmtKind;
+    await db.update(hosts).set({ mgmtKind: primary ?? null }).where(eq(hosts.id, id));
+    return detection;
   });
 
   app.post('/hosts/:id/test-credentials', async () => {
