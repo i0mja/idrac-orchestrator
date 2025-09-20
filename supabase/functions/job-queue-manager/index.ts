@@ -110,11 +110,32 @@ serve(async (req) => {
           throw new Error('Job ID is required for retry action');
         }
 
+        // Get current job to check retry count
+        const { data: currentJob, error: fetchError } = await supabase
+          .from('background_jobs')
+          .select('retry_count, max_retries')
+          .eq('id', jobId)
+          .single();
+
+        if (fetchError) {
+          throw fetchError;
+        }
+
+        if (currentJob.retry_count >= currentJob.max_retries) {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Job has exceeded maximum retry attempts'
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
         const { error: retryError } = await supabase
           .from('background_jobs')
           .update({
             status: 'queued',
-            retry_count: supabase.rpc('increment', { x: 1 }),
+            retry_count: currentJob.retry_count + 1,
             error_message: null,
             completed_at: null,
             scheduled_at: new Date().toISOString()

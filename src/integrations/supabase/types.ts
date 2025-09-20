@@ -2354,6 +2354,28 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      claim_jobs: {
+        Args: { max_jobs?: number; processor_id?: string }
+        Returns: {
+          completed_at: string
+          created_at: string
+          error_message: string
+          host_run_id: string
+          id: string
+          job_type: string
+          logs: string
+          max_retries: number
+          metadata: Json
+          priority: number
+          progress: number
+          retry_count: number
+          scheduled_at: string
+          server_id: string
+          started_at: string
+          status: string
+          updated_at: string
+        }[]
+      }
       get_credentials_for_ip: {
         Args: { target_ip: unknown }
         Returns: {
