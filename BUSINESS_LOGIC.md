@@ -40,6 +40,27 @@ stateDiagram-v2
     Completed --> [*]
 ```
 
+## Core Business Workflows
+
+```mermaid
+graph TB
+    subgraph "Update Orchestration Flow"
+        A[Create Update Plan] --> B{Validate Targets}
+        B -->|Valid| C[Schedule Maintenance Windows]
+        B -->|Invalid| D[Return Error]
+        C --> E[Enter Maintenance Mode]
+        E --> F[Update Firmware]
+        F --> G{Health Check}
+        G -->|Pass| H[Exit Maintenance Mode]
+        G -->|Fail| I[Rollback Changes]
+        H --> J[Update Next Server]
+        I --> K[Alert Operations]
+        J --> L{More Servers?}
+        L -->|Yes| E
+        L -->|No| M[Complete Plan]
+    end
+```
+
 ## Core Workflows
 
 ### 1. Server Discovery & Onboarding

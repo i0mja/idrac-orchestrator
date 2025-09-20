@@ -33,11 +33,169 @@ curl -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
 ### Local API Authentication
 Local API uses API key authentication:
 
+## Quick Examples
+
+### Complete Firmware Update Workflow
+
 ```bash
-# Set API key in header
-curl -H 'X-API-Key: YOUR_API_KEY' \
-  'http://localhost:8081/api/hosts'
+# 1. List available servers
+curl -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/hosts
+
+# 2. Discover server details
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/hosts/server-001/discover
+
+# 3. Upload custom firmware (optional)
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -F "firmware=@dell-bios-update.exe" \
+  http://localhost:3001/api/uploads/firmware
+
+# 4. Create comprehensive update plan
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q4 BIOS Security Update",
+    "description": "Critical security patches for Dell PowerEdge servers",
+    "targets": ["server-001", "server-002", "server-003"],
+    "artifacts": [
+      {
+        "component": "BIOS",
+        "imageUri": "https://downloads.dell.com/bios/R750_1.15.0.exe",
+        "version": "1.15.0",
+        "criticality": "critical"
+      },
+      {
+        "component": "iDRAC",
+        "imageUri": "https://downloads.dell.com/idrac/iDRAC_6.10.30.00.exe",
+        "version": "6.10.30.00",
+        "criticality": "recommended"
+      }
+    ],
+    "policy": {
+      "maintenance_window": "02:00-04:00",
+      "max_parallel": 2,
+      "rollback_on_failure": true,
+      "cluster_constraints": {
+        "respect_drs": true,
+        "maintain_ha": true,
+        "max_cluster_impact": "50%"
+      },
+      "health_checks": {
+        "pre_update": true,
+        "post_update": true,
+        "timeout_minutes": 30
+      }
+    },
+    "schedule": {
+      "start_time": "2024-01-15T02:00:00Z",
+      "timezone": "UTC"
+    }
+  }' \
+  http://localhost:3001/api/plans
+
+# 5. Monitor plan execution
+curl -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/plans/plan-123/status
+
+# 6. Get detailed server status
+curl -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/hosts/server-001/status
 ```
+
+### VMware vCenter Integration
+
+```bash
+# Add vCenter connection
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Production vCenter",
+    "hostname": "vcenter.example.com",
+    "username": "administrator@vsphere.local",
+    "password": "secure-password",
+    "port": 443,
+    "ignore_ssl": false,
+    "datacenter": "Production-DC",
+    "clusters": ["Cluster-01", "Cluster-02"]
+  }' \
+  http://localhost:3001/api/vcenters
+
+# Sync hosts from vCenter
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/vcenters/vc-001/sync
+
+# Get cluster health status
+curl -H "Authorization: Bearer $API_KEY" \
+  http://localhost:3001/api/vcenters/vc-001/clusters/cluster-001/health
+```
+
+### Dell OpenManage Enterprise (OME) Integration
+
+```bash
+# Create OME connection
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Dell OME Production",
+    "baseUrl": "https://ome.example.com",
+    "username": "admin",
+    "password": "admin-password",
+    "vaultPath": "/credentials/ome-prod"
+  }' \
+  http://localhost:3001/api/ome/connections
+
+# Run server discovery with filtering
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filter": "Model eq '\''PowerEdge R750'\'' and SystemGeneration eq 15",
+    "includeDetails": true,
+    "syncInventory": true
+  }' \
+  http://localhost:3001/api/ome/ome-001/discover/run
+
+# Schedule automated discovery
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "schedule": "0 2 * * *",
+    "filter": "Status eq '\''Normal'\''",
+    "autoSync": true
+  }' \
+  http://localhost:3001/api/ome/ome-001/schedule
+```
+
+### Advanced Query Examples
+
+```bash
+# Get servers by firmware version
+curl -H "Authorization: Bearer $API_KEY" \
+  "http://localhost:3001/api/hosts?filter=firmware_version<1.15.0"
+
+# Get cluster impact analysis
+curl -H "Authorization: Bearer $API_KEY" \
+  "http://localhost:3001/api/analysis/cluster-impact?targets=server-001,server-002"
+
+# Get maintenance window recommendations
+curl -H "Authorization: Bearer $API_KEY" \
+  "http://localhost:3001/api/analysis/maintenance-windows?cluster=cluster-001"
+
+# Bulk server operations
+curl -X POST -H "Authorization: Bearer $API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "health_check",
+    "targets": ["server-001", "server-002", "server-003"],
+    "parallel": true,
+    "timeout": 300
+  }' \
+  http://localhost:3001/api/hosts/bulk-action
+```
+
+## Authentication
+
+### API Key Authentication
 
 ## Supabase Edge Functions
 

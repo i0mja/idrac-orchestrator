@@ -1,247 +1,90 @@
 # Code Style Guide
 
-This document outlines the coding standards and conventions for the iDRAC Updater Orchestrator project.
+This document outlines the coding standards and best practices for the iDRAC Updater Orchestrator project.
 
-## TypeScript
+## General Principles
 
-### Progressive Strictness
-- Use TypeScript with gradual strictness adoption
-- Prefer explicit types over `any`
-- Use discriminated unions for complex state management
-- Handle errors with proper typing (Result types, error boundaries)
+- **Clarity over cleverness**: Write code that is easy to read and understand
+- **Consistency**: Follow established patterns throughout the codebase
+- **Single Responsibility**: Each function/component should have one clear purpose
+- **DRY (Don't Repeat Yourself)**: Extract common functionality into reusable utilities
 
+## TypeScript Guidelines
+
+### Naming Conventions
 ```typescript
-// ✅ Good: Explicit typing
-interface ServerConfig {
-  id: string;
-  hostname: string;
-  status: 'online' | 'offline' | 'maintenance';
-}
+// Use camelCase for variables and functions
+const serverCount = 10;
+const calculateClusterHealth = () => {};
 
-// ✅ Good: Discriminated unions
-type AsyncState<T> = 
-  | { status: 'loading' }
-  | { status: 'success'; data: T }
-  | { status: 'error'; error: string };
+// Use PascalCase for components, interfaces, and types
+interface ServerConfig {}
+type UpdateStatus = 'pending' | 'running' | 'completed';
+const ServerDashboard = () => {};
 
-// ❌ Avoid: any types
-const config: any = getServerConfig();
+// Use UPPER_CASE for constants
+const MAX_RETRY_ATTEMPTS = 3;
 ```
 
-### Error Handling
-- Use typed error handling patterns
-- Leverage Zod for runtime validation where appropriate
-- Create specific error types for different failure modes
-
+### Function Signatures
 ```typescript
-// ✅ Good: Typed error handling
-const result = await fetchServers().catch((error: Error) => {
-  console.error('Failed to fetch servers:', error.message);
-  throw new ServerFetchError(error.message);
-});
-```
-
-## React
-
-### Component Organization
-- Use functional components with hooks
-- Co-locate small, related components
-- Keep components focused and single-responsibility
-- Use compound component patterns for complex UI
-
-```typescript
-// ✅ Good: Focused component
-interface ServerCardProps {
-  server: Server;
-  onUpdate: (id: string) => void;
+// Use explicit return types for clarity
+function updateServerFirmware(
+  serverId: string, 
+  firmwareUrl: string,
+  options?: UpdateOptions
+): Promise<UpdateResult> {
+  // Implementation
 }
 
-export function ServerCard({ server, onUpdate }: ServerCardProps) {
-  // Component implementation
+// Use async/await over Promises
+async function fetchServerData(id: string): Promise<Server> {
+  const response = await apiGet<Server>(`/hosts/${id}`);
+  return response.data;
 }
 ```
 
-### File and Component Naming
-- Use PascalCase for component files: `ServerManagement.tsx`
-- Use camelCase for utility files: `serverUtils.ts`
-- Use kebab-case for CSS/style files: `server-card.css`
-- Match component name with file name
+## React Guidelines
 
-### Hooks Patterns
-- Custom hooks should start with `use` prefix
-- Keep hooks focused on single responsibility
-- Use React Query for server state management
-- Use useState/useReducer for component-local state
-
+### Component Structure
 ```typescript
-// ✅ Good: Focused custom hook
-function useServerStatus(serverId: string) {
-  return useQuery({
-    queryKey: ['server-status', serverId],
-    queryFn: () => fetchServerStatus(serverId),
-    refetchInterval: 30000,
-  });
+interface ServerDashboardProps {
+  servers: Server[];
+  loading?: boolean;
+  onUpdateServer: (serverId: string) => void;
+}
+
+export function ServerDashboard({ servers, loading = false, onUpdateServer }: ServerDashboardProps) {
+  // State hooks at the top
+  const [selectedServers, setSelectedServers] = useState<string[]>([]);
+  
+  // Custom hooks after state
+  const { user } = useAuth();
+  
+  // Event handlers
+  const handleServerSelect = useCallback((serverId: string) => {
+    setSelectedServers(prev => 
+      prev.includes(serverId) ? prev.filter(id => id !== serverId) : [...prev, serverId]
+    );
+  }, []);
+  
+  return <div className="space-y-6">{/* Component JSX */}</div>;
 }
 ```
 
-### Props and State
-- Use Zod schemas for complex prop validation where beneficial
-- Prefer composition over prop drilling
-- Use context sparingly - avoid context for everything
-- Keep component state minimal and derived when possible
+## CSS/Styling Guidelines
 
-## Tailwind CSS
-
-### Class Organization
-- Use the `cn()` utility for conditional classes
-- Order classes: layout → positioning → sizing → styling → interactive
-- Extract repeated class combinations into components or CSS classes
-
+### Tailwind CSS Usage
 ```typescript
-// ✅ Good: Organized classes with cn()
-<div className={cn(
-  "flex items-center justify-between", // layout
-  "p-4 rounded-lg", // sizing & styling  
-  "bg-card text-card-foreground", // semantic colors
-  "hover:bg-accent transition-colors", // interactive
-  isSelected && "ring-2 ring-primary"
-)} />
+// ✅ Good - uses design system tokens
+<div className="bg-background text-foreground border border-border">
+  <h1 className="text-primary font-semibold">Server Dashboard</h1>
+</div>
+
+// ❌ Bad - uses arbitrary colors
+<div className="bg-white text-black border border-gray-200">
+  <h1 className="text-blue-600 font-semibold">Server Dashboard</h1>
+</div>
 ```
 
-### Design System Usage
-- **CRITICAL**: Always use semantic tokens from design system
-- Never use direct colors like `text-white`, `bg-black`
-- Use HSL values in design tokens
-- Leverage CSS custom properties for theming
-
-```typescript
-// ✅ Good: Semantic design tokens
-<Button variant="primary" />
-<div className="bg-card text-card-foreground" />
-
-// ❌ Bad: Direct colors
-<div className="bg-white text-black" />
-```
-
-### Dark Mode
-- Use CSS custom properties that automatically adapt
-- Test components in both light and dark modes
-- Ensure proper contrast ratios
-
-## Imports and Module Organization
-
-### Import Patterns
-- Use `@/*` alias for internal imports
-- Avoid deep relative paths (`../../../`)
-- Group imports: external → internal → relative
-- Use index.ts files for clean barrel exports
-
-```typescript
-// ✅ Good import organization
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-
-import { Button } from '@/components/ui/button';
-import { useServers } from '@/hooks/useServers';
-
-import './ServerCard.css';
-```
-
-### Module Boundaries
-- Keep business logic separate from UI components
-- Use custom hooks for stateful logic
-- Create service layers for API interactions
-- Avoid circular dependencies
-
-## State Management
-
-### Preferred Patterns
-- React Query for server state (API data)
-- useState/useReducer for component-local state
-- Context for app-wide settings (theme, user preferences)
-- Zustand for complex client state (if needed)
-
-### Data Fetching
-- Use React Query for all server state
-- Implement proper error boundaries
-- Handle loading and error states consistently
-- Use optimistic updates where appropriate
-
-```typescript
-// ✅ Good: React Query pattern
-function useServerUpdates() {
-  return useQuery({
-    queryKey: ['servers'],
-    queryFn: fetchServers,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    errorBoundary: true,
-  });
-}
-```
-
-## Testing
-
-### Testing Strategy
-- Write integration tests for critical user flows
-- Unit test complex utility functions
-- Use React Testing Library for component tests
-- Mock external dependencies appropriately
-
-### Test Organization
-- Co-locate test files with source code: `ServerCard.test.tsx`
-- Use descriptive test names
-- Follow AAA pattern: Arrange, Act, Assert
-
-## Code Quality
-
-### Formatting
-- Use Prettier for consistent formatting
-- Run `npm run format` before committing
-- Configure editor to format on save
-
-### Linting
-- Follow ESLint configuration
-- Run `npm run lint:fix` to auto-fix issues
-- Address TypeScript errors promptly
-
-### Git Practices
-- Use Conventional Commits format
-- Keep commits small and focused
-- Write descriptive commit messages
-
-```bash
-# ✅ Good commit messages
-feat(servers): add real-time status updates
-fix(auth): handle expired token gracefully
-docs(readme): update installation instructions
-```
-
-## Performance
-
-### Optimization Guidelines
-- Use React.memo for expensive components
-- Implement proper key props for lists
-- Use useCallback/useMemo judiciously
-- Optimize bundle size with code splitting
-
-### Monitoring
-- Monitor performance with React DevTools
-- Track Core Web Vitals
-- Profile slow components and operations
-
-## Security
-
-### Best Practices
-- Validate all user inputs with Zod
-- Sanitize data before rendering
-- Use HTTPS for all API calls
-- Implement proper error handling without exposing internals
-
-### Environment Variables
-- Never commit secrets to version control
-- Use environment-specific configurations
-- Validate required environment variables at startup
-
----
-
-This style guide is a living document. Update it as the project evolves and new patterns emerge.
+This style guide ensures consistency and maintainability across the entire codebase.

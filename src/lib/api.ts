@@ -1,7 +1,34 @@
+/**
+ * @fileoverview API client utilities for iDRAC Updater Orchestrator
+ * 
+ * This module provides a centralized API client for communicating with:
+ * - Local Fastify API server (firmware updates, server management)
+ * - Dell OpenManage Enterprise (OME) integration
+ * - vCenter integration endpoints
+ * - System configuration and setup
+ * 
+ * All API calls include authentication headers and standardized error handling.
+ * 
+ * @author Enterprise Infrastructure Team
+ * @version 1.0.0
+ */
+
 import { API_BASE_URL } from '@/lib/env';
 
+/**
+ * API authentication key from environment variables
+ * 
+ * Used for authenticating requests to the local API server.
+ * Falls back to empty string if not configured.
+ */
 const API_KEY = (import.meta.env.VITE_API_KEY as string | undefined) ?? '';
 
+/**
+ * Generate authentication headers for API requests
+ * 
+ * @param contentType - Optional content type header
+ * @returns Headers object with authentication and content type
+ */
 function authHeaders(contentType?: string) {
   const headers: Record<string, string> = {};
   if (API_KEY) {
