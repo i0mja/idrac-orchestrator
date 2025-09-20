@@ -77,30 +77,33 @@ export function NetworkTopology({
       }, {} as Record<string, any[]>);
 
       // Create subnet nodes
-      const subnetNodes: NetworkNode[] = Object.entries(serversBySubnet).map(([subnet, subnetServers]) => ({
-        id: `${dcName}-${subnet}`,
-        type: 'subnet',
-        name: subnet,
-        address: subnet,
-        status: calculateSubnetHealth(Array.isArray(subnetServers) ? subnetServers : []),
-        metadata: {
-          serverCount: Array.isArray(subnetServers) ? subnetServers.length : 0,
-          protocolSupport: getSubnetProtocols(Array.isArray(subnetServers) ? subnetServers : []),
-          lastSeen: new Date().toISOString(),
-        },
-        children: (subnetServers || []).map(server => ({
-          id: server.id || server.ip_address,
-          type: 'server',
-          name: server.hostname || server.ip_address,
-          address: server.ip_address,
-          status: getServerHealth(server),
+      const subnetNodes: NetworkNode[] = Object.entries(serversBySubnet).map(([subnet, subnetServers]) => {
+        const servers = Array.isArray(subnetServers) ? subnetServers : [];
+        return {
+          id: `${dcName}-${subnet}`,
+          type: 'subnet',
+          name: subnet,
+          address: subnet,
+          status: calculateSubnetHealth(servers),
           metadata: {
-            protocolSupport: server.protocols?.map((p: any) => p.protocol) || [],
-            lastSeen: server.lastDiscovered || server.last_seen,
-            discoveryMethod: server.discoverySource || 'network',
-          }
-        }))
-      }));
+            serverCount: servers.length,
+            protocolSupport: getSubnetProtocols(servers),
+            lastSeen: new Date().toISOString(),
+          },
+          children: servers.map(server => ({
+            id: server.id || server.ip_address,
+            type: 'server',
+            name: server.hostname || server.ip_address,
+            address: server.ip_address,
+            status: getServerHealth(server),
+            metadata: {
+              protocolSupport: server.protocols?.map((p: any) => p.protocol) || [],
+              lastSeen: server.lastDiscovered || server.last_seen,
+              discoveryMethod: server.discoverySource || 'network',
+            }
+          }))
+        };
+      });
 
       nodes.push({
         id: dcName,
