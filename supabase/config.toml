@@ -1,1 +1,133 @@
 project_id = "hrqzmjjpnylcmunyaovj"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "https://b202d98c-8491-4dd1-bd32-beb5c23ed1e0.lovableproject.com"
+additional_redirect_urls = []
+jwt_expiry = 3600
+refresh_token_rotation_enabled = true
+security_update_password_required_for_sensitive_changes = false
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+
+[functions.auto-orchestration]
+verify_jwt = false
+
+[functions.configure-redhat-idm]
+verify_jwt = false
+
+[functions.create-database]
+verify_jwt = false
+
+[functions.discover-redhat-idm]
+verify_jwt = false
+
+[functions.discover-servers]
+verify_jwt = false
+
+[functions.download-dell-firmware]
+verify_jwt = false
+
+[functions.execute-remote-command]
+verify_jwt = false
+
+[functions.firmware-management]
+verify_jwt = false
+
+[functions.firmware-upload]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.initialize-database-schema]
+verify_jwt = false
+
+[functions.ldap-authentication]
+verify_jwt = false
+
+[functions.maintenance-orchestrator]
+verify_jwt = false
+
+[functions.maintenance-scheduler]
+verify_jwt = false
+
+[functions.maintenance-windows]
+verify_jwt = false
+
+[functions.orchestration-control]
+verify_jwt = false
+
+[functions.orchestrator-start-rolling-update]
+verify_jwt = false
+
+[functions.os-agnostic-update]
+verify_jwt = false
+
+[functions.process-update-job]
+verify_jwt = false
+
+[functions.racadm-command]
+verify_jwt = false
+
+[functions.redfish-discovery]
+verify_jwt = false
+
+[functions.redfish-update]
+verify_jwt = false
+
+[functions.save-initial-setup]
+verify_jwt = false
+
+[functions.search-dell-firmware]
+verify_jwt = false
+
+[functions.sync-vcenter-hosts]
+verify_jwt = false
+
+[functions.test-database-connection]
+verify_jwt = false
+
+[functions.test-vcenter-connection]
+verify_jwt = false
+
+[functions.vcenter-integration]
+verify_jwt = false
+
+[db]
+port = 54322
+
+[db.pooler]
+enabled = false
+port = 54329
+pool_mode = "transaction"
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+ip_version = "ipv4"
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1:54321"
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
