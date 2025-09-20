@@ -75,6 +75,7 @@ interface ScheduledEvent {
   servers_count: number;
   priority: 'critical' | 'high' | 'medium' | 'low';
   status: 'scheduled' | 'cancelled';
+  max_concurrent_updates?: number | null;
 }
 
 export function ModernSchedulerHub() {
@@ -141,11 +142,12 @@ export function ModernSchedulerHub() {
           name: window.name,
           type: 'maintenance' as const,
           scheduled_for: `${window.scheduled_date}T${window.start_time}`,
-          servers_count: servers.filter(s => 
+          servers_count: servers.filter(s =>
             window.datacenter_id ? s.datacenter === window.datacenter_id : true
           ).length,
           priority: 'medium' as const,
-          status: 'scheduled' as const
+          status: 'scheduled' as const,
+          max_concurrent_updates: window.max_concurrent_updates
         })),
         // Add scheduled update jobs
         ...(jobsData || [])
@@ -157,7 +159,8 @@ export function ModernSchedulerHub() {
             scheduled_for: job.scheduled_at,
             servers_count: 1,
             priority: 'medium' as const,
-            status: 'scheduled' as const
+            status: 'scheduled' as const,
+            max_concurrent_updates: null
           }))
       ];
 
@@ -521,6 +524,11 @@ export function ModernSchedulerHub() {
                             <Badge variant="outline" className="text-xs capitalize">
                               {event.priority}
                             </Badge>
+                            {typeof event.max_concurrent_updates === 'number' && (
+                              <Badge variant="outline" className="text-xs">
+                                Max {event.max_concurrent_updates}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -665,6 +673,7 @@ export function ModernSchedulerHub() {
                     <TableHead>Type</TableHead>
                     <TableHead>Scheduled For</TableHead>
                     <TableHead>Servers</TableHead>
+                    <TableHead>Concurrent Limit</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -681,14 +690,19 @@ export function ModernSchedulerHub() {
                       </TableCell>
                       <TableCell>
                         {new Date(event.scheduled_for).toLocaleDateString()} at{' '}
-                        {new Date(event.scheduled_for).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
+                        {new Date(event.scheduled_for).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
                         })}
                       </TableCell>
                       <TableCell>{event.servers_count}</TableCell>
                       <TableCell>
-                        <Badge 
+                        {typeof event.max_concurrent_updates === 'number'
+                          ? event.max_concurrent_updates
+                          : '—'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
                           variant={event.priority === 'critical' ? 'destructive' : 'outline'}
                           className="capitalize"
                         >
