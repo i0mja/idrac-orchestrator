@@ -7,8 +7,14 @@ export interface SimpleUpdateInput {
   applyTime?: 'Immediate'|'OnReset';
   maintenanceWindowStart?: string;
   maintenanceWindowDurationSeconds?: number;
+  preferredProtocol?: 'REDFISH' | 'WSMAN' | 'RACADM';
+  enableFallback?: boolean;
 }
 
+/**
+ * Legacy Redfish update hook - use useEnhancedFirmwareUpdate for new protocol orchestration features
+ * @deprecated Use useEnhancedFirmwareUpdate instead
+ */
 export function useRedfishUpdate() {
   const start = async (input: SimpleUpdateInput, hostIds: string[]) => {
     const { supabase } = await import('@/integrations/supabase/client');
