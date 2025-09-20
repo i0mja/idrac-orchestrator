@@ -403,16 +403,19 @@ async function processEnhancedHost(
   
   if (useCredentialProfiles) {
     const { data: profileCredentials, error: credError } = await supabase
-      .rpc('get_credentials_for_ip', { target_ip: ip });
+      .rpc('get_decrypted_credentials_for_ip', { target_ip: ip });
     
     if (!credError && profileCredentials && profileCredentials.length > 0) {
       credentialsToTry = profileCredentials.map((cred: any) => ({
         username: cred.username,
-        password: cred.password_encrypted,
+        password: cred.password_decrypted, // Now properly decrypted
         port: cred.port || 443,
         protocol: 'https',
         name: cred.name
       }));
+      console.log(`Found ${credentialsToTry.length} credential profiles for ${ip}`);
+    } else {
+      console.log(`No credential profiles found for ${ip}: ${credError?.message || 'No profiles'}`);
     }
   }
   

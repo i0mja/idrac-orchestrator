@@ -27,6 +27,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useUnifiedDiscovery } from '@/hooks/useUnifiedDiscovery';
 import { useCredentialProfiles } from '@/hooks/useCredentialProfiles';
+import { CredentialSection } from './CredentialSection';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Play,
@@ -61,6 +62,14 @@ export function DiscoveryControl() {
       checkFirmware: true,
       parallelScan: true,
       timeout: 30,
+    },
+    credentials: {
+      selectedProfileId: undefined as string | undefined,
+      useQuickCredentials: false,
+      quickCredentials: {
+        username: '',
+        password: '',
+      },
     },
     scheduling: {
       enabled: false,
@@ -340,6 +349,33 @@ export function DiscoveryControl() {
                 </div>
               </div>
             </div>
+
+            {/* Credential Configuration */}
+            <Separator />
+            <CredentialSection
+              selectedCredentialId={discoveryConfig.credentials.selectedProfileId}
+              onCredentialSelect={(credentialId) =>
+                setDiscoveryConfig(prev => ({
+                  ...prev,
+                  credentials: { ...prev.credentials, selectedProfileId: credentialId }
+                }))
+              }
+              useQuickCredentials={discoveryConfig.credentials.useQuickCredentials}
+              onQuickCredentialsChange={(use) =>
+                setDiscoveryConfig(prev => ({
+                  ...prev,
+                  credentials: { ...prev.credentials, useQuickCredentials: use }
+                }))
+              }
+              quickCredentials={discoveryConfig.credentials.quickCredentials}
+              onQuickCredentialsUpdate={(creds) =>
+                setDiscoveryConfig(prev => ({
+                  ...prev,
+                  credentials: { ...prev.credentials, quickCredentials: creds }
+                }))
+              }
+              ipRange={discoveryConfig.networkConfig.ipRange}
+            />
 
             {/* Network Configuration */}
             {discoveryConfig.includeNetwork && (
