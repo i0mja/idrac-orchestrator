@@ -198,6 +198,66 @@ export type Database = {
         }
         Relationships: []
       }
+      background_jobs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          host_run_id: string | null
+          id: string
+          job_type: string
+          logs: string | null
+          max_retries: number
+          metadata: Json | null
+          priority: number
+          progress: number
+          retry_count: number
+          scheduled_at: string
+          server_id: string | null
+          started_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          host_run_id?: string | null
+          id?: string
+          job_type: string
+          logs?: string | null
+          max_retries?: number
+          metadata?: Json | null
+          priority?: number
+          progress?: number
+          retry_count?: number
+          scheduled_at?: string
+          server_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          host_run_id?: string | null
+          id?: string
+          job_type?: string
+          logs?: string | null
+          max_retries?: number
+          metadata?: Json | null
+          priority?: number
+          progress?: number
+          retry_count?: number
+          scheduled_at?: string
+          server_id?: string | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       backup_config: {
         Row: {
           backup_type: string
