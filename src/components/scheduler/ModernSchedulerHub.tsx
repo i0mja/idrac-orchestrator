@@ -177,36 +177,91 @@ export function ModernSchedulerHub() {
 
   const handleEmergencyPatch = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('execute-remote-command', {
+      const targetNames = (datacenters.length > 0
+        ? datacenters.map(dc => dc.name || dc.id)
+        : servers.map(server => server.hostname)
+      ).filter(Boolean) as string[];
+
+      if (targetNames.length === 0) {
+        toast({
+          title: "No Targets Available",
+          description: "Unable to initiate emergency patch without target systems",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const commandId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `emergency-patch-${Date.now()}`;
+
+      const command = {
+        id: commandId,
+        name: 'Emergency Security Patch Deployment',
+        target_type: datacenters.length > 0 ? 'datacenter' : 'individual',
+        target_names: targetNames,
+        command_type: 'security_patch',
+        command_parameters: {
+          priority: 'critical',
+          initiated_from: 'scheduler_hub',
+          patch_type: 'emergency'
+        }
+      };
+
+      const { data, error } = await supabase.functions.invoke<{
+        success?: boolean;
+        command_id?: string;
+        execution_status?: string;
+        error?: string;
+        details?: string;
+      }>('execute-remote-command', {
         body: {
-          command: 'emergency_security_patch',
-          target_type: 'all_servers',
-          priority: 'critical'
+          command,
+          immediate_execution: true
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
-      toast({
-        title: "Emergency Patch Initiated",
-        description: "Critical security patch deployment started across all servers",
-      });
+      if (data?.error) {
+        throw new Error(data.details || data.error);
+      }
 
-      await supabase
+      const commandIdResponse = data?.command_id ?? command.id;
+      const executionStatus = data?.execution_status ?? 'submitted';
+
+      const eventDescription = `Command ${commandIdResponse} ${executionStatus}.`;
+
+      const { error: eventError } = await supabase
         .from('system_events')
         .insert({
           title: 'Emergency Security Patch Initiated',
-          description: 'Critical security patch deployment started',
+          description: eventDescription,
           event_type: 'emergency_patch',
           severity: 'critical'
         });
+
+      if (eventError) {
+        toast({
+          title: "Emergency Patch Initiated",
+          description: `${eventDescription} However, event logging failed: ${eventError.message}`,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Emergency Patch Initiated",
+          description: eventDescription,
+        });
+      }
 
       loadData();
     } catch (error) {
       console.error('Error initiating emergency patch:', error);
       toast({
         title: "Error",
-        description: "Failed to initiate emergency patch",
+        description: error instanceof Error ? error.message : 'Failed to initiate emergency patch',
         variant: "destructive"
       });
     }
