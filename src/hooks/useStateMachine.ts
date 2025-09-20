@@ -33,24 +33,16 @@ export const useStateMachine = () => {
       setLoading(true);
       setError(null);
 
-      // Use raw SQL query since host_runs table is not in TypeScript types yet
-      const { data, error: fetchError } = await supabase.rpc('exec_sql', {
-        sql: `
-          SELECT id, server_id, state, status, context, 
-                 started_at, completed_at, error_message,
-                 created_at, updated_at
-          FROM host_runs 
-          ORDER BY created_at DESC 
-          LIMIT 50
-        `
-      });
+      // Use the RPC function we created
+      const { data, error: fetchError } = await supabase.rpc('get_host_runs', { limit_count: 50 });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      // Transform the data to match our interface
-      const transformedData = (data || []).map((row: any) => ({
+      // Transform the JSON data to match our interface
+      const hostRunsData = Array.isArray(data) ? data : [];
+      const transformedData = hostRunsData.map((row: any) => ({
         id: row.id,
         serverId: row.server_id,
         state: row.state,

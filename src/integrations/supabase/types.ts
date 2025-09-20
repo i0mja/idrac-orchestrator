@@ -2371,6 +2371,10 @@ export type Database = {
         Args: { ip_addr: unknown }
         Returns: string
       }
+      get_host_runs: {
+        Args: { limit_count?: number }
+        Returns: Json
+      }
       get_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: string
