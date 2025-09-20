@@ -33,20 +33,41 @@ export const useStateMachine = () => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
-        .from('host_runs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(50);
+      // Use raw SQL query since host_runs table is not in TypeScript types yet
+      const { data, error: fetchError } = await supabase.rpc('exec_sql', {
+        sql: `
+          SELECT id, server_id, state, status, context, 
+                 started_at, completed_at, error_message,
+                 created_at, updated_at
+          FROM host_runs 
+          ORDER BY created_at DESC 
+          LIMIT 50
+        `
+      });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      setHostRuns(data || []);
+      // Transform the data to match our interface
+      const transformedData = (data || []).map((row: any) => ({
+        id: row.id,
+        serverId: row.server_id,
+        state: row.state,
+        status: row.status,
+        context: row.context || {},
+        startedAt: row.started_at,
+        completedAt: row.completed_at,
+        errorMessage: row.error_message
+      }));
+
+      setHostRuns(transformedData);
     } catch (err) {
       console.error('Error fetching host runs:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch host runs');
+      
+      // Fallback: use empty array if table doesn't exist yet
+      setHostRuns([]);
     } finally {
       setLoading(false);
     }

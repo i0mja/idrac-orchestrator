@@ -994,6 +994,45 @@ export type Database = {
           },
         ]
       }
+      host_runs: {
+        Row: {
+          completed_at: string | null
+          context: Json
+          created_at: string
+          error_message: string | null
+          id: string
+          server_id: string | null
+          started_at: string | null
+          state: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          error_message?: string | null
+          id: string
+          server_id?: string | null
+          started_at?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          context?: Json
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          server_id?: string | null
+          started_at?: string | null
+          state?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ldap_config: {
         Row: {
           bind_dn: string | null
@@ -2257,6 +2296,7 @@ export type Database = {
           trigger_config: Json | null
           trigger_type: string
           updated_at: string | null
+          version: number | null
         }
         Insert: {
           category?: string | null
@@ -2271,6 +2311,7 @@ export type Database = {
           trigger_config?: Json | null
           trigger_type: string
           updated_at?: string | null
+          version?: number | null
         }
         Update: {
           category?: string | null
@@ -2285,6 +2326,7 @@ export type Database = {
           trigger_config?: Json | null
           trigger_type?: string
           updated_at?: string | null
+          version?: number | null
         }
         Relationships: [
           {
