@@ -286,31 +286,42 @@ async function performReadinessCheck(supabase: any, server: any, checkTypes: str
 
 async function checkConnectivity(ipAddress: string): Promise<{ status: 'connected' | 'unreachable' | 'error' }> {
   try {
-    // Simple connectivity check - in production, this might ping or check specific ports
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5 second timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    // Try to connect to common management ports
-    const ports = [443, 623, 22] // HTTPS, IPMI, SSH
-    let connected = false
-    
-    for (const port of ports) {
-      try {
-        // In a real implementation, you'd use a proper network check
-        // For now, simulate connectivity based on IP pattern
-        if (ipAddress.match(/^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[01])/)) {
-          connected = true
-          break
+    // Try to reach the iDRAC management interface
+    try {
+      const response = await fetch(`https://${ipAddress}/redfish/v1/`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json'
         }
-      } catch (error) {
-        continue
+      });
+      
+      clearTimeout(timeoutId);
+      
+      // If we get any response (even 401), the server is reachable
+      if (response.status === 401 || response.status === 200 || response.status === 404) {
+        return { status: 'connected' };
+      } else {
+        return { status: 'unreachable' };
+      }
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      
+      // Check if it's a network timeout or connection refused
+      if (fetchError.name === 'AbortError' || fetchError.message.includes('timeout')) {
+        return { status: 'unreachable' };
+      } else if (fetchError.message.includes('certificate') || fetchError.message.includes('SSL')) {
+        // SSL errors often mean the server is reachable but has cert issues
+        return { status: 'connected' };
+      } else {
+        return { status: 'unreachable' };
       }
     }
-    
-    clearTimeout(timeoutId)
-    return { status: connected ? 'connected' : 'unreachable' }
   } catch (error) {
-    return { status: 'error' }
+    return { status: 'error' };
   }
 }
 

@@ -50,7 +50,7 @@ serve(async (req) => {
           }
 
           // Use availableJobs as fallback
-          const processedJobs = [];
+          let processedJobs = [];
           
           for (const job of availableJobs || []) {
             try {
@@ -79,7 +79,7 @@ serve(async (req) => {
           }
         } else {
           // Process claimed jobs
-          const processedJobs = [];
+          processedJobs = [];
           
           for (const job of claimedJobs || []) {
             try {

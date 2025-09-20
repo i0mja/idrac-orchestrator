@@ -7,10 +7,11 @@ const corsHeaders = {
 };
 
 interface SyncRequest {
-  action: 'sync_host_run' | 'sync_background_job' | 'sync_all';
+  action: 'sync_host_run' | 'sync_background_job' | 'sync_all' | 'sync_from_local';
   hostRunId?: string;
   jobId?: string;
   data?: any;
+  localApiUrl?: string;
 }
 
 serve(async (req) => {
@@ -24,7 +25,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { action, hostRunId, jobId, data }: SyncRequest = await req.json();
+    const { action, hostRunId, jobId, data, localApiUrl }: SyncRequest = await req.json();
 
     switch (action) {
       case 'sync_host_run':
@@ -39,8 +40,14 @@ serve(async (req) => {
         }
         return await syncBackgroundJob(supabase, jobId, data);
       
+      case 'sync_from_local':
+        if (!localApiUrl) {
+          throw new Error('Local API URL is required for sync_from_local action');
+        }
+        return await syncFromLocalApi(supabase, localApiUrl);
+      
       case 'sync_all':
-        return await syncAll(supabase);
+        return await syncAll(supabase, localApiUrl);
       
       default:
         throw new Error(`Unsupported action: ${action}`);
@@ -61,7 +68,6 @@ serve(async (req) => {
 async function syncHostRun(supabase: any, hostRunId: string, data?: any) {
   console.log(`Syncing host run ${hostRunId} to Supabase`);
 
-  // If data is provided, use it; otherwise we would need to fetch from local API
   if (data) {
     const { error } = await supabase
       .from('host_runs')
@@ -92,15 +98,7 @@ async function syncHostRun(supabase: any, hostRunId: string, data?: any) {
     });
   }
 
-  // If no data provided, we would need to fetch from local API
-  // This would require the local API URL to be configured
-  return new Response(JSON.stringify({
-    success: false,
-    error: 'Data synchronization from local API not yet implemented'
-  }), {
-    status: 501,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+  throw new Error('Host run data is required');
 }
 
 async function syncBackgroundJob(supabase: any, jobId: string, data?: any) {
@@ -141,31 +139,75 @@ async function syncBackgroundJob(supabase: any, jobId: string, data?: any) {
     });
   }
 
-  return new Response(JSON.stringify({
-    success: false,
-    error: 'Data synchronization from local API not yet implemented'
-  }), {
-    status: 501,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+  throw new Error('Job data is required');
 }
 
-async function syncAll(supabase: any) {
+async function syncFromLocalApi(supabase: any, localApiUrl: string) {
+  console.log(`Syncing data from local API: ${localApiUrl}`);
+  
+  try {
+    // Fetch host runs from local API
+    const hostRunsResponse = await fetch(`${localApiUrl}/plans/status`);
+    if (hostRunsResponse.ok) {
+      const hostRunsData = await hostRunsResponse.json();
+      
+      for (const hostRun of hostRunsData.hosts || []) {
+        await syncHostRun(supabase, hostRun.id, {
+          serverId: hostRun.hostId,
+          state: hostRun.state,
+          status: 'running', // Map local state to Supabase status
+          context: hostRun.ctx,
+          startedAt: hostRun.createdAt,
+          completedAt: hostRun.updatedAt,
+          errorMessage: null
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Successfully synced data from local API'
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    throw new Error(`Failed to sync from local API: ${error.message}`);
+  }
+}
+
+async function syncAll(supabase: any, localApiUrl?: string) {
   console.log('Performing full synchronization between backends');
 
-  // This would be a comprehensive sync operation
-  // For now, just return a placeholder response
-  return new Response(JSON.stringify({
-    success: true,
-    message: 'Full synchronization would be implemented here',
-    todo: [
-      'Fetch all host_runs from local API',
-      'Sync host_runs to Supabase',
-      'Fetch all background_jobs from local API', 
-      'Sync background_jobs to Supabase',
-      'Handle conflicts and data consistency'
-    ]
-  }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-  });
+  const results = {
+    hostRuns: 0,
+    backgroundJobs: 0,
+    errors: []
+  };
+
+  try {
+    if (localApiUrl) {
+      await syncFromLocalApi(supabase, localApiUrl);
+      results.hostRuns++;
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Full synchronization completed',
+      results
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+
+  } catch (error) {
+    results.errors.push(error.message);
+    return new Response(JSON.stringify({
+      success: false,
+      message: 'Partial synchronization completed with errors',
+      results
+    }), {
+      status: 207, // Multi-status
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 }

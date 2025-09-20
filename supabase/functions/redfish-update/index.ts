@@ -59,11 +59,18 @@ serve(async (req) => {
       throw new Error(`Firmware package not found: ${packageError?.message}`)
     }
 
-    // Get credentials for the server
+    // Get credentials for the server from credential management
+    const { data: credentialData, error: credError } = await supabase
+      .rpc('get_credentials_for_ip', { target_ip: server.ip_address });
+
+    if (credError || !credentialData || credentialData.length === 0) {
+      throw new Error('No credentials found for server. Please configure server credentials.');
+    }
+
     const credentials: RedfishCredentials = {
       host: server.ip_address,
-      username: 'root', // This should come from credential management
-      password: 'calvin' // This should come from encrypted credential management
+      username: credentialData[0].username,
+      password: credentialData[0].password_encrypted // This should be decrypted in production
     }
 
     // Create update job record

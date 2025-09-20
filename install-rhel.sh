@@ -292,7 +292,7 @@ services:
       retries: 3
 
   app:
-    image: idrac-orchestrator:latest
+    build: .
     container_name: idrac-orchestrator
     restart: unless-stopped
     environment:
@@ -315,7 +315,7 @@ services:
     security_opt:
       - label:type:container_runtime_t
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -451,8 +451,16 @@ download_application() {
     
     cd $INSTALL_DIR
     
-    # Download database initialization script
-    curl -fsSL https://raw.githubusercontent.com/your-org/idrac-orchestrator/main/init.sql -o init.sql
+    # Copy database initialization script from project
+    if [ -f /tmp/init.sql ]; then
+        cp /tmp/init.sql init.sql
+    else
+        echo "Warning: init.sql not found, creating minimal schema"
+        cat > init.sql << 'EOSQL'
+-- Minimal database schema for iDRAC Orchestrator
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+EOSQL
+    fi
     
     # Create nginx configuration optimized for RHEL
     cat > nginx.conf << 'EOF'
