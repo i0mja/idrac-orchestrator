@@ -46,9 +46,13 @@ export function NotificationHub() {
   const [channels, setChannels] = useState<NotificationChannel[]>([]);
   const [rules, setRules] = useState<NotificationRule[]>([]);
   const [isTestingChannel, setIsTestingChannel] = useState<string | null>(null);
-  const [newChannel, setNewChannel] = useState({
+  const [newChannel, setNewChannel] = useState<{
+    name: string;
+    type: 'email' | 'slack' | 'teams' | 'webhook';
+    config: any;
+  }>({
     name: '',
-    type: 'email' as const,
+    type: 'email',
     config: {}
   });
   const { toast } = useToast();
