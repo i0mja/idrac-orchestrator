@@ -15,7 +15,7 @@ import {
   RefreshCw,
   Play
 } from "lucide-react";
-import { useSystemEvents } from '@/hooks/useSystemEvents';
+import { useSystemEvents, type UnifiedEvent } from '@/hooks/useSystemEvents';
 import { format } from 'date-fns';
 
 const AlertsEventsPage = () => {
@@ -176,10 +176,18 @@ const AlertsEventsPage = () => {
                     <div className="flex items-start justify-between">
                       <div className="flex items-center space-x-3">
                         {getSeverityIcon(event.severity)}
-                        <div>
-                          <h4 className="font-semibold text-foreground">{event.title}</h4>
-                          <p className="text-sm text-muted-foreground">{event.description}</p>
-                        </div>
+        <div>
+          <h4 className="font-semibold text-foreground flex items-center gap-2">
+            {event.title}
+            <Badge variant="outline" className="text-xs">
+              {event.event_source}
+            </Badge>
+          </h4>
+          <p className="text-sm text-muted-foreground">{event.description}</p>
+          {event.error_details && (
+            <p className="text-sm text-destructive mt-1">Error: {event.error_details}</p>
+          )}
+        </div>
                       </div>
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         {getSeverityBadge(event.severity)}
@@ -204,6 +212,13 @@ const AlertsEventsPage = () => {
                           <span>{format(new Date(event.created_at), 'MMM dd, yyyy HH:mm')}</span>
                         </span>
                         <span>Type: {event.event_type}</span>
+                        <span>Source: {event.event_source}</span>
+                        {event.execution_time_ms && (
+                          <span>Duration: {event.execution_time_ms}ms</span>
+                        )}
+                        {event.status && (
+                          <span>Status: {event.status}</span>
+                        )}
                         {event.acknowledged && (
                           <span className="text-success">✓ Acknowledged</span>
                         )}

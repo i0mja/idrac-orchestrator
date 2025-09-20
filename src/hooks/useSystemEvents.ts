@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-export interface SystemEvent {
+export interface UnifiedEvent {
   id: string;
   event_type: string;
-  severity: 'info' | 'warning' | 'error' | 'success';
+  event_source: string; // 'system', 'eol', 'operational', 'analytics', 'audit'
+  severity: string; // Allow any string, we'll validate in the components
   title: string;
   description: string | null;
   metadata: any;
@@ -14,38 +15,115 @@ export interface SystemEvent {
   acknowledged: boolean;
   acknowledged_at: string | null;
   acknowledged_by: string | null;
+  status?: string;
+  error_details?: string | null;
+  server_id?: string | null;
+  connection_id?: string | null;
+  execution_time_ms?: number | null;
 }
 
 export const useSystemEvents = () => {
-  const [events, setEvents] = useState<SystemEvent[]>([]);
+  const [events, setEvents] = useState<UnifiedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('system_events')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
+      
+      // Fetch from all event sources in parallel
+      const [systemEventsRes, eolAlertsRes, operationalEventsRes, analyticsEventsRes] = await Promise.all([
+        supabase
+          .from('system_events')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('eol_alerts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('operational_events')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('analytics_events')
+          .select('*')
+          .order('timestamp', { ascending: false })
+          .limit(25)
+      ]);
 
-      if (error) {
-        console.error('Error fetching system events:', error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch system events",
-          variant: "destructive",
-        });
-        return;
+      // Transform and combine all events
+      const allEvents: UnifiedEvent[] = [];
+
+      // Add system events
+      if (systemEventsRes.data) {
+        allEvents.push(...systemEventsRes.data.map(event => ({
+          ...event,
+          event_source: 'system'
+        })));
       }
 
-      setEvents((data || []) as SystemEvent[]);
+      // Add EOL alerts
+      if (eolAlertsRes.data) {
+        allEvents.push(...eolAlertsRes.data.map(alert => ({
+          id: alert.id,
+          event_type: alert.alert_type || 'eol_alert',
+          event_source: 'eol',
+          severity: alert.severity || 'warning',
+          title: `EOL Alert: ${alert.message}`,
+          description: alert.recommendation,
+          metadata: { server_id: alert.server_id, alert_type: alert.alert_type },
+          created_at: alert.created_at,
+          created_by: alert.acknowledged_by,
+          acknowledged: alert.acknowledged || false,
+          acknowledged_at: alert.acknowledged_at,
+          acknowledged_by: alert.acknowledged_by,
+          server_id: alert.server_id
+        } as UnifiedEvent)));
+      }
+
+      // Add operational events
+      if (operationalEventsRes.data) {
+        allEvents.push(...operationalEventsRes.data.map(event => ({
+          ...event,
+          event_source: 'operational',
+          acknowledged: false, // operational events don't have acknowledgment by default
+          acknowledged_at: null,
+          acknowledged_by: null
+        } as UnifiedEvent)));
+      }
+
+      // Add analytics events
+      if (analyticsEventsRes.data) {
+        allEvents.push(...analyticsEventsRes.data.map(event => ({
+          id: event.id,
+          event_type: event.event_type,
+          event_source: 'analytics',
+          severity: 'info',
+          title: `Analytics: ${event.event_type}`,
+          description: JSON.stringify(event.properties),
+          metadata: event.properties,
+          created_at: event.timestamp,
+          created_by: event.user_id,
+          acknowledged: false,
+          acknowledged_at: null,
+          acknowledged_by: null,
+          server_id: event.server_id
+        } as UnifiedEvent)));
+      }
+
+      // Sort by created_at descending and limit to 200 total events
+      allEvents.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setEvents(allEvents.slice(0, 200));
+
     } catch (error) {
-      console.error('Error fetching system events:', error);
+      console.error('Error fetching events:', error);
       toast({
         title: "Error",
-        description: "Failed to fetch system events",
+        description: "Failed to fetch events",
         variant: "destructive",
       });
     } finally {
@@ -208,20 +286,13 @@ export const useSystemEvents = () => {
   useEffect(() => {
     fetchEvents();
 
-    // Set up realtime subscription
+  // Set up realtime subscriptions for all event sources
     const channel = supabase
-      .channel('system-events-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'system_events'
-        },
-        () => {
-          fetchEvents();
-        }
-      )
+      .channel('unified-events-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'system_events' }, fetchEvents)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'eol_alerts' }, fetchEvents)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'operational_events' }, fetchEvents)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'analytics_events' }, fetchEvents)
       .subscribe();
 
     return () => {
@@ -230,8 +301,8 @@ export const useSystemEvents = () => {
   }, []);
 
   // Filter events by severity
-  const criticalEvents = events.filter(e => e.severity === 'error' && !e.acknowledged);
-  const warningEvents = events.filter(e => e.severity === 'warning' && !e.acknowledged);
+  const criticalEvents = events.filter(e => (e.severity === 'error' || e.severity === 'critical') && !e.acknowledged);
+  const warningEvents = events.filter(e => (e.severity === 'warning' || e.severity === 'high') && !e.acknowledged);
   const unacknowledgedCount = events.filter(e => !e.acknowledged).length;
 
   return {

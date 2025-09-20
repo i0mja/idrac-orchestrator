@@ -1335,6 +1335,57 @@ export type Database = {
           },
         ]
       }
+      operational_events: {
+        Row: {
+          connection_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          error_details: string | null
+          event_source: string
+          event_type: string
+          execution_time_ms: number | null
+          id: string
+          metadata: Json | null
+          server_id: string | null
+          severity: string
+          status: string
+          title: string
+        }
+        Insert: {
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          error_details?: string | null
+          event_source: string
+          event_type: string
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          server_id?: string | null
+          severity?: string
+          status: string
+          title: string
+        }
+        Update: {
+          connection_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          error_details?: string | null
+          event_source?: string
+          event_type?: string
+          execution_time_ms?: number | null
+          id?: string
+          metadata?: Json | null
+          server_id?: string | null
+          severity?: string
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       organization_members: {
         Row: {
           id: string

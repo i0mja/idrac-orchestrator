@@ -272,7 +272,33 @@ serve(async (req) => {
     }
 
     // Perform comprehensive connection test
+    const startTime = Date.now();
     const testResult = await testOMEConnection(connection, connection.credential_profile);
+    const executionTime = Date.now() - startTime;
+
+    // Create operational event based on result
+    const operationalEvent = {
+      event_type: 'ome_connection_test',
+      event_source: 'ome_connection',
+      severity: testResult.success ? 'success' : 'error',
+      title: `OME Connection Test: ${connection.hostname}`,
+      description: testResult.message,
+      metadata: {
+        hostname: connection.hostname,
+        port: connection.port,
+        use_ssl: connection.use_ssl,
+        connection_id: connection.id,
+        endpoints_tested: testResult.endpoints_tested,
+        error_type: testResult.error_type,
+        tested_at: testResult.tested_at
+      },
+      connection_id: connection.id,
+      status: testResult.success ? 'success' : 'failure',
+      error_details: testResult.success ? null : testResult.error_details,
+      execution_time_ms: executionTime
+    };
+
+    await supabase.from('operational_events').insert(operationalEvent);
     
     console.log('=== OME Connection Test Result ===');
     console.log(`Success: ${testResult.success}`);
@@ -294,6 +320,26 @@ serve(async (req) => {
   } catch (error) {
     console.error('=== OME Connection Test Error ===');
     console.error('Error:', error);
+    
+    // Create failure operational event
+    try {
+      await supabase.from('operational_events').insert({
+        event_type: 'ome_connection_test',
+        event_source: 'ome_connection',
+        severity: 'error',
+        title: 'OME Connection Test Failed',
+        description: 'OME connection test encountered an error',
+        status: 'failure',
+        error_details: error.message || 'Unknown error occurred',
+        execution_time_ms: 0,
+        metadata: {
+          error: error.message || 'Unknown error occurred',
+          test_failed_at: new Date().toISOString()
+        }
+      });
+    } catch (logError) {
+      console.error('Failed to log operational event:', logError);
+    }
     
     return new Response(
       JSON.stringify({

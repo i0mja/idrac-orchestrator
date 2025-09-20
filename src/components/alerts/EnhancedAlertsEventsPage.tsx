@@ -41,7 +41,7 @@ import {
   History,
   Tag
 } from "lucide-react";
-import { useSystemEvents, SystemEvent } from '@/hooks/useSystemEvents';
+import { useSystemEvents, UnifiedEvent } from '@/hooks/useSystemEvents';
 import { format, subDays, subWeeks, subMonths, isAfter, isBefore, startOfDay, endOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -68,7 +68,7 @@ const EnhancedAlertsEventsPage = () => {
   const [sortField, setSortField] = useState<string>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<SystemEvent | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<UnifiedEvent | null>(null);
   const [bookmarkedEvents, setBookmarkedEvents] = useState<Set<string>>(new Set());
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [searchParams] = useSearchParams();
