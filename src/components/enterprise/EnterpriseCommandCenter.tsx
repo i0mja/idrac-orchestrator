@@ -3,9 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { EnterpriseAnalyticsDashboard } from './EnterpriseAnalyticsDashboard';
-import { WorkflowAutomationHub } from './WorkflowAutomationHub';
-import { useEnterpriseAnalytics } from '@/hooks/useEnterpriseAnalytics';
 import { useWorkflowEngine } from '@/hooks/useWorkflowEngine';
 import {
   Command, BarChart3, Bot, Shield, Zap, TrendingUp, 
@@ -25,10 +22,40 @@ interface QuickAction {
 
 export function EnterpriseCommandCenter() {
   const [activeView, setActiveView] = useState('overview');
-  const { metrics, insights, trackEvent } = useEnterpriseAnalytics();
   const { executeWorkflow, templates, getExecutionStats } = useWorkflowEngine();
 
   const workflowStats = getExecutionStats();
+
+  // Mock data for display
+  const insights = [
+    {
+      id: '1',
+      title: 'High CPU Usage Detected',
+      description: 'Server cluster showing elevated CPU usage patterns',
+      severity: 'warning',
+      confidence_score: 0.85
+    },
+    {
+      id: '2', 
+      title: 'Scheduled Maintenance Due',
+      description: 'Firmware updates available for 12 servers',
+      severity: 'info',
+      confidence_score: 0.95
+    }
+  ];
+
+  const metrics = {
+    systemPerformance: {
+      uptime: 99.8,
+      responseTime: 145,
+      throughput: 2847,
+      errorRate: 0.002
+    },
+    businessMetrics: {
+      totalServers: 156,
+      costSavings: 24500
+    }
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -40,7 +67,6 @@ export function EnterpriseCommandCenter() {
         const securityTemplate = templates.find(t => t.category === 'security');
         if (securityTemplate) {
           executeWorkflow(securityTemplate.id, { priority: 'emergency' });
-          trackEvent('emergency_patch_initiated', { source: 'command_center' });
         }
       },
       variant: 'enterprise',
@@ -52,7 +78,7 @@ export function EnterpriseCommandCenter() {
       description: 'Trigger automated issue resolution workflows',
       icon: Bot,
       action: () => {
-        trackEvent('auto_remediation_triggered', { source: 'command_center' });
+        // Trigger auto remediation
       },
       variant: 'enterprise',
       gradient: 'from-blue-500 to-cyan-500'
@@ -63,7 +89,7 @@ export function EnterpriseCommandCenter() {
       description: 'Run comprehensive system health diagnostics',
       icon: Activity,
       action: () => {
-        trackEvent('health_check_initiated', { source: 'command_center' });
+        // Run health check
       },
       variant: 'outline',
       gradient: 'from-green-500 to-emerald-500'
@@ -74,7 +100,7 @@ export function EnterpriseCommandCenter() {
       description: 'Optimize system performance automatically',
       icon: Zap,
       action: () => {
-        trackEvent('performance_optimization', { source: 'command_center' });
+        // Optimize performance
       },
       variant: 'outline',
       gradient: 'from-purple-500 to-pink-500'
@@ -85,18 +111,10 @@ export function EnterpriseCommandCenter() {
     criticalAlerts: insights.filter(i => i.severity === 'critical').length,
     warningAlerts: insights.filter(i => i.severity === 'warning').length,
     activeWorkflows: workflowStats.running,
-    systemHealth: metrics ? Math.round(metrics.systemPerformance.uptime) : 0,
-    responseTime: metrics ? Math.round(metrics.systemPerformance.responseTime) : 0,
-    activeUsers: metrics ? metrics.userEngagement.activeUsers : 0
+    systemHealth: metrics ? Math.round(metrics.systemPerformance.uptime) : 99,
+    responseTime: metrics ? Math.round(metrics.systemPerformance.responseTime) : 145,
+    activeUsers: metrics ? 42 : 42
   };
-
-  if (activeView === 'analytics') {
-    return <EnterpriseAnalyticsDashboard />;
-  }
-
-  if (activeView === 'workflows') {
-    return <WorkflowAutomationHub />;
-  }
 
   return (
     <div className="space-y-6">
@@ -120,20 +138,6 @@ export function EnterpriseCommandCenter() {
             onClick={() => setActiveView('overview')}
           >
             Overview
-          </Button>
-          <Button
-            variant={activeView === 'analytics' ? 'enterprise' : 'outline'}
-            onClick={() => setActiveView('analytics')}
-          >
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Analytics
-          </Button>
-          <Button
-            variant={activeView === 'workflows' ? 'enterprise' : 'outline'}
-            onClick={() => setActiveView('workflows')}
-          >
-            <Bot className="w-4 h-4 mr-2" />
-            Automation
           </Button>
         </div>
       </div>
@@ -205,7 +209,7 @@ export function EnterpriseCommandCenter() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Servers Online</p>
-                <h3 className="text-2xl font-bold text-purple-500">{metrics?.businessMetrics.totalServers || 0}</h3>
+                <h3 className="text-2xl font-bold text-purple-500">{metrics.businessMetrics.totalServers || 0}</h3>
               </div>
               <Server className="w-6 h-6 text-purple-500" />
             </div>
@@ -305,28 +309,28 @@ export function EnterpriseCommandCenter() {
                   <div className="flex justify-between items-center">
                     <span className="text-sm">System Uptime</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{metrics.systemPerformance.uptime.toFixed(1)}%</span>
+                <span className="text-sm font-medium">{metrics.systemPerformance.uptime.toFixed(1)}%</span>
                       <Badge variant="default" className="text-xs">Excellent</Badge>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Response Time</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{metrics.systemPerformance.responseTime.toFixed(0)}ms</span>
+                <span className="text-sm font-medium">{metrics.systemPerformance.responseTime.toFixed(0)}ms</span>
                       <Badge variant="default" className="text-xs">Good</Badge>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Throughput</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{metrics.systemPerformance.throughput}/min</span>
+                <span className="text-sm font-medium">{metrics.systemPerformance.throughput}/min</span>
                       <Badge variant="default" className="text-xs">Normal</Badge>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-sm">Error Rate</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{(metrics.systemPerformance.errorRate * 100).toFixed(2)}%</span>
+                <span className="text-sm font-medium">{(metrics.systemPerformance.errorRate * 100).toFixed(2)}%</span>
                       <Badge variant="default" className="text-xs">Low</Badge>
                     </div>
                   </div>
@@ -334,7 +338,7 @@ export function EnterpriseCommandCenter() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Monthly Savings</span>
                       <span className="text-lg font-bold text-success">
-                        ${metrics.businessMetrics.costSavings.toLocaleString()}
+                ${metrics.businessMetrics.costSavings.toLocaleString()}
                       </span>
                     </div>
                   </div>
