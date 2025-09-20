@@ -591,10 +591,12 @@ export type Database = {
           is_default: boolean | null
           name: string
           password_encrypted: string
+          password_encrypted_v2: string | null
           port: number | null
           priority_order: number | null
           protocol: string | null
           updated_at: string
+          updated_by: string | null
           username: string
         }
         Insert: {
@@ -605,10 +607,12 @@ export type Database = {
           is_default?: boolean | null
           name: string
           password_encrypted: string
+          password_encrypted_v2?: string | null
           port?: number | null
           priority_order?: number | null
           protocol?: string | null
           updated_at?: string
+          updated_by?: string | null
           username: string
         }
         Update: {
@@ -619,13 +623,67 @@ export type Database = {
           is_default?: boolean | null
           name?: string
           password_encrypted?: string
+          password_encrypted_v2?: string | null
           port?: number | null
           priority_order?: number | null
           protocol?: string | null
           updated_at?: string
+          updated_by?: string | null
           username?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credential_profiles_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credential_test_results: {
+        Row: {
+          created_at: string
+          credential_profile_id: string
+          error_message: string | null
+          id: string
+          ip_address: unknown
+          protocol: string
+          response_time_ms: number | null
+          success: boolean
+          tested_at: string
+        }
+        Insert: {
+          created_at?: string
+          credential_profile_id: string
+          error_message?: string | null
+          id?: string
+          ip_address: unknown
+          protocol: string
+          response_time_ms?: number | null
+          success?: boolean
+          tested_at?: string
+        }
+        Update: {
+          created_at?: string
+          credential_profile_id?: string
+          error_message?: string | null
+          id?: string
+          ip_address?: unknown
+          protocol?: string
+          response_time_ms?: number | null
+          success?: boolean
+          tested_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credential_test_results_credential_profile_id_fkey"
+            columns: ["credential_profile_id"]
+            isOneToOne: false
+            referencedRelation: "credential_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       datacenters: {
         Row: {
@@ -2488,6 +2546,14 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      decrypt_credential_password: {
+        Args: { encrypted_password: string }
+        Returns: string
+      }
+      encrypt_credential_password: {
+        Args: { plain_password: string }
+        Returns: string
+      }
       get_credentials_for_ip: {
         Args: { target_ip: unknown }
         Returns: {
@@ -2504,6 +2570,19 @@ export type Database = {
       get_datacenter_for_ip: {
         Args: { ip_addr: unknown }
         Returns: string
+      }
+      get_decrypted_credentials_for_ip: {
+        Args: { target_ip: unknown }
+        Returns: {
+          assignment_type: string
+          credential_profile_id: string
+          name: string
+          password_decrypted: string
+          port: number
+          priority_order: number
+          protocol: string
+          username: string
+        }[]
       }
       get_host_runs: {
         Args: { limit_count?: number }
