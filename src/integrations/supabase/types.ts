@@ -1921,9 +1921,41 @@ export type Database = {
         Args: { ip_addr: unknown }
         Returns: string
       }
+      has_permission: {
+        Args: {
+          perm: Database["public"]["Enums"]["app_permission"]
+          user_uuid: string
+        }
+        Returns: boolean
+      }
       ip_in_datacenter_scope: {
         Args: { datacenter_id: string; ip_addr: unknown }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_error_message?: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_resource_id?: string
+          p_resource_type?: string
+          p_success?: boolean
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
+      track_analytics_event: {
+        Args: {
+          p_campaign_id?: string
+          p_event_type: string
+          p_properties?: Json
+          p_server_id?: string
+          p_session_id?: string
+          p_user_id?: string
+        }
+        Returns: string
       }
     }
     Enums: {
