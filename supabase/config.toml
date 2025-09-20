@@ -121,6 +121,12 @@ verify_jwt = false
 [functions.job-scheduler]
 verify_jwt = false
 
+[functions.state-machine-orchestrator]
+verify_jwt = false
+
+[functions.workflow-engine]
+verify_jwt = false
+
 [db]
 port = 54322
 
