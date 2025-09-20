@@ -22,6 +22,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCredentialProfiles } from '@/hooks/useCredentialProfiles';
+import { useEnhancedDiscovery } from '@/hooks/useEnhancedDiscovery';
 import { ProtocolStatusDisplay } from './ProtocolStatusDisplay';
 import { FirmwareComplianceDisplay } from './FirmwareComplianceDisplay';
 import {
@@ -87,9 +88,6 @@ interface DatacenterInfo {
 }
 
 export function NetworkDiscovery() {
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
-  const [discoveredServers, setDiscoveredServers] = useState<EnhancedDiscoveryResult[]>([]);
   const [showCredentialForm, setShowCredentialForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [expandedServer, setExpandedServer] = useState<string | null>(null);
@@ -121,6 +119,15 @@ export function NetworkDiscovery() {
   const [datacenters, setDatacenters] = useState<DatacenterInfo[]>([]);
   const { profiles, createProfile, refreshData } = useCredentialProfiles();
   const { triggerAutoOrchestration } = useSystemEvents();
+  const { 
+    isDiscovering,
+    progress,
+    currentPhase,
+    results,
+    startDiscovery,
+    clearResults,
+    protocolStats
+  } = useEnhancedDiscovery();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -210,48 +217,18 @@ export function NetworkDiscovery() {
       return;
     }
 
-    setIsScanning(true);
-    setScanProgress(0);
-    setDiscoveredServers([]);
-
     try {
-      // Progress simulation
-      const progressInterval = setInterval(() => {
-        setScanProgress((prev) => Math.min(prev + 10, 95));
-      }, 1000);
-
-      const { data, error } = await supabase.functions.invoke('enhanced-discovery', {
-        body: {
-          ipRange: scanConfig.ipRange || undefined,
-          datacenterId: scanConfig.datacenterId,
-          credentials: scanConfig.useCredentialProfiles ? null : fallbackCredentials,
-          useCredentialProfiles: scanConfig.useCredentialProfiles,
-          detectProtocols: scanConfig.detectProtocols,
-          checkFirmware: scanConfig.checkFirmware,
-        },
-      });
-
-      clearInterval(progressInterval);
-      setScanProgress(100);
-
-      if (error) throw error;
-
-      setDiscoveredServers(data.servers || []);
-
-      toast({
-        title: 'Enhanced Discovery Complete',
-        description: `Discovered ${data.discovered || 0} servers • ${data.summary?.withProtocols || 0} with protocols • ${data.summary?.readyForUpdates || 0} ready for updates`,
+      await startDiscovery({
+        ipRange: scanConfig.ipRange || '',
+        datacenterId: scanConfig.datacenterId || undefined,
+        credentials: scanConfig.useCredentialProfiles ? undefined : fallbackCredentials,
+        useCredentialProfiles: scanConfig.useCredentialProfiles,
+        detectProtocols: scanConfig.detectProtocols,
+        checkFirmware: scanConfig.checkFirmware,
       });
     } catch (error) {
       console.error('Network scan error:', error);
-      toast({
-        title: 'Scan Failed',
-        description: error.message || 'Failed to complete network scan',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsScanning(false);
-      setScanProgress(0);
+      // Error handling is done in the hook
     }
   };
 
@@ -285,7 +262,7 @@ export function NetworkDiscovery() {
                     }))
                   }
                   className="w-full p-3 border rounded-lg bg-background"
-                  disabled={isScanning}
+                  disabled={isDiscovering}
                 >
                   <option value="">Select datacenter or use custom range</option>
                   {datacenters.map((dc) => (
@@ -316,7 +293,7 @@ export function NetworkDiscovery() {
                       setScanConfig((prev) => ({ ...prev, ipRange: e.target.value }))
                     }
                     placeholder="192.168.1.1-50 or 192.168.1.100"
-                    disabled={isScanning}
+                  disabled={isDiscovering}
                   />
                   <p className="text-sm text-muted-foreground">
                     Formats: 192.168.1.1-50 (range) or 192.168.1.100 (single IP)
@@ -335,7 +312,7 @@ export function NetworkDiscovery() {
                       onCheckedChange={(checked) =>
                         setScanConfig((prev) => ({ ...prev, detectProtocols: checked }))
                       }
-                      disabled={isScanning}
+                    disabled={isDiscovering}
                     />
                     <div className="grid gap-1.5 leading-none">
                       <Label
@@ -357,7 +334,7 @@ export function NetworkDiscovery() {
                       onCheckedChange={(checked) =>
                         setScanConfig((prev) => ({ ...prev, checkFirmware: checked }))
                       }
-                      disabled={isScanning}
+                      disabled={isDiscovering}
                     />
                     <div className="grid gap-1.5 leading-none">
                       <Label
@@ -445,7 +422,7 @@ export function NetworkDiscovery() {
                         onChange={(e) =>
                           setFallbackCredentials((prev) => ({ ...prev, username: e.target.value }))
                         }
-                        disabled={isScanning}
+                        disabled={isDiscovering}
                       />
                     </div>
                     <div>
@@ -460,7 +437,7 @@ export function NetworkDiscovery() {
                               password: e.target.value,
                             }))
                           }
-                          disabled={isScanning}
+                          disabled={isDiscovering}
                         />
                         <Button
                           type="button"
@@ -482,16 +459,16 @@ export function NetworkDiscovery() {
               )}
 
               {/* Scan Progress */}
-              {isScanning && (
+              {isDiscovering && (
                 <div className="space-y-3 p-4 border rounded-lg bg-primary/5">
                   <div className="flex items-center gap-2">
                     <Clock className="w-4 h-4 animate-spin text-primary" />
-                    <span className="font-medium">Scanning Network...</span>
+                    <span className="font-medium">{currentPhase || 'Scanning Network...'}</span>
                   </div>
-                  <Progress value={scanProgress} className="h-2" />
+                  <Progress value={progress} className="h-2" />
                   <p className="text-sm text-muted-foreground">
-                    {scanProgress < 100
-                      ? `Progress: ${Math.round(scanProgress)}%`
+                    {progress < 100
+                      ? `Progress: ${Math.round(progress)}%`
                       : 'Processing results...'}
                   </p>
                 </div>
@@ -501,14 +478,14 @@ export function NetworkDiscovery() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <Button
                   onClick={startNetworkScan}
-                  disabled={isScanning}
+                  disabled={isDiscovering}
                   size="lg"
                   className="flex-1"
                 >
-                  {isScanning ? (
+                  {isDiscovering ? (
                     <>
                       <Clock className="w-5 h-5 mr-2 animate-spin" />
-                      Scanning Network...
+                      {currentPhase || 'Scanning Network...'}
                     </>
                   ) : (
                     <>
@@ -555,26 +532,37 @@ export function NetworkDiscovery() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {discoveredServers.length === 0 ? (
+              {!results || results.servers.length === 0 ? (
                 <div className="text-center py-12">
                   <Network className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
                   <h3 className="text-lg font-semibold mb-2">No Servers Discovered</h3>
                   <p className="text-muted-foreground mb-4">
                     Configure your network settings and start a discovery scan
                   </p>
+                  {results && (
+                    <Button variant="outline" onClick={clearResults}>
+                      Clear Results
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">Found {discoveredServers.length} servers</span>
-                    <Badge variant="outline">
-                      <CheckCircle className="w-3 h-3 mr-1" />
-                      Ready for inventory
-                    </Badge>
+                    <span className="font-medium">Found {results.servers.length} servers</span>
+                    <div className="flex gap-2">
+                      <Badge variant="outline">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        {results.summary.readyForUpdates} ready for updates
+                      </Badge>
+                      <Badge variant="outline">
+                        <Activity className="w-3 h-3 mr-1" />
+                        {results.summary.withProtocols} with protocols
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
-                    {discoveredServers.map((server, index) => (
+                    {results.servers.map((server, index) => (
                       <Card key={index} className="border-l-4 border-l-primary">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
