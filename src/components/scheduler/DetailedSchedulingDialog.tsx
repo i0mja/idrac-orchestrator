@@ -90,6 +90,13 @@ interface ScheduleForm {
   impact_assessment: string;
 }
 
+const sanitizeMaxConcurrentUpdates = (value: number | undefined | null) => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(value));
+};
+
 const DEFAULT_FORM: ScheduleForm = {
   name: '',
   description: '',
@@ -131,9 +138,11 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [isValidating, setIsValidating] = useState(false);
   const [estimatedImpact, setEstimatedImpact] = useState({ servers: 0, downtime: '0h', risk: 'low' });
-  
+
   const { servers, datacenters } = useEnhancedServers();
   const { toast } = useToast();
+
+  const safeMaxConcurrentUpdates = sanitizeMaxConcurrentUpdates(form.max_concurrent_updates);
 
   const updateForm = (updates: Partial<ScheduleForm>) => {
     setForm(prev => ({ ...prev, ...updates }));
@@ -175,7 +184,7 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
           break;
       }
 
-      const estimatedDowntime = Math.ceil(affectedServers.length / form.max_concurrent_updates) * 30; // 30 min per batch
+      const estimatedDowntime = Math.ceil(affectedServers.length / safeMaxConcurrentUpdates) * 30; // 30 min per batch
       const riskLevel = affectedServers.length > 50 ? 'high' : affectedServers.length > 20 ? 'medium' : 'low';
 
       setEstimatedImpact({
@@ -194,7 +203,7 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
     if (form.scheduled_date && form.target_type) {
       validateSchedule();
     }
-  }, [form.scheduled_date, form.target_type, form.selected_servers, form.selected_datacenters]);
+  }, [form.scheduled_date, form.target_type, form.selected_servers, form.selected_datacenters, form.max_concurrent_updates]);
 
   const handleSubmit = async () => {
     if (!form.name || !form.scheduled_date || !form.start_time) {
@@ -216,6 +225,8 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
     }
 
     try {
+      const sanitizedMaxConcurrent = sanitizeMaxConcurrentUpdates(form.max_concurrent_updates);
+
       const scheduleData = {
         name: form.name,
         description: form.description,
@@ -223,13 +234,14 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
         start_time: form.start_time,
         end_time: form.end_time,
         status: form.requires_approval ? 'pending_approval' : 'scheduled',
+        max_concurrent_updates: sanitizedMaxConcurrent,
         metadata: {
           type: form.type,
           priority: form.priority,
           target_type: form.target_type,
           selected_servers: form.selected_servers,
           selected_datacenters: form.selected_datacenters,
-          max_concurrent_updates: form.max_concurrent_updates,
+          max_concurrent_updates: sanitizedMaxConcurrent,
           rollback_plan: form.rollback_plan,
           pre_update_checks: form.pre_update_checks,
           post_update_validation: form.post_update_validation,
@@ -701,7 +713,7 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
                       min="1"
                       max="10"
                       value={form.max_concurrent_updates}
-                      onChange={(e) => updateForm({ max_concurrent_updates: parseInt(e.target.value) || 1 })}
+                      onChange={(e) => updateForm({ max_concurrent_updates: sanitizeMaxConcurrentUpdates(parseInt(e.target.value, 10)) })}
                     />
                   </div>
 
@@ -953,7 +965,7 @@ export function DetailedSchedulingDialog({ open, onOpenChange, onScheduleCreated
                         <p><strong>Servers Affected:</strong> {estimatedImpact.servers}</p>
                         <p><strong>Estimated Downtime:</strong> {estimatedImpact.downtime}</p>
                         <p><strong>Risk Level:</strong> {estimatedImpact.risk}</p>
-                        <p><strong>Concurrent Updates:</strong> {form.max_concurrent_updates}</p>
+                        <p><strong>Concurrent Updates:</strong> {safeMaxConcurrentUpdates}</p>
                       </div>
                     </div>
 
