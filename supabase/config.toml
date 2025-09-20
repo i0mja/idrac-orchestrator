@@ -103,6 +103,15 @@ verify_jwt = false
 [functions.vcenter-integration]
 verify_jwt = false
 
+[functions.vsphere-cluster-health]
+verify_jwt = false
+
+[functions.host-readiness-check]
+verify_jwt = false
+
+[functions.host-maintenance-mode]
+verify_jwt = false
+
 [db]
 port = 54322
 
