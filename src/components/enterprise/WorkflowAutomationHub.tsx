@@ -104,7 +104,8 @@ export function WorkflowAutomationHub() {
         category: 'general',
         trigger_type: 'manual',
         trigger_config: {},
-        steps: []
+        steps: [],
+        is_active: true
       });
     } catch (error) {
       console.error('Failed to create template:', error);
