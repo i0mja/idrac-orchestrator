@@ -134,6 +134,7 @@ async function executeWorkflow(supabase: any, templateId: string, context: Recor
 
 async function processWorkflowSteps(supabase: any, executionId: string, steps: WorkflowStep[], context: Record<string, any>) {
   const executionLog = [];
+  const visitedSteps = new Set<string>();
   
   // Find entry points (steps with no dependencies)
   const entrySteps = steps.filter(step => 
@@ -141,7 +142,7 @@ async function processWorkflowSteps(supabase: any, executionId: string, steps: W
   );
 
   for (const step of entrySteps) {
-    await executeWorkflowStep(supabase, executionId, step, steps, context, executionLog);
+    await executeWorkflowStep(supabase, executionId, step, steps, context, executionLog, visitedSteps);
   }
 
   // Update execution with final status
@@ -163,8 +164,16 @@ async function executeWorkflowStep(
   step: WorkflowStep, 
   allSteps: WorkflowStep[], 
   context: Record<string, any>,
-  executionLog: any[]
+  executionLog: any[],
+  visitedSteps: Set<string>
 ) {
+  // Prevent infinite loops and duplicate execution
+  if (visitedSteps.has(step.id)) {
+    console.log(`Skipping already visited step: ${step.name}`);
+    return;
+  }
+  
+  visitedSteps.add(step.id);
   console.log(`Executing workflow step: ${step.name} (${step.type})`);
   
   const logEntry = {
@@ -187,7 +196,7 @@ async function executeWorkflowStep(
         break;
       
       case 'parallel':
-        result = await executeParallelStep(supabase, executionId, step, allSteps, context, executionLog);
+        result = await executeParallelStep(supabase, executionId, step, allSteps, context, executionLog, visitedSteps);
         break;
       
       case 'delay':
@@ -207,8 +216,8 @@ async function executeWorkflowStep(
     if (step.nextSteps && (!step.condition || evaluateCondition(step.condition, context, result))) {
       for (const nextStepId of step.nextSteps) {
         const nextStep = allSteps.find(s => s.id === nextStepId);
-        if (nextStep) {
-          await executeWorkflowStep(supabase, executionId, nextStep, allSteps, context, executionLog);
+        if (nextStep && !visitedSteps.has(nextStepId)) {
+          await executeWorkflowStep(supabase, executionId, nextStep, allSteps, context, executionLog, visitedSteps);
         }
       }
     }
@@ -257,15 +266,18 @@ async function executeParallelStep(
   step: WorkflowStep, 
   allSteps: WorkflowStep[], 
   context: Record<string, any>,
-  executionLog: any[]
+  executionLog: any[],
+  visitedSteps: Set<string>
 ) {
   const { parallelSteps } = step.config;
   const promises = [];
 
   for (const stepId of parallelSteps) {
     const parallelStep = allSteps.find(s => s.id === stepId);
-    if (parallelStep) {
-      promises.push(executeWorkflowStep(supabase, executionId, parallelStep, allSteps, context, executionLog));
+    if (parallelStep && !visitedSteps.has(stepId)) {
+      // Create separate visited set for each parallel branch to prevent cross-contamination
+      const branchVisited = new Set(visitedSteps);
+      promises.push(executeWorkflowStep(supabase, executionId, parallelStep, allSteps, context, executionLog, branchVisited));
     }
   }
 
@@ -280,19 +292,59 @@ async function executeDelayStep(step: WorkflowStep) {
 }
 
 function evaluateCondition(condition: string, context: Record<string, any>, stepResult?: any): boolean {
-  // Simple condition evaluation - in production, use a proper expression parser
+  // Safe condition evaluation without eval
   try {
-    // Replace context variables
-    const evaluatedCondition = condition.replace(/\${(\w+)}/g, (match, key) => {
-      return JSON.stringify(context[key] || stepResult?.[key] || null);
-    });
+    // Support only simple comparisons to prevent code injection
+    const supportedOperators = ['==', '!=', '>', '<', '>=', '<='];
     
-    // WARNING: eval is dangerous - use a proper expression parser in production
-    return eval(evaluatedCondition);
+    // Parse simple conditions like "status == 'success'" or "count > 5"
+    for (const op of supportedOperators) {
+      if (condition.includes(op)) {
+        const [left, right] = condition.split(op).map(s => s.trim());
+        
+        // Resolve variables
+        const leftValue = resolveValue(left, context, stepResult);
+        const rightValue = resolveValue(right, context, stepResult);
+        
+        switch (op) {
+          case '==': return leftValue == rightValue;
+          case '!=': return leftValue != rightValue;
+          case '>': return Number(leftValue) > Number(rightValue);
+          case '<': return Number(leftValue) < Number(rightValue);
+          case '>=': return Number(leftValue) >= Number(rightValue);
+          case '<=': return Number(leftValue) <= Number(rightValue);
+        }
+      }
+    }
+    
+    // Simple boolean check
+    return resolveValue(condition, context, stepResult) === true;
   } catch (error) {
     console.error('Condition evaluation failed:', error);
     return false;
   }
+}
+
+function resolveValue(value: string, context: Record<string, any>, stepResult?: any): any {
+  // Remove quotes if present
+  if (value.startsWith('"') && value.endsWith('"')) {
+    return value.slice(1, -1);
+  }
+  if (value.startsWith("'") && value.endsWith("'")) {
+    return value.slice(1, -1);
+  }
+  
+  // Check if it's a number
+  if (!isNaN(Number(value))) {
+    return Number(value);
+  }
+  
+  // Check if it's a boolean
+  if (value === 'true') return true;
+  if (value === 'false') return false;
+  
+  // Look up in context or step result
+  return context[value] || stepResult?.[value] || value;
 }
 
 async function getWorkflowStatus(supabase: any, executionId: string) {

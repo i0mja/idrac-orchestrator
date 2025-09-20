@@ -20,7 +20,8 @@ type State = 'PRECHECKS' | 'ENTER_MAINT' | 'APPLY' | 'REBOOT' | 'POSTCHECKS' | '
 const DEFAULT_TIMEOUT_MINUTES = Number(process.env.IDRAC_UPDATE_TIMEOUT_MIN ?? '90');
 
 async function setState(id: string, from: State, to: State, ctx: Record<string, unknown> = {}) {
-  await db.execute(sql.raw(`SELECT set_host_run_state('${id}', '${from}', '${to}', '${JSON.stringify(ctx)}') AS ok;`));
+  // Use parameterized query to prevent SQL injection
+  await db.execute(sql`SELECT set_host_run_state(${id}, ${from}, ${to}, ${JSON.stringify(ctx)}) AS ok;`);
 }
 
 function assertUpdateMode(value: unknown): UpdateMode {
@@ -139,7 +140,7 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
   await updateCtx({ mgmtKind: caps.mgmtKind, features: caps.features });
 
   if (!caps.features.redfish) {
-    await transition(currentState, 'ERROR', {
+    await transition('ERROR', {
       error: { message: 'Redfish capability not detected' },
       progress: { phase: 'ERROR' }
     });
@@ -151,16 +152,16 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
     : null;
 
   if (host.vcenterUrl && host.hostMoid && vcenterRef) {
-    await transition('PRECHECKS', 'ENTER_MAINT', {});
+    await transition('ENTER_MAINT', {});
     const { token } = await vc.login(vcenterRef.baseUrl, vcenterRef.username, vcenterRef.password);
     const cli = vc.createClient(vcenterRef.baseUrl, token);
     const maintenanceTimeout = Number((policy.maintenanceTimeoutMinutes as number | string | undefined) ?? 120);
     const { taskId } = await cli.enterMaintenance(host.hostMoid, { evacuatePoweredOffVMs: true, timeoutMinutes: maintenanceTimeout });
     await updateCtx({ maintenance: { phase: 'ENTER', taskId } });
     await cli.waitTask(taskId, 30 * 60_000);
-    await transition('ENTER_MAINT', 'APPLY', { maintenance: { phase: 'ENTER_COMPLETED', taskId } });
+    await transition('APPLY', { maintenance: { phase: 'ENTER_COMPLETED', taskId } });
   } else {
-    await transition('PRECHECKS', 'APPLY', {});
+    await transition('APPLY', {});
   }
 
   const results: any[] = Array.isArray(ctx.results) ? [...(ctx.results as any[])] : [];
@@ -274,7 +275,7 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
       }
     }
   } catch (error) {
-    await transition(currentState, 'ERROR', {
+    await transition('ERROR', {
       error: {
         message: error instanceof Error ? error.message : String(error)
       },
@@ -283,7 +284,7 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
     return 'ERROR';
   }
 
-  await transition('APPLY', 'POSTCHECKS', { progress: { phase: 'POSTCHECKS' } });
+  await transition('POSTCHECKS', { progress: { phase: 'POSTCHECKS' } });
   try {
     const finalInventory = await collectSoftwareInventory(idracBaseUrl, idracCreds);
     await updateCtx({ finalInventory });
@@ -292,7 +293,7 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
   }
 
   if (host.vcenterUrl && host.hostMoid && vcenterRef) {
-    await transition('POSTCHECKS', 'EXIT_MAINT', { maintenance: { phase: 'EXIT' } });
+    await transition('EXIT_MAINT', { maintenance: { phase: 'EXIT' } });
     const { token } = await vc.login(vcenterRef.baseUrl, vcenterRef.username, vcenterRef.password);
     const cli = vc.createClient(vcenterRef.baseUrl, token);
     const { taskId } = await cli.exitMaintenance(host.hostMoid);
@@ -300,6 +301,6 @@ export async function runStateMachine(hostRunId: string): Promise<State> {
     await updateCtx({ maintenance: { phase: 'EXIT_COMPLETED', taskId } });
   }
 
-  await transition(currentState, 'DONE', { finishedAt: Date.now(), progress: { phase: 'DONE' }, results: updateResults });
+  await transition('DONE', { finishedAt: Date.now(), progress: { phase: 'DONE' }, results: updateResults });
   return 'DONE';
 }

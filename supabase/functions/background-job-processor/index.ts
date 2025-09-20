@@ -27,29 +27,68 @@ serve(async (req) => {
 
     switch (action) {
       case 'process_next':
-        // Get next available jobs
-        const { data: availableJobs, error: fetchError } = await supabase
-          .from('background_jobs')
-          .select('*')
-          .eq('status', 'queued')
-          .lte('scheduled_at', new Date().toISOString())
-          .order('priority', { ascending: true })
-          .order('created_at', { ascending: true })
-          .limit(maxJobs);
+        // Atomically claim jobs to prevent race conditions
+        const { data: claimedJobs, error: claimError } = await supabase.rpc('claim_jobs', {
+          max_jobs: maxJobs,
+          processor_id: crypto.randomUUID()
+        });
 
-        if (fetchError) {
-          throw fetchError;
-        }
+        if (claimError) {
+          console.error('Failed to claim jobs:', claimError);
+          // Fall back to non-atomic approach if RPC doesn't exist
+          const { data: availableJobs, error: fetchError } = await supabase
+            .from('background_jobs')
+            .select('*')
+            .eq('status', 'queued')
+            .lte('scheduled_at', new Date().toISOString())
+            .order('priority', { ascending: true })
+            .order('created_at', { ascending: true })
+            .limit(maxJobs);
 
-        const processedJobs = [];
-        
-        for (const job of availableJobs) {
-          try {
-            const result = await processJob(supabase, job);
-            processedJobs.push(result);
-          } catch (error) {
-            console.error(`Failed to process job ${job.id}:`, error);
-            await updateJobStatus(supabase, job.id, 'failed', 0, error.message);
+          if (fetchError) {
+            throw fetchError;
+          }
+
+          // Use availableJobs as fallback
+          const processedJobs = [];
+          
+          for (const job of availableJobs || []) {
+            try {
+              // Try to atomically mark as running before processing
+              const { data: updateResult, error: updateError } = await supabase
+                .from('background_jobs')
+                .update({ 
+                  status: 'running',
+                  started_at: new Date().toISOString()
+                })
+                .eq('id', job.id)
+                .eq('status', 'queued') // Only update if still queued
+                .select();
+
+              if (updateError || !updateResult?.length) {
+                console.log(`Job ${job.id} was already claimed by another processor`);
+                continue;
+              }
+
+              const result = await processJob(supabase, job);
+              processedJobs.push(result);
+            } catch (error) {
+              console.error(`Failed to process job ${job.id}:`, error);
+              await updateJobStatus(supabase, job.id, 'failed', 0, error.message);
+            }
+          }
+        } else {
+          // Process claimed jobs
+          const processedJobs = [];
+          
+          for (const job of claimedJobs || []) {
+            try {
+              const result = await processJob(supabase, job);
+              processedJobs.push(result);
+            } catch (error) {
+              console.error(`Failed to process job ${job.id}:`, error);
+              await updateJobStatus(supabase, job.id, 'failed', 0, error.message);
+            }
           }
         }
 
