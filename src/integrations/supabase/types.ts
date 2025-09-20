@@ -1211,6 +1211,72 @@ export type Database = {
           },
         ]
       }
+      ome_connections: {
+        Row: {
+          connection_metadata: Json | null
+          created_at: string
+          created_by: string | null
+          credential_profile_id: string | null
+          health_check_error: string | null
+          hostname: string
+          id: string
+          is_active: boolean
+          last_health_check: string | null
+          name: string
+          port: number
+          status: string
+          updated_at: string
+          use_ssl: boolean
+        }
+        Insert: {
+          connection_metadata?: Json | null
+          created_at?: string
+          created_by?: string | null
+          credential_profile_id?: string | null
+          health_check_error?: string | null
+          hostname: string
+          id?: string
+          is_active?: boolean
+          last_health_check?: string | null
+          name: string
+          port?: number
+          status?: string
+          updated_at?: string
+          use_ssl?: boolean
+        }
+        Update: {
+          connection_metadata?: Json | null
+          created_at?: string
+          created_by?: string | null
+          credential_profile_id?: string | null
+          health_check_error?: string | null
+          hostname?: string
+          id?: string
+          is_active?: boolean
+          last_health_check?: string | null
+          name?: string
+          port?: number
+          status?: string
+          updated_at?: string
+          use_ssl?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ome_connections_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ome_connections_credential_profile_id_fkey"
+            columns: ["credential_profile_id"]
+            isOneToOne: false
+            referencedRelation: "credential_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_members: {
         Row: {
           id: string

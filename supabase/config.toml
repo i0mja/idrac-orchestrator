@@ -97,6 +97,9 @@ verify_jwt = false
 [functions.test-database-connection]
 verify_jwt = false
 
+[functions.test-ome-connection]
+verify_jwt = true
+
 [functions.test-vcenter-connection]
 verify_jwt = false
 

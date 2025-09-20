@@ -7,28 +7,10 @@ import {
   listOmeRuns,
 } from '@/lib/api';
 import { useMutation, useQuery } from '@tanstack/react-query';
-
-export interface OmeConnection {
-  id: string;
-  name: string;
-  baseUrl: string;
-}
-
-const STORAGE_KEY = 'ome:selectedConnection';
+import { useOmeConnections } from '@/hooks/useOmeConnections';
 
 export function useOme() {
-  const [connection, setConnection] = useState<OmeConnection | null>(() => {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  });
-
-  useEffect(() => {
-    if (connection) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(connection));
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-  }, [connection]);
+  const { selectedConnection: connection, setSelectedConnection } = useOmeConnections();
 
   const preview = useMutation({
     mutationFn: (filter?: string) => {
@@ -66,7 +48,7 @@ export function useOme() {
 
   return {
     connection,
-    setConnection,
+    setConnection: setSelectedConnection,
     preview,
     run,
     schedule,
