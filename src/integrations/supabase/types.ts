@@ -2269,6 +2269,10 @@ export type Database = {
         Args: { ip_addr: unknown }
         Returns: string
       }
+      get_user_organization_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       has_permission: {
         Args: {
           perm: Database["public"]["Enums"]["app_permission"]
@@ -2278,6 +2282,10 @@ export type Database = {
       }
       ip_in_datacenter_scope: {
         Args: { datacenter_id: string; ip_addr: unknown }
+        Returns: boolean
+      }
+      is_organization_admin: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       log_audit_event: {
