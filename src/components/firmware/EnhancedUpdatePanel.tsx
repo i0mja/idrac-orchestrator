@@ -265,14 +265,14 @@ export function EnhancedUpdatePanel({ serverId, serverHost, onClose }: EnhancedU
             <div>
               <Label>Preferred Protocol (Optional)</Label>
               <Select
-                value={updateConfig.preferredProtocol || ''}
-                onValueChange={(value) => setUpdateConfig(prev => ({ ...prev, preferredProtocol: value || undefined }))}
+                value={updateConfig.preferredProtocol || 'auto'}
+                onValueChange={(value) => setUpdateConfig(prev => ({ ...prev, preferredProtocol: value === 'auto' ? undefined : value }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Auto-detect best protocol" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Auto-detect (Recommended)</SelectItem>
+                  <SelectItem value="auto">Auto-detect (Recommended)</SelectItem>
                   {supportedProtocols.map((protocol) => (
                     <SelectItem key={protocol.protocol} value={protocol.protocol}>
                       <div className="flex items-center gap-2">

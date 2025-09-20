@@ -352,14 +352,14 @@ export function DiscoveryControl() {
                     <div className="space-y-2">
                       <Label>Datacenter (Optional)</Label>
                       <Select
-                        value={discoveryConfig.networkConfig.datacenterId || ''}
+                        value={discoveryConfig.networkConfig.datacenterId || 'custom'}
                         onValueChange={(value) =>
                           setDiscoveryConfig(prev => ({
                             ...prev,
                             networkConfig: {
                               ...prev.networkConfig,
-                              datacenterId: value || null,
-                              ipRange: value ? '' : prev.networkConfig.ipRange,
+                              datacenterId: value === 'custom' ? null : value,
+                              ipRange: (value === 'custom' || !value) ? prev.networkConfig.ipRange : '',
                             }
                           }))
                         }
@@ -368,7 +368,7 @@ export function DiscoveryControl() {
                           <SelectValue placeholder="Select datacenter or use IP range" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Custom IP Range</SelectItem>
+                          <SelectItem value="custom">Custom IP Range</SelectItem>
                           {datacenters.map((dc) => (
                             <SelectItem key={dc.id} value={dc.id}>
                               {dc.name} ({dc.ip_scopes.length} scopes)
@@ -378,7 +378,7 @@ export function DiscoveryControl() {
                       </Select>
                     </div>
 
-                    {!discoveryConfig.networkConfig.datacenterId && (
+                {!discoveryConfig.networkConfig.datacenterId && (
                       <div className="space-y-2">
                         <Label>IP Range</Label>
                         <Input
