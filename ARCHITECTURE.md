@@ -127,6 +127,18 @@ api/
 │   └── workers/         # Background job workers
 ```
 
+#### Multi-Protocol Update Layer
+
+The `api/src/lib/protocols` module implements a production-ready firmware transport layer with the following capabilities:
+
+- **Protocol auto-detection** across Redfish, WS-MAN, RACADM, IPMI, and SSH with mixed-generation iDRAC awareness.
+- **Health monitoring** via `ProtocolManager`, emitting structured telemetry for observability pipelines.
+- **Intelligent fallback chain** (`Redfish → WS-MAN → RACADM → IPMI → SSH`) with error classification and exponential backoff retry policies.
+- **Firmware operation abstraction** (`FirmwareUpdateRequest`) powering `SimpleUpdate`, `InstallFromRepository`, and `MultipartUpdate` workflows.
+- **Pluggable architecture** that allows service providers to extend update transports without modifying the state machine.
+
+The orchestration state machine consumes this layer to guarantee protocol resiliency during complex, multi-component update plans.
+
 ## Data Architecture
 
 ### Database Schema Design

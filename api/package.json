@@ -10,7 +10,7 @@
     "build": "tsc -p .",
     "start": "node dist/index.js",
     "migrate": "drizzle-kit migrate",
-    "test": "tsx test/**/*.test.ts"
+    "test": "node --import tsx --test ./test/protocolManager.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.1.0",
@@ -19,6 +19,7 @@
     "@fastify/swagger-ui": "^1",
     "bullmq": "^5",
     "drizzle-orm": "^0.33",
+    "fast-xml-parser": "^4.5.0",
     "fastify": "^4",
     "form-data": "^4.0.0",
     "ioredis": "^5",
