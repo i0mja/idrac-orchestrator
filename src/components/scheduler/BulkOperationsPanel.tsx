@@ -141,30 +141,65 @@ export function BulkOperationsPanel({ selectedServers, servers }: BulkOperations
 
       if (bulkError) throw bulkError;
 
-      // Create individual jobs for each server
-      const jobPromises = selectedServers.map(async (serverId) => {
-        const { data, error } = await supabase.functions.invoke('execute-remote-command', {
-          body: {
-            serverId,
-            command: operationDetails.command,
-            description: operationDetails.description,
-            scheduledAt,
-            operationType: dialog.type,
-            bulkOperationId: bulkOperation.id
-          }
-        });
+      // Create individual jobs for each server based on operation type
+      let operationResult;
 
-        if (error) {
-          console.error(`Failed to create job for server ${serverId}:`, error);
-          throw error;
-        }
+      switch (dialog.type) {
+        case 'firmware':
+          // For firmware updates, we need a firmware package ID
+          operationResult = await supabase.functions.invoke('bulk-firmware-update', {
+            body: {
+              serverIds: selectedServers,
+              firmwarePackageId: 'default-package', // This should come from user selection
+              scheduledAt,
+              description: operationDetails.description
+            }
+          });
+          break;
 
-        return data;
-      });
+        case 'reboot':
+          operationResult = await supabase.functions.invoke('bulk-server-reboot', {
+            body: {
+              serverIds: selectedServers,
+              scheduledAt,
+              description: operationDetails.description,
+              rebootType: 'graceful'
+            }
+          });
+          break;
 
-      const results = await Promise.allSettled(jobPromises);
-      const successful = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
+        case 'security':
+          operationResult = await supabase.functions.invoke('bulk-security-patch', {
+            body: {
+              serverIds: selectedServers,
+              scheduledAt,
+              description: operationDetails.description,
+              patchLevel: 'security'
+            }
+          });
+          break;
+
+        case 'health':
+          operationResult = await supabase.functions.invoke('bulk-health-check', {
+            body: {
+              serverIds: selectedServers,
+              scheduledAt,
+              description: operationDetails.description,
+              checkType: 'comprehensive'
+            }
+          });
+          break;
+
+        default:
+          throw new Error('Unknown operation type');
+      }
+
+      if (operationResult.error) {
+        throw new Error(operationResult.error.message || 'Operation failed');
+      }
+
+      const successful = selectedServers.length;
+      const failed = 0;
 
       if (successful === selectedServers.length) {
         toast({

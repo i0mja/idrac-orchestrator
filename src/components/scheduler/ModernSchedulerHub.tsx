@@ -18,6 +18,8 @@ import { DetailedSchedulingDialog } from "./DetailedSchedulingDialog";
 import { SchedulerSettingsDialog } from "./SchedulerSettingsDialog";
 import { BulkOperationsPanel } from "./BulkOperationsPanel";
 import { useSchedulerHistory } from "@/hooks/useSchedulerHistory";
+import { useSchedulerRealTime } from "@/hooks/useSchedulerRealTime";
+import { CampaignManagementPanel } from "./CampaignManagementPanel";
 import { 
   Calendar,
   Zap,
@@ -97,6 +99,7 @@ export function ModernSchedulerHub() {
   const { jobs, loading: jobsLoading, createRemoteCommand, cancelJob, retryJob } = useUpdateJobs();
   const { servers, datacenters } = useEnhancedServers();
   const { history, loading: historyLoading, filters, updateFilters, statistics } = useSchedulerHistory();
+  const { isConnected } = useSchedulerRealTime();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -540,6 +543,10 @@ export function ModernSchedulerHub() {
             <Clock className="w-4 h-4" />
             History
           </TabsTrigger>
+          <TabsTrigger value="campaigns" className="gap-2">
+            <Target className="w-4 h-4" />
+            Campaigns
+          </TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -918,6 +925,11 @@ export function ModernSchedulerHub() {
 
             <BulkOperationsPanel selectedServers={selectedServers} servers={servers} />
           </div>
+        </TabsContent>
+
+        {/* Campaigns Tab */}
+        <TabsContent value="campaigns" className="space-y-6">
+          <CampaignManagementPanel />
         </TabsContent>
 
         {/* History Tab */}
