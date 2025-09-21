@@ -15,6 +15,9 @@ import { useEnhancedServers } from "@/hooks/useEnhancedServers";
 import { supabase } from "@/integrations/supabase/client";
 import { ManualUpdatePanel } from "../updates/ManualUpdatePanel";
 import { DetailedSchedulingDialog } from "./DetailedSchedulingDialog";
+import { SchedulerSettingsDialog } from "./SchedulerSettingsDialog";
+import { BulkOperationsPanel } from "./BulkOperationsPanel";
+import { useSchedulerHistory } from "@/hooks/useSchedulerHistory";
 import { 
   Calendar,
   Zap,
@@ -87,9 +90,13 @@ export function ModernSchedulerHub() {
   const [isManualUpdateOpen, setIsManualUpdateOpen] = useState(false);
   const [isDetailedScheduleOpen, setIsDetailedScheduleOpen] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [isEventViewOpen, setIsEventViewOpen] = useState(false);
 
   const { jobs, loading: jobsLoading, createRemoteCommand, cancelJob, retryJob } = useUpdateJobs();
   const { servers, datacenters } = useEnhancedServers();
+  const { history, loading: historyLoading, filters, updateFilters, statistics } = useSchedulerHistory();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -270,6 +277,50 @@ export function ModernSchedulerHub() {
     }
   };
 
+  const handlePauseAllJobs = async () => {
+    try {
+      const runningJobIds = jobs?.filter(job => job.status === 'running').map(job => job.id) || [];
+      
+      if (runningJobIds.length === 0) {
+        toast({
+          title: "No Running Jobs",
+          description: "There are no running jobs to pause",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      for (const jobId of runningJobIds) {
+        await cancelJob(jobId);
+      }
+
+      toast({
+        title: "Jobs Paused",
+        description: `Paused ${runningJobIds.length} running job(s)`,
+      });
+    } catch (error) {
+      console.error('Error pausing jobs:', error);
+      toast({
+        title: "Error",
+        description: "Failed to pause running jobs",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleViewEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setIsEventViewOpen(true);
+  };
+
+  const handleEditEvent = (eventId: string) => {
+    // For now, just show a toast - could implement edit functionality
+    toast({
+      title: "Edit Event",
+      description: `Edit functionality for event ${eventId} will be implemented`,
+    });
+  };
+
   const quickActions: QuickAction[] = [
     {
       id: 'manual-update',
@@ -362,7 +413,7 @@ export function ModernSchedulerHub() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => setIsSettingsOpen(true)}>
             <Settings className="w-4 h-4" />
             Settings
           </Button>
@@ -629,7 +680,7 @@ export function ModernSchedulerHub() {
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Refresh
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handlePauseAllJobs}>
                     <Pause className="w-4 h-4 mr-2" />
                     Pause All
                   </Button>
@@ -767,11 +818,11 @@ export function ModernSchedulerHub() {
                       <TableCell>{getStatusBadge(event.status)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleViewEvent(event.id)}>
                             <Eye className="w-3 h-3 mr-1" />
                             View
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" onClick={() => handleEditEvent(event.id)}>
                             <Settings className="w-3 h-3 mr-1" />
                             Edit
                           </Button>
@@ -801,111 +852,234 @@ export function ModernSchedulerHub() {
 
         {/* Bulk Operations Tab */}
         <TabsContent value="bulk" className="space-y-6">
-          <Card className="card-enterprise">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="w-5 h-5" />
-                Bulk Server Operations
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h4 className="font-semibold mb-3">Server Selection</h4>
-                  <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
-                    {servers.slice(0, 10).map((server) => (
-                      <div key={server.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={server.id}
-                          checked={selectedServers.includes(server.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedServers([...selectedServers, server.id]);
-                            } else {
-                              setSelectedServers(selectedServers.filter(id => id !== server.id));
-                            }
-                          }}
-                        />
-                        <label htmlFor={server.id} className="text-sm flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{server.hostname}</span>
-                            <Badge variant="outline" className="text-xs">{server.environment}</Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {String(server.ip_address)} • {server.datacenter}
-                          </div>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="card-enterprise">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="w-5 h-5" />
+                  Server Selection
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedServers(servers.map(s => s.id))}
+                  >
+                    Select All ({servers.length})
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setSelectedServers([])}
+                  >
+                    Clear Selection
+                  </Button>
                 </div>
+                
+                <div className="space-y-2 max-h-60 overflow-y-auto border rounded-md p-3">
+                  {servers.slice(0, 20).map((server) => (
+                    <div key={server.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={server.id}
+                        checked={selectedServers.includes(server.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedServers([...selectedServers, server.id]);
+                          } else {
+                            setSelectedServers(selectedServers.filter(id => id !== server.id));
+                          }
+                        }}
+                      />
+                      <label htmlFor={server.id} className="text-sm flex-1 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{server.hostname}</span>
+                          <Badge variant="outline" className="text-xs">{server.environment}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {String(server.ip_address)} • {server.datacenter}
+                        </div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                
+                {selectedServers.length > 0 && (
+                  <Alert>
+                    <CheckCircle className="w-4 h-4" />
+                    <AlertDescription>
+                      {selectedServers.length} server(s) selected for bulk operations.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
 
-                <div>
-                  <h4 className="font-semibold mb-3">Bulk Actions</h4>
-                  <div className="space-y-2">
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline"
-                      disabled={selectedServers.length === 0}
-                    >
-                      <Zap className="w-4 h-4 mr-2" />
-                      Update Firmware ({selectedServers.length} servers)
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline"
-                      disabled={selectedServers.length === 0}
-                    >
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Reboot Servers ({selectedServers.length} servers)
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline"
-                      disabled={selectedServers.length === 0}
-                    >
-                      <Shield className="w-4 h-4 mr-2" />
-                      Apply Security Patches ({selectedServers.length} servers)
-                    </Button>
-                    <Button 
-                      className="w-full justify-start" 
-                      variant="outline"
-                      disabled={selectedServers.length === 0}
-                    >
-                      <Monitor className="w-4 h-4 mr-2" />
-                      Health Check ({selectedServers.length} servers)
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              
-              {selectedServers.length > 0 && (
-                <Alert>
-                  <CheckCircle className="w-4 h-4" />
-                  <AlertDescription>
-                    {selectedServers.length} server(s) selected for bulk operations.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
+            <BulkOperationsPanel selectedServers={selectedServers} servers={servers} />
+          </div>
         </TabsContent>
 
         {/* History Tab */}
         <TabsContent value="history" className="space-y-6">
+          {/* History Statistics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="card-enterprise">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Operations</p>
+                    <h3 className="text-2xl font-bold">{statistics.totalOperations}</h3>
+                  </div>
+                  <FileText className="w-8 h-8 text-blue-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="card-enterprise">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Success Rate</p>
+                    <h3 className="text-2xl font-bold text-green-600">{statistics.successRate}%</h3>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="card-enterprise">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Failed Operations</p>
+                    <h3 className="text-2xl font-bold text-red-600">{statistics.failedOperations}</h3>
+                  </div>
+                  <AlertTriangle className="w-8 h-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="card-enterprise">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Avg Duration</p>
+                    <h3 className="text-2xl font-bold">{statistics.avgDurationMinutes}m</h3>
+                  </div>
+                  <Timer className="w-8 h-8 text-purple-500" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* History Filters */}
           <Card className="card-enterprise">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Operation History
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  Operation History
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Select value={filters.type} onValueChange={(value) => updateFilters({ type: value })}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="job">Update Jobs</SelectItem>
+                      <SelectItem value="maintenance">Maintenance</SelectItem>
+                      <SelectItem value="system_event">System Events</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.status} onValueChange={(value) => updateFilters({ status: value })}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filters.dateRange} onValueChange={(value) => updateFilters({ dateRange: value })}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Date range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1d">Last 24h</SelectItem>
+                      <SelectItem value="7d">Last 7 days</SelectItem>
+                      <SelectItem value="30d">Last 30 days</SelectItem>
+                      <SelectItem value="90d">Last 90 days</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Operation history will be displayed here</p>
-                <p className="text-sm">Track completed jobs, maintenance windows, and system changes</p>
-              </div>
+              {historyLoading ? (
+                <div className="text-center py-8">
+                  <Clock className="w-8 h-8 animate-spin mx-auto mb-2" />
+                  <p>Loading history...</p>
+                </div>
+              ) : history.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No operations found</p>
+                  <p className="text-sm">Try adjusting your filters</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.slice(0, 20).map((entry) => (
+                    <div key={entry.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-medium">{entry.title}</h4>
+                            <Badge 
+                              variant={entry.status === 'completed' ? 'default' : 
+                                     entry.status === 'failed' ? 'destructive' : 'outline'}
+                            >
+                              {entry.status}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {entry.type.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">{entry.description}</p>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                            <span>
+                              Started: {new Date(entry.started_at).toLocaleString()}
+                            </span>
+                            {entry.completed_at && (
+                              <span>
+                                Completed: {new Date(entry.completed_at).toLocaleString()}
+                              </span>
+                            )}
+                            {entry.duration_minutes && (
+                              <span>Duration: {entry.duration_minutes}m</span>
+                            )}
+                            {entry.affected_servers > 0 && (
+                              <span>Servers: {entry.affected_servers}</span>
+                            )}
+                          </div>
+                        </div>
+                        <Badge 
+                          variant={entry.severity === 'error' ? 'destructive' : 
+                                 entry.severity === 'warning' ? 'destructive' : 'outline'}
+                          className="text-xs"
+                        >
+                          {entry.severity}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                  {history.length > 20 && (
+                    <div className="text-center py-4 text-sm text-muted-foreground">
+                      Showing first 20 of {history.length} entries
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -929,6 +1103,12 @@ export function ModernSchedulerHub() {
         open={isDetailedScheduleOpen}
         onOpenChange={setIsDetailedScheduleOpen}
         onScheduleCreated={loadData}
+      />
+
+      {/* Settings Dialog */}
+      <SchedulerSettingsDialog
+        open={isSettingsOpen}
+        onOpenChange={setIsSettingsOpen}
       />
     </div>
   );
