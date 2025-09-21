@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Server } from 'lucide-react';
+import { IdmLogin } from '@/components/auth/IdmLogin';
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
@@ -178,9 +179,10 @@ export default function Auth() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="idm">IDM Login</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin">
@@ -297,6 +299,10 @@ export default function Auth() {
                   )}
                 </Button>
               </form>
+            </TabsContent>
+
+            <TabsContent value="idm" className="space-y-4">
+              <IdmLogin onSuccess={() => navigate('/')} />
             </TabsContent>
           </Tabs>
         </CardContent>
