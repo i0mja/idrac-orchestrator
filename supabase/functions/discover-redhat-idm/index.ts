@@ -1,8 +1,14 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Enhanced logging function
+function log(level: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
 interface IdmDiscoveryRequest {
@@ -18,21 +24,38 @@ interface IdmGroup {
 }
 
 serve(async (req) => {
+  log('info', 'IDM discovery request received', { method: req.method, url: req.url });
+  
   if (req.method === 'OPTIONS') {
+    log('info', 'Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { realm, adminUser, password }: IdmDiscoveryRequest = await req.json();
+    const requestBody = await req.json();
+    log('info', 'Request body received', { realm: requestBody.realm, adminUser: requestBody.adminUser });
+    
+    const { realm, adminUser, password }: IdmDiscoveryRequest = requestBody;
 
     if (!realm || !adminUser || !password) {
+      log('error', 'Missing required fields', { realm: !!realm, adminUser: !!adminUser, password: !!password });
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: realm, adminUser, password' }),
+        JSON.stringify({ success: false, error: 'Missing required fields: realm, adminUser, and password are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Starting Red Hat IDM discovery for realm: ${realm}`);
+    // Validate realm format
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!domainRegex.test(realm)) {
+      log('error', 'Invalid realm format', { realm });
+      return new Response(
+        JSON.stringify({ success: false, error: 'Invalid realm format. Use format like: idm.company.local' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    log('info', `Starting Red Hat IDM discovery for realm: ${realm}`);
 
     // Parse realm to get domain components
     const domainParts = realm.split('.');
@@ -44,14 +67,12 @@ serve(async (req) => {
     const groupSearchBase = `cn=groups,cn=accounts,${baseDn}`;
     const bindDn = `uid=${adminUser},cn=users,cn=accounts,${baseDn}`;
 
-    console.log(`Attempting LDAP connection to: ${serverUrl}`);
-    console.log(`Base DN: ${baseDn}`);
-    console.log(`Bind DN: ${bindDn}`);
+    log('info', 'LDAP connection details constructed', { serverUrl, baseDn, bindDn, groupSearchBase });
 
     // Test LDAP connection and discover groups
     const groups = await discoverIdmGroups(serverUrl, bindDn, password, groupSearchBase);
 
-    console.log(`Successfully discovered ${groups.length} groups`);
+    log('info', `Successfully discovered ${groups.length} groups`);
 
     return new Response(
       JSON.stringify({
@@ -74,11 +95,11 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('IDM discovery error:', error);
+    log('error', 'Error in discover-redhat-idm', { error: error.message, stack: error.stack });
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error occurred' 
+        error: error instanceof Error ? error.message : 'An unexpected error occurred' 
       }),
       { 
         status: 500, 

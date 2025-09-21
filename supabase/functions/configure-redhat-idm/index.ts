@@ -1,9 +1,15 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+// Enhanced logging function
+function log(level: string, message: string, data?: any) {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
 }
 
 interface IdmConfigRequest {
@@ -15,27 +21,52 @@ interface IdmConfigRequest {
 }
 
 serve(async (req) => {
+  log('info', 'IDM configuration request received', { method: req.method, url: req.url });
+  
   if (req.method === 'OPTIONS') {
+    log('info', 'Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { realm, adminUser, password, selectedGroups, defaultRole }: IdmConfigRequest = await req.json();
+    const requestBody = await req.json();
+    log('info', 'Request body received', { 
+      realm: requestBody.realm, 
+      adminUser: requestBody.adminUser,
+      selectedGroupsCount: requestBody.selectedGroups?.length,
+      defaultRole: requestBody.defaultRole
+    });
+    
+    const { realm, adminUser, password, selectedGroups, defaultRole }: IdmConfigRequest = requestBody;
 
-    if (!realm || !adminUser || !password || !selectedGroups?.length) {
+    if (!realm || !adminUser || !password || !selectedGroups?.length || !defaultRole) {
+      log('error', 'Missing required fields', { 
+        realm: !!realm, 
+        adminUser: !!adminUser, 
+        password: !!password,
+        selectedGroups: !!selectedGroups?.length,
+        defaultRole: !!defaultRole
+      });
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ success: false, error: 'Missing required fields: realm, adminUser, password, selectedGroups, and defaultRole are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`Configuring Red Hat IDM for realm: ${realm}`);
-    console.log(`Selected groups: ${selectedGroups.length}`);
-    console.log(`Default role: ${defaultRole}`);
+    log('info', `Configuring Red Hat IDM for realm: ${realm}`, {
+      selectedGroupsCount: selectedGroups.length,
+      defaultRole
+    });
 
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      log('error', 'Missing Supabase environment variables');
+      throw new Error('Supabase configuration is missing');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Parse realm to get domain components

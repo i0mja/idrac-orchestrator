@@ -2,6 +2,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IdmConfiguration } from "./IdmConfiguration";
 import { SecuritySettings } from "./SecuritySettings";
 import { SetupDebug } from "@/components/debug/SetupDebug";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { Settings } from "lucide-react";
 
 export function SettingsPage() {
@@ -31,7 +32,9 @@ export function SettingsPage() {
         </TabsContent>
         
         <TabsContent value="identity" className="space-y-4">
-          <IdmConfiguration />
+          <ErrorBoundary>
+            <IdmConfiguration />
+          </ErrorBoundary>
         </TabsContent>
         
         <TabsContent value="debug" className="space-y-4">

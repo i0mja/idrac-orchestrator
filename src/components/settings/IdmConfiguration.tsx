@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Shield, Users, CheckCircle } from "lucide-react";
+import { Loader2, Shield, Users, CheckCircle, AlertCircle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface IdmGroup {
   name: string;
@@ -27,9 +28,43 @@ export function IdmConfiguration() {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [isConfiguring, setIsConfiguring] = useState(false);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
+  const [realmValidation, setRealmValidation] = useState<string>('');
   const { toast } = useToast();
 
+  // Debug logging for component initialization
+  useEffect(() => {
+    console.log('IdmConfiguration component mounted');
+    return () => console.log('IdmConfiguration component unmounted');
+  }, []);
+
+  // Validate IDM realm format
+  const validateRealm = (realm: string): string => {
+    if (!realm) return '';
+    
+    // Check for basic domain format
+    const domainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    
+    if (!domainRegex.test(realm)) {
+      return 'Invalid domain format. Use format like: idm.company.local';
+    }
+    
+    if (realm.length > 253) {
+      return 'Domain name too long (max 253 characters)';
+    }
+    
+    return '';
+  };
+
+  // Validate realm on change
+  useEffect(() => {
+    const validation = validateRealm(formData.realm);
+    setRealmValidation(validation);
+  }, [formData.realm]);
+
   const handleDiscover = async () => {
+    console.log('Starting IDM discovery process');
+    
+    // Validate inputs
     if (!formData.realm || !formData.adminUser || !formData.password) {
       toast({
         title: "Missing Information",
@@ -39,8 +74,20 @@ export function IdmConfiguration() {
       return;
     }
 
+    // Check realm validation
+    if (realmValidation) {
+      toast({
+        title: "Invalid Realm Format",
+        description: realmValidation,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsDiscovering(true);
     try {
+      console.log(`Discovering IDM groups for realm: ${formData.realm}`);
+      
       const { data, error } = await supabase.functions.invoke('discover-redhat-idm', {
         body: {
           realm: formData.realm,
@@ -49,23 +96,33 @@ export function IdmConfiguration() {
         }
       });
 
-      if (error) throw error;
+      console.log('IDM discovery response:', { data, error });
 
-      if (data.success) {
-        setDiscoveredGroups(data.groups || []);
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        const groups = data.groups || [];
+        console.log(`Successfully discovered ${groups.length} groups`);
+        setDiscoveredGroups(groups);
         setDiscoveryComplete(true);
         toast({
           title: "Discovery Complete",
-          description: `Found ${data.groups?.length || 0} groups in ${formData.realm}`,
+          description: `Found ${groups.length} groups in ${formData.realm}`,
         });
       } else {
-        throw new Error(data.error || 'Discovery failed');
+        const errorMsg = data?.error || 'Discovery failed';
+        console.error('IDM discovery failed:', errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('IDM discovery error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to discover IDM configuration";
       toast({
         title: "Discovery Failed",
-        description: error instanceof Error ? error.message : "Failed to discover IDM configuration",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -74,6 +131,10 @@ export function IdmConfiguration() {
   };
 
   const handleConfigure = async () => {
+    console.log('Starting IDM configuration process');
+    console.log('Selected groups:', selectedGroups);
+    console.log('Default role:', defaultRole);
+    
     setIsConfiguring(true);
     try {
       const { data, error } = await supabase.functions.invoke('configure-redhat-idm', {
@@ -86,9 +147,15 @@ export function IdmConfiguration() {
         }
       });
 
-      if (error) throw error;
+      console.log('IDM configuration response:', { data, error });
 
-      if (data.success) {
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw error;
+      }
+
+      if (data?.success) {
+        console.log('IDM configuration completed successfully');
         toast({
           title: "Configuration Complete",
           description: "Red Hat IDM has been configured successfully",
@@ -98,14 +165,18 @@ export function IdmConfiguration() {
         setDiscoveredGroups([]);
         setSelectedGroups([]);
         setDiscoveryComplete(false);
+        setRealmValidation('');
       } else {
-        throw new Error(data.error || 'Configuration failed');
+        const errorMsg = data?.error || 'Configuration failed';
+        console.error('IDM configuration failed:', errorMsg);
+        throw new Error(errorMsg);
       }
     } catch (error) {
       console.error('IDM configuration error:', error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to configure IDM";
       toast({
         title: "Configuration Failed",
-        description: error instanceof Error ? error.message : "Failed to configure IDM",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -123,6 +194,13 @@ export function IdmConfiguration() {
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Configure Red Hat IDM/FreeIPA integration to enable LDAP-based authentication for your organization.
+        </AlertDescription>
+      </Alert>
+      
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -143,7 +221,14 @@ export function IdmConfiguration() {
                 value={formData.realm}
                 onChange={(e) => setFormData(prev => ({ ...prev, realm: e.target.value }))}
                 disabled={discoveryComplete}
+                className={realmValidation ? "border-destructive" : ""}
               />
+              {realmValidation && (
+                <div className="flex items-center gap-2 text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  {realmValidation}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="adminUser">Admin Username</Label>
