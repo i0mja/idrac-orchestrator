@@ -19,7 +19,7 @@ import { SchedulerSettingsDialog } from "./SchedulerSettingsDialog";
 import { BulkOperationsPanel } from "./BulkOperationsPanel";
 import { useSchedulerHistory } from "@/hooks/useSchedulerHistory";
 import { useSchedulerRealTime } from "@/hooks/useSchedulerRealTime";
-import { CampaignManagementPanel } from "./CampaignManagementPanel";
+
 import { 
   Calendar,
   Zap,
@@ -35,7 +35,6 @@ import {
   Plus,
   RefreshCw,
   Settings,
-  Target,
   Users,
   Layers,
   GitBranch,
@@ -522,7 +521,7 @@ export function ModernSchedulerHub() {
 
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview" className="gap-2">
             <BarChart3 className="w-4 h-4" />
             Overview
@@ -542,10 +541,6 @@ export function ModernSchedulerHub() {
           <TabsTrigger value="history" className="gap-2">
             <Clock className="w-4 h-4" />
             History
-          </TabsTrigger>
-          <TabsTrigger value="campaigns" className="gap-2">
-            <Target className="w-4 h-4" />
-            Campaigns
           </TabsTrigger>
         </TabsList>
 
@@ -863,7 +858,7 @@ export function ModernSchedulerHub() {
             <Card className="card-enterprise">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Target className="w-5 h-5" />
+                  <Server className="w-5 h-5" />
                   Server Selection
                 </CardTitle>
               </CardHeader>
@@ -927,10 +922,6 @@ export function ModernSchedulerHub() {
           </div>
         </TabsContent>
 
-        {/* Campaigns Tab */}
-        <TabsContent value="campaigns" className="space-y-6">
-          <CampaignManagementPanel />
-        </TabsContent>
 
         {/* History Tab */}
         <TabsContent value="history" className="space-y-6">
