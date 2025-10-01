@@ -170,11 +170,6 @@ export function IdmLogin({ onSuccess }: IdmLoginProps) {
             )}
           </Button>
         </form>
-
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          <p>Test Credentials:</p>
-          <p>admin/admin123, operator/operator123, viewer/viewer123</p>
-        </div>
       </CardContent>
     </Card>
   );

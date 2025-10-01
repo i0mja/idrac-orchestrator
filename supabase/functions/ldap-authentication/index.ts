@@ -191,54 +191,34 @@ serve(async (req) => {
 });
 
 async function authenticateWithLDAP(username: string, password: string): Promise<LDAPUserInfo | null> {
-  console.log(`Simulating LDAP authentication for ${username}`);
+  // This is a MOCK implementation for development/testing
+  // SECURITY WARNING: This should be replaced with actual LDAP authentication in production
+  console.warn('Using mock LDAP authentication - replace with real LDAP in production');
   
-  // Mock users for testing - replace with real LDAP client in production
-  const mockUsers = [
-    {
-      uid: 'admin',
-      password: 'admin123',
-      email: 'admin@example.com',
-      displayName: 'IDM Administrator',
-      dn: 'uid=admin,cn=users,cn=accounts,dc=example,dc=com',
-      groups: ['admins', 'ipausers']
-    },
-    {
-      uid: 'operator',
-      password: 'operator123', 
-      email: 'operator@example.com',
-      displayName: 'System Operator',
-      dn: 'uid=operator,cn=users,cn=accounts,dc=example,dc=com',
-      groups: ['operators', 'ipausers']
-    },
-    {
-      uid: 'viewer',
-      password: 'viewer123',
-      email: 'viewer@example.com', 
-      displayName: 'System Viewer',
-      dn: 'uid=viewer,cn=users,cn=accounts,dc=example,dc=com',
-      groups: ['viewers', 'ipausers']
-    }
-  ];
-
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-
-  const user = mockUsers.find(u => u.uid === username && u.password === password);
-  if (!user) {
-    console.log(`Authentication failed for user: ${username}`);
-    return null;
-  }
-
-  console.log(`Authentication successful for user: ${username}, groups: ${user.groups.join(', ')}`);
-  return {
-    dn: user.dn,
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-    groups: user.groups
-  };
+  // In production, you would:
+  // 1. Connect to your LDAP server using credentials from Supabase secrets:
+  //    - LDAP_URL (e.g., ldap://idm.example.com:389)
+  //    - LDAP_BIND_DN (service account DN)
+  //    - LDAP_BIND_PASSWORD (service account password)
+  // 2. Bind with the service account
+  // 3. Search for the user in the directory
+  // 4. Attempt to bind as the user to verify their password
+  // 5. Retrieve user attributes and group memberships
+  
+  // Example production implementation:
+  // const ldapClient = new LDAPClient({
+  //   url: Deno.env.get('LDAP_URL'),
+  //   bindDN: Deno.env.get('LDAP_BIND_DN'),
+  //   bindPassword: Deno.env.get('LDAP_BIND_PASSWORD'),
+  // });
+  // const userEntry = await ldapClient.search(`uid=${username},cn=users,cn=accounts,dc=example,dc=com`);
+  // const isValid = await ldapClient.bind(userEntry.dn, password);
+  // return isValid ? mapLDAPUserToProfile(userEntry) : null;
+  
+  console.log(`LDAP authentication not configured for: ${username}`);
+  return null; // Authentication disabled - configure LDAP credentials in Supabase secrets
 }
+
 
 function mapLDAPGroupsToRole(groups: string[]): string {
   if (groups.includes('admins')) {

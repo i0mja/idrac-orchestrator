@@ -20,34 +20,34 @@ enable_signup = true
 enable_signup = true
 
 [functions.auto-orchestration]
-verify_jwt = false
+verify_jwt = true
 
 [functions.configure-redhat-idm]
-verify_jwt = false
+verify_jwt = true
 
 [functions.create-database]
-verify_jwt = false
+verify_jwt = true
 
 [functions.discover-redhat-idm]
-verify_jwt = false
+verify_jwt = true
 
 [functions.discover-servers]
-verify_jwt = false
+verify_jwt = true
 
 [functions.download-dell-firmware]
-verify_jwt = false
+verify_jwt = true
 
 [functions.execute-remote-command]
-verify_jwt = false
+verify_jwt = true
 
 [functions.firmware-management]
-verify_jwt = false
+verify_jwt = true
 
 [functions.firmware-upload]
-verify_jwt = false
+verify_jwt = true
 
 [functions.health-check]
-verify_jwt = false
+verify_jwt = true
 
 [functions.initialize-database-schema]
 verify_jwt = false
@@ -56,67 +56,67 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.maintenance-orchestrator]
-verify_jwt = false
+verify_jwt = true
 
 [functions.maintenance-scheduler]
 verify_jwt = false
 
 [functions.maintenance-windows]
-verify_jwt = false
+verify_jwt = true
 
 [functions.orchestration-control]
-verify_jwt = false
+verify_jwt = true
 
 [functions.orchestrator-start-rolling-update]
-verify_jwt = false
+verify_jwt = true
 
 [functions.os-agnostic-update]
-verify_jwt = false
+verify_jwt = true
 
 [functions.process-update-job]
-verify_jwt = false
+verify_jwt = true
 
 [functions.racadm-command]
-verify_jwt = false
+verify_jwt = true
 
 [functions.redfish-discovery]
-verify_jwt = false
+verify_jwt = true
 
 [functions.redfish-update]
-verify_jwt = false
+verify_jwt = true
 
 [functions.save-initial-setup]
 verify_jwt = false
 
 [functions.search-dell-firmware]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-vcenter-hosts]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-database-connection]
-verify_jwt = false
+verify_jwt = true
 
 [functions.test-ome-connection]
 verify_jwt = true
 
 [functions.test-vcenter-connection]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vcenter-integration]
-verify_jwt = false
+verify_jwt = true
 
 [functions.vsphere-cluster-health]
-verify_jwt = false
+verify_jwt = true
 
 [functions.host-readiness-check]
-verify_jwt = false
+verify_jwt = true
 
 [functions.host-maintenance-mode]
-verify_jwt = false
+verify_jwt = true
 
 [functions.job-queue-manager]
-verify_jwt = false
+verify_jwt = true
 
 [functions.background-job-processor]
 verify_jwt = false
@@ -128,7 +128,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.workflow-engine]
-verify_jwt = false
+verify_jwt = true
 
 [db]
 port = 54322
